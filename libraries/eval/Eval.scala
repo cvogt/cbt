@@ -96,6 +96,14 @@ class Eval {
     apply(Source.fromInputStream(stream).mkString)
   }
 
+  def toSource(file: File): String = {
+    toSource(scala.io.Source.fromFile(file).mkString)
+  }
+
+  def toSource(code: String): String = {
+    compiler.sourceForString(code)
+  }
+
   /**
    * Compile an entire source file into the virtual classloader.
    */
@@ -355,7 +363,7 @@ class Eval {
      * Compile scala code. It can be found using the above class loader.
      */
     def apply(code: String) {
-      val processedCode = preprocessors.foldLeft(code) { case (c: String, p: Preprocessor) => p(c) }
+      val processedCode = sourceForString(code)
 
       if (Debug.enabled)
         Debug.printWithLineNumbers(processedCode)
@@ -367,6 +375,10 @@ class Eval {
       if (reporter.hasErrors || reporter.WARNING.count > 0) {
         throw new CompilerException(reporter.messages.toList)
       }
+    }
+
+    def sourceForString(code: String) = {
+      preprocessors.foldLeft(code) { case (c: String, p: Preprocessor) => p(c) }
     }
 
     /**
