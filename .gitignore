@@ -1,0 +1,9 @@
+config
+cache
+classes
+lib
+out
+scala_classes
+target/
+*.login
+cache_

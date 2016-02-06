@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+#gdate +"%T.%N"
+# Launcher bash script that bootstraps CBT from source.
+# (Some of the code for reporting missing dependencies and waiting for nailgun to come up is a bit weird.)
+# This is inentionally kept as small as posible.
+# Welcome improvements to this file:
+# - reduce code size through better ideas
+# - reduce code size by moving more of this into type-checked Java/Scala code (if possible without performance loss).
+# - reduction of dependencies
+# - performance improvements
+
+which javac 2>&1 > /dev/null
+javac_installed=$?
+if [ ! $javac_installed -eq 0 ]; then
+	echo "You need to install javac! CBT needs it to bootstrap from Java sources into Scala." 2>&1
+	exit 1
+fi
+which ng 2>&1 > /dev/null
+ng_installed=$?
+which ng-server 2>&1 > /dev/null
+ng_server_installed=$?
+nailgun_installed=0
+if [ ! $ng_installed -eq 0 ] || [ ! $ng_server_installed -eq 0 ]; then
+	nailgun_installed=1
+	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun'.)" 2>&1
+fi
+which realpath 2>&1 > /dev/null
+realpath_installed=$?
+which gcc 2>&1 > /dev/null
+gcc_installed=$?
+if [ ! $realpath_installed -eq 0 ] && [ ! $gcc_installed -eq 0 ]; then
+	echo "You need realpath or gcc installed! CBT needs it to locate itself reliably." 2>&1
+	exit 1
+fi
+
+which gpg 2>&1 > /dev/null
+gpg_installed=$?
+if [ ! $gpg_installed -eq 0 ]; then
+	echo "(Note: gpg not found. In order to use publishSigned you'll need it.)" 2>&1
+fi
+
+NAILGUN_PORT=4444
+NG="ng --nailgun-port $NAILGUN_PORT"
+
+CWD=$(pwd)
+_DIR=$(dirname $(readlink "$0") 2>/dev/null || dirname "$0" 2>/dev/null )
+# find out real path. Build realpath if needed.
+export CBT_HOME=$(dirname $($_DIR/realpath/realpath.sh $0))
+
+#gdate +"%T.%N"
+export SCALA_VERSION="2.11.7"
+export NAILGUN=$CBT_HOME/nailgun_launcher/
+export STAGE1=$CBT_HOME/stage1/
+export TARGET=target/scala-2.11/classes/
+INDICATOR=$STAGE1$TARGET/cbt/Stage1.class
+
+mkdir -p $NAILGUN$TARGET
+mkdir -p $STAGE1$TARGET
+
+which nc 2>&1 > /dev/null
+nc_installed=$?
+
+server_up=1
+if [ $nc_installed -eq 0 ]; then
+	nc -z -n -w 1 127.0.0.1 $NAILGUN_PORT > /dev/null 2>&1
+	server_up=$?
+else
+	echo "(Note: nc not found. It will make slightly startup faster.)" 2>&1
+fi
+
+if [ ! $nc_installed -eq 0 ] || [ ! $server_up -eq 0 ]; then
+	echo "Starting up nailgun" 2>&1
+	# try to start nailgun-server, just in case it's not up
+	ng-server 127.0.0.1:$NAILGUN_PORT >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
+fi
+
+#gdate +"%T.%N"
+# fetch / find scala jars
+export SCALA_CLASSPATH=`$CBT_HOME/bootstrap_scala/bootstrap_scala $SCALA_VERSION`
+if [ ! $? -eq 0 ]; then echo "Problem with bootstrap_scala" 2>&1; exit 1; fi
+
+#gdate +"%T.%N"
+# detect source changes in CBT itself
+changed=0
+for file in `ls $NAILGUN/* $STAGE1/*`
+do  
+	if [ $file -nt $INDICATOR ]
+    then changed=1
+    fi
+done
+
+compiles1=0
+compiles2=0
+
+# recompile CBT itself if needed
+if [ ! $changed -eq 0 ]
+then
+	echo "Recompiling CBT. Detected source changes..." 1>&2
+	javac -Xlint:deprecation -d $NAILGUN$TARGET `ls $NAILGUN/*.java`
+	compiles1=$?
+	
+	rm $STAGE1$TARGET/cbt/*.class 2>/dev/null
+	
+	java -Xmx256M -Xms32M\
+		-Xbootclasspath/a:$SCALA_CLASSPATH\
+		-Dscala.usejavacp=true\
+		-Denv.emacs=\
+		scala.tools.nsc.Main\
+		-deprecation\
+		-feature\
+		-cp $NAILGUN$TARGET\
+		-d $STAGE1$TARGET\
+		`ls $STAGE1/*.scala`
+	compiles2=$?
+	echo "Stopping nailgun" 2>&1
+	$NG ng-stop >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
+	echo "Restarting nailgun" 2>&1
+	ng-server 127.0.0.1:$NAILGUN_PORT >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
+fi
+
+build ()
+{ 
+	CP=$STAGE1$TARGET:$SCALA_CLASSPATH
+	if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ] || [ "$2" = "publishSigned" ] || [ "$1" = "direct" ] || [ "$2" = "direct" ]
+	then
+		#echo "Running jvm directly" 1>&2
+		# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
+		java -cp $NAILGUN$TARGET cbt.NailgunLauncher $mainClass $CP "$CWD" $*
+	else
+		#echo "Running via nailgun" 1>&2
+		#gdate +"%T.%N"
+		$NG ng-cp $NAILGUN$TARGET >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log
+		#gdate +"%T.%N"
+		$NG cbt.NailgunLauncher cbt.CheckAlive $CP "$CWD" $* >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log
+		#gdate +"%T.%N"
+		alive=$?
+		while [[ $alive -ne 33 ]]
+		do
+			echo "Waiting for nailgun to start..." 1>&2
+			sleep 1
+			$NG ng-cp $NAILGUN$TARGET >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log
+			$NG cbt.NailgunLauncher cbt.CheckAlive $CP "$CWD" $* >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log
+			alive=$?
+		done
+		#gdate +"%T.%N"
+		$NG cbt.NailgunLauncher $mainClass $CP "$CWD" $*
+		#gdate +"%T.%N"
+
+	fi
+} 
+#gdate +"%T.%N"
+# run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping.
+if [ $compiles1 -eq 0 ] && [ $compiles2 -eq 0 ]
+then
+	if [ "$1" = "admin" ]; then
+		mainClass=cbt.AdminStage1
+	else
+		mainClass=cbt.Stage1
+	fi
+	build $*
+	if [ "$1" = "loop" ]
+	then
+		while true; do
+			echo "======= Restarting CBT =======" 2>&1
+			build $*
+		done
+	fi
+fi
+#gdate +"%T.%N"

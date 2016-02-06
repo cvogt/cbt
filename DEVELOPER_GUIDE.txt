@@ -1,0 +1,21 @@
+Welcome developer.
+
+CBT has a very easy code base that you can fully master in under an hour.
+Don't shy away to submit PRs :).
+
+CBT launches in stages in order to bootstrap from source out of Java into Scala and finally CBT.
+
+The ./cbt bash script starts the process.
+
+You currently need javac, nailgun, gpg and realpath or gcc installed.
+
+CBT's directory structure
+
+cbt                 Shell script launching cbt. Can be symlinked.
+bootstrap_scala/    Self-contained downloader for the core Scala jars. Allows bootstrapping from Java into Scala.
+nailgun_launcher/   Self-contained helper that allows using Nailgun with minimal permanent classpath. (Is this actually needed?)
+realpath/           Self-contained realpath source code to correctly figure our CBTs home directory. (Open for replacement ideas.)
+stage1/	            CBT's code that only relies only on Scala/Java built-ins. Contains a Maven resolver to download libs for stage2.
+stage2/             CBT's code that requires additional libs, e.g. barbary watchservice.
+test/               Unit tests that can serve as example builds
+sonatype.login      Sonatype credentials for deployment. Not in git obviously.
