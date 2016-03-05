@@ -125,3 +125,5 @@ solution could be code generating traits at build-time and mixing them
 in ad-hoc. It's a build-tool after all. Build-time code-generation and
 class loading is not rocket science. But there may be simpler solutions
 for the cases at hand. And they are edge cases anyways.
+
+Join the chat at https://gitter.im/cvogt/cbt
