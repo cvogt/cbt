@@ -38,6 +38,7 @@ abstract class Stage1Base{
     val cwd = args(0)
 
     val src  = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
+
     val changeIndicator = new File(stage2Target+"/cbt/Build.class")
 
     def newerThan( a: File, b: File ) ={

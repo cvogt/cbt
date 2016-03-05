@@ -214,7 +214,27 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     )
   }
 
-  def runClass: String = "Main"
+	def hasMainClass(file : File, classLoader : ClassLoader) : Boolean = {
+	  val className = getClassName(file)
+	  val inspectClass = classLoader.loadClass(className)
+	  inspectClass.getDeclaredMethods().map(_.getName).contains("main")
+	}
+	
+	
+	val files = compileTarget.listFiles
+	
+	val classFiles = files.filter(x =>x.toString.endsWith("class"))
+	
+	def getClassName(file : File) = file.getName.takeWhile(_ != '.')
+	
+	val hasMain = classFiles.filter(x => hasMainClass(x, classLoader))
+	
+  def runClass: String = try {
+	  getClassName(hasMain.head)
+	} catch {
+	  case e : NoSuchElementException => "Main"
+	}
+	
   def run: Unit = lib.runMainIfFound( runClass, Seq(), classLoader ) 
 
   def test: Unit = lib.test(context)
