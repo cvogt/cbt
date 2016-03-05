@@ -30,11 +30,12 @@ If you need more than this, like dependencies create a scala file in build/
 that describes your build. Here is an example
 
 // build/build.scala
-class Build(context: cbt.Context) extends cbt.Build(context){
+import cbt._
+class Build(context: cbt.Context) extends PackageBuild(context){
   override def version = "0.6.1-SNAPSHOT"
   override def groupId = "org.cvogt"
   override def artifactId = "play-json-extensions"
-  override def dependencies = Vector(
+  override def dependencies = super.dependencies ++ Vector(
     "com.typesafe.play" %% "play-json" % "2.4.4"
   )
   override def compile = {
