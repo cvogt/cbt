@@ -106,14 +106,6 @@ Not implemented yet, but rather easily possible without API changes or
 major refactors is concurrently building / downloading dependencies and
 running tests. Right now it is sequential.
 
-SBT in comparison goes a step further and is conceptually able to also run tasks
-within single project to run concurrently. If I wanted to do that in
-CBT, it would require an API change. I would need to make tasks Monads,
-which means wrapper types and comprehensions everywhere. That would
-complicate ease of use and I am actually skeptical about the benefit.
-How often to you need to run tasks in parallel within a single project?
-"compile" happens before "package" before "publish".
-
 CBT allows tasks to lazily depend on other tasks.
 SBT currently does not, because it uses an Applicative, not a Monad, so
 task dependencies are eager.
