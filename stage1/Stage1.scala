@@ -14,7 +14,7 @@ object CheckAlive{
   }
 }
 
-class Init(args: Array[String]) {
+private[cbt] class Init(args: Array[String]) {
   /**
    * Raw parameters including their `-D` flag.
   **/
