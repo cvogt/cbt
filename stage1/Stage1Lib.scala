@@ -130,7 +130,7 @@ class Stage1Lib( val logger: Logger ){
 
     // only run zinc if files changed, for performance reasons
     // FIXME: this is broken, need invalidate on changes in dependencies as well
-    if( /*true || */ needsRecompile ){
+    if( true || needsRecompile ){
       val zinc = MavenDependency("com.typesafe.zinc","zinc", zincVersion)(logger)
       val zincDeps = zinc.transitiveDependencies
 
