@@ -73,5 +73,6 @@ object Main{
 
     println(" DONE!")
     println(successes+" succeeded, "+ failures+" failed" )
+    if(failures > 0) System.exit(1) else System.exit(0)
   }
 }
