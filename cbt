@@ -58,6 +58,7 @@ if [ $debug -eq 1 ]; then
   echo "ng_server is $ng_server"
   echo "gpg is $gpg"
   echo "nc is $nc"
+fi
 
 NAILGUN_PORT=4444
 NG="$ng --nailgun-port $NAILGUN_PORT"
