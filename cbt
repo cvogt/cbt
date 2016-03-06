@@ -10,15 +10,15 @@
 
 log () {
 	msg=$1
-	enabled=0
+	enabled=1
 	while test $# -gt 0; do
 	    case "$1" in
-	    	"-Dlog=time") enabled=1 ;;
-	    	"-Dlog=all") enabled=1 ;;
+	    	"-Dlog=time") enabled=0 ;;
+	    	"-Dlog=all") enabled=0 ;;
 	    esac
 	    shift
 	done
-	if [ $enabled -eq 1 ]; then
+	if [ $enabled -eq 0 ]; then
 		which gdate 2>&1 > /dev/null
 		gdate_installed=$?
 		if [ $gdate_installed -eq 0 ]; then
