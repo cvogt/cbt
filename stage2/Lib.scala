@@ -65,6 +65,44 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       )( zincVersion = zincVersion, scalaVersion = scalaVersion )
     compileTarget
   }
+  
+  def getClassFiles(target : File, classLoader : ClassLoader) : List[File]  = { 
+    def hasMainClass(file : File) : Boolean = {
+      val className = getClassName(file)
+  
+      val inspectClass = classLoader.loadClass(className)
+      inspectClass.getDeclaredMethods().map(_.getName).contains("main")
+    }
+
+    def isInnerClass(file : File) : Boolean = file.toString.contains("$")
+    val files = target.listFiles
+
+    val classFiles = files.filter(file => file.toString.endsWith(".class") && !isInnerClass(file)).toList
+
+    classFiles.filter(hasMainClass(_))
+	}
+  
+  def pickMain(files : List[File]) : File = {
+    val mains = files.map(_.getName).zipWithIndex map {case (fileName, index) => s"""[${index + 1}] ${fileName}\n"""}
+    println(s"""Multiple main classes detected. Select one to run:
+        
+    ${mains.mkString("\t\n")}""")
+
+    //FIXME: doesn't stop to read the line!!!
+    //val choice = scala.io.StdIn.readLine() 
+
+    files(0) // defaulting to first file in the meantime
+  }
+  
+  def getClassName(file : File) = file.getName.takeWhile(_ != '.')
+  
+  def getRunClass(compileTarget : File, classLoader : ClassLoader) : String = {
+    val hasMain = getClassFiles(compileTarget, classLoader)
+
+    val classFile = if (hasMain.length == 1) hasMain(0) else pickMain(hasMain) 
+
+    getClassName(classFile)
+  }
 
   def srcJar(sources: Seq[File], artifactId: String, version: String, jarTarget: File): File = {
     val file = new File(jarTarget+"/"+artifactId+"-"+version+"-sources.jar")
