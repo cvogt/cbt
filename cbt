@@ -85,6 +85,12 @@ export TARGET=target/scala-2.11/classes/
 mkdir -p $NAILGUN$TARGET
 mkdir -p $STAGE1$TARGET
 
+if [ "$1" = "kill" ]; then
+	echo "Stopping nailgun" 1>&2
+	$NG ng-stop >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
+	exit 1
+fi
+
 which nc 2>&1 > /dev/null
 nc_installed=$?
 
