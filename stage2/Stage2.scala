@@ -6,7 +6,7 @@ import scala.collection.immutable.Seq
 object Stage2{
   def main(args: Array[String]) = {
     import java.time.LocalTime.now
-    val init = new Stage1.Init(args)
+    val init = new Init(args)
     import java.time._
     val start = LocalTime.now()
     def timeTaken = Duration.between(start, LocalTime.now()).toMillis
@@ -18,7 +18,7 @@ object Stage2{
     val taskIndex = if(loop || direct) 2 else 1
     val task = argsV.lift( taskIndex )
 
-    val lib = new Lib(new Stage1.Init(args).logger)
+    val lib = new Lib(new Init(args).logger)
 
     val context = Context( cwd, argsV.drop( taskIndex + 1 ), logger )
     val first = lib.loadRoot( context )
