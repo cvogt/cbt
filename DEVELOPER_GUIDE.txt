@@ -1,9 +1,8 @@
 Welcome developer.
 
-CBT has a very easy code base that you can fully master in under an hour.
-Don't shy away to submit PRs :).
-
-CBT launches in stages in order to bootstrap from source out of Java into Scala and finally CBT.
+CBT has a very easy code base that you can fully master it in an afternoon.
+Don't shy away from submiting PRs :). And because CBT bootstraps from source
+you already have the code there.
 
 The ./cbt bash script starts the process.
 
@@ -19,3 +18,9 @@ stage1/	            CBT's code that only relies only on Scala/Java built-ins. Co
 stage2/             CBT's code that requires additional libs, e.g. barbary watchservice.
 test/               Unit tests that can serve as example builds
 sonatype.login      Sonatype credentials for deployment. Not in git obviously.
+
+CBT follows an optimistic merging approach. (See http://hintjens.com/blog:106).
+We strongly suggest well polished PRs, but don't want to stall improvements
+by discussions about minor flaws. As long as the PR does not break anything and
+improves the product, we should merge it, polishing remaining things afterwards.
+
