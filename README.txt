@@ -14,6 +14,10 @@ easy custom code. If you integrate something, consider
 doing it as traits that you make available as a library that
 other builds can depend on and mix in.
 
+Slides from CBT talk from NEScala 2016:
+https://github.com/cvogt/talks/raw/master/2016-03-04_NEScala-2016_A-Vision-For-Scala-Builds.pdf
+(video coming soon...)
+
 Getting started:
 
 You currently need javac, nailgun, gpg and realpath or gcc installed.
