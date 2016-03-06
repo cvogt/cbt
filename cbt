@@ -39,7 +39,6 @@ if [ $debug -eq 1 ]; then
   echo "ng_server is $ng_server"
   echo "gpg is $gpg"
   echo "nc is $nc"
-fi
 
 NAILGUN_PORT=4444
 NG="$ng --nailgun-port $NAILGUN_PORT"
@@ -50,7 +49,6 @@ export SCALA_VERSION="2.11.7"
 export NAILGUN=$CBT_HOME/nailgun_launcher/
 export STAGE1=$CBT_HOME/stage1/
 export TARGET=target/scala-2.11/classes/
-
 INDICATOR=$STAGE1$TARGET/cbt/Stage1.class
 
 mkdir -p {$NAILGUN,$STAGE1}$TARGET
@@ -68,7 +66,6 @@ fi
 
 export SCALA_CLASSPATH=$($CBT_HOME/bootstrap_scala/bootstrap_scala $SCALA_VERSION)
 if [ ! $? -eq 0 ]; then echo "Problem with bootstrap_scala" 2>&1; exit 1; fi
-
 changed=0
 for file in $(ls $NAILGUN/* $STAGE1/*); do  
 	if [ $file -nt $INDICATOR ]; then 
@@ -130,7 +127,7 @@ if [ $compiles1 -eq 0 ] && [ $compiles2 -eq 0 ]; then
 	build $*
 	if [ "$1" = "loop" ]; then
 		while true; do
-			echo "======= Restarting CBT =======" 2>&1
+			echo "======= Restarting CBT =======" 1>&2
 			build $*
 		done
 	fi
