@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#gdate +"%T.%N"
 # Launcher bash script that bootstraps CBT from source.
 # (Some of the code for reporting missing dependencies and waiting for nailgun to come up is a bit weird.)
 # This is inentionally kept as small as posible.
@@ -9,7 +8,27 @@
 # - reduction of dependencies
 # - performance improvements
 
-debug=0
+log () {
+	msg=$1
+	enabled=0
+	while test $# -gt 0; do
+	    case "$1" in
+	    	"-Dlog=time") enabled=1 ;;
+	    	"-Dlog=all") enabled=1 ;;
+	    esac
+	    shift
+	done
+	if [ $enabled -eq 1 ]; then
+		which gdate 2>&1 > /dev/null
+		gdate_installed=$?
+		if [ $gdate_installed -eq 0 ]; then
+			i=`gdate +"%S.%N"`
+			echo "[$i] $msg" 1>&2
+		fi
+	fi
+}
+
+log "Checking for dependencies" $*
 
 nailgun_installed=1
 nailgun_server_installed=1
@@ -43,7 +62,6 @@ if [ $debug -eq 1 ]; then
 NAILGUN_PORT=4444
 NG="$ng --nailgun-port $NAILGUN_PORT"
 CWD=$(pwd)
-
 export CBT_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export SCALA_VERSION="2.11.7"
 export NAILGUN=$CBT_HOME/nailgun_launcher/
@@ -76,6 +94,7 @@ done
 compiles1=0
 compiles2=0
 
+log "Checking for source changes in CBT and maybe compiling." $*
 # recompile CBT itself if needed
 if [ ! $changed -eq 0 ]; then
 	echo "Recompiling CBT. Detected source changes..." 1>&2
@@ -116,6 +135,7 @@ build () {
       done
     fi
 	fi
+	log "Done running $mainClass." $*
 } 
 
 if [ $compiles1 -eq 0 ] && [ $compiles2 -eq 0 ]; then
@@ -132,4 +152,5 @@ if [ $compiles1 -eq 0 ] && [ $compiles2 -eq 0 ]; then
 		done
 	fi
 fi
+log "Exiting CBT" $*
 
