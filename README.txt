@@ -14,6 +14,10 @@ easy custom code. If you integrate something, consider
 doing it as traits that you make available as a library that
 other builds can depend on and mix in.
 
+Slides from CBT talk from NEScala 2016:
+https://github.com/cvogt/talks/raw/master/2016-03-04_NEScala-2016_A-Vision-For-Scala-Builds.pdf
+(video coming soon...)
+
 Getting started:
 
 You currently need javac, nailgun, gpg and realpath or gcc installed.
@@ -105,14 +109,6 @@ Missing features in comparison with SBT
 Not implemented yet, but rather easily possible without API changes or
 major refactors is concurrently building / downloading dependencies and
 running tests. Right now it is sequential.
-
-SBT in comparison goes a step further and is conceptually able to also run tasks
-within single project to run concurrently. If I wanted to do that in
-CBT, it would require an API change. I would need to make tasks Monads,
-which means wrapper types and comprehensions everywhere. That would
-complicate ease of use and I am actually skeptical about the benefit.
-How often to you need to run tasks in parallel within a single project?
-"compile" happens before "package" before "publish".
 
 CBT allows tasks to lazily depend on other tasks.
 SBT currently does not, because it uses an Applicative, not a Monad, so
