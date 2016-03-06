@@ -10,6 +10,7 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Iterator;
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 
 /**
@@ -29,24 +30,30 @@ public class BootstrapScala {
   }
 
   public static void main(String args[]) throws IOException, NoSuchAlgorithmException {
-  
+
     if(args.length < 2){
       System.err.println("Usage: bootstrap_scala <scala version> <download directory>");
       System.exit(1);
     }
-  
+
     Dependency[] ds = dependencies( args[1], args[0] );
     new File(args[1]).mkdirs();
     for (Dependency d: ds) {
       download( d.url, d.path, d.hash );
     }
 
-    System.out.println(
-      String.join(
-        File.pathSeparator,
-        Arrays.stream(ds).map(d -> d.path.toString()).toArray(String[]::new)
-      )
-    );
+    // Join dep. paths as a classpath
+    String classpath = "";
+    Iterator<Dependency> depsIter = Arrays.asList(ds).iterator();
+    while (depsIter.hasNext()) {
+      Dependency dep = depsIter.next();
+      classpath += dep.path.toString();
+      if (depsIter.hasNext()) {
+          classpath += File.pathSeparator;
+      }
+    }
+
+    System.out.println(classpath);
 
   }
 
@@ -76,4 +83,3 @@ public class BootstrapScala {
   }
 
 }
-
