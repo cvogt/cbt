@@ -130,7 +130,7 @@ stage1 () {
 		javac -Xlint:deprecation -d $NAILGUN$TARGET `ls $NAILGUN*.java`
 		compiles=$?
 		if [ $compiles -ne 0 ]; then exit 1; fi
-		if [ $nailgun_installed -eq 1 ]; then
+		if [ $nailgun_installed -eq 0 ]; then
 			echo "Stopping nailgun" 1>&2
 			$NG ng-stop >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
 			echo "Restarting nailgun" 1>&2
