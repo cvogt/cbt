@@ -10,6 +10,7 @@ import java.security.MessageDigest
 import java.util.jar._
 
 import scala.collection.immutable.Seq
+import scala.io.StdIn.{readLine,readInt}
 import scala.reflect.runtime.{universe => ru}
 import scala.util._
 
@@ -214,27 +215,47 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     )
   }
 
-	def hasMainClass(file : File, classLoader : ClassLoader) : Boolean = {
-	  val className = getClassName(file)
-	  val inspectClass = classLoader.loadClass(className)
-	  inspectClass.getDeclaredMethods().map(_.getName).contains("main")
+	
+	def getClassFiles(target : File) : List[File]  = { 
+    def hasMainClass(file : File, classLoader : ClassLoader) : Boolean = {
+      val className = getClassName(file)
+      val inspectClass = classLoader.loadClass(className)
+      inspectClass.getDeclaredMethods().map(_.getName).contains("main")
+    }
+    
+    def isInnerClass(file : File) : Boolean = file.toString.contains("$")
+    val files = target.listFiles
+    
+    val classFiles = files.filter(file => file.toString.endsWith(".class") && !isInnerClass(file)).toList
+    
+    classFiles.filter(hasMainClass(_, classLoader))
 	}
+  
+  def pickMain(files : List[File]) : File = {
+    val mains = files.map(_.getName).zipWithIndex map {case (fileName, index) => s"""[${index + 1}] ${fileName}\n"""}
+    println(s"""Multiple main classes detected. Select one to run:
+        
+    ${mains.mkString("\t\n")}""")
+    //FIXME: doesn't stop to read the line!!!
+    //val choice = scala.io.StdIn.readLine() 
+    
+    files(0) // defaulting to first file in the meantime
+  }
+  
+  def getClassName(file : File) = file.getName.takeWhile(_ != '.')
 	
-	
-	val files = compileTarget.listFiles
-	
-	val classFiles = files.filter(x =>x.toString.endsWith("class"))
-	
-	def getClassName(file : File) = file.getName.takeWhile(_ != '.')
-	
-	val hasMain = classFiles.filter(x => hasMainClass(x, classLoader))
-	
-  def runClass: String = try {
-	  getClassName(hasMain.head)
-	} catch {
-	  case e : NoSuchElementException => "Main"
+  def runClass: String = {
+    if (compileTarget == null) return "Main"
+    val hasMain = getClassFiles(compileTarget)
+    
+	  val classFile = if (hasMain.length == 1) hasMain(0) else pickMain(hasMain) 
+	  try {
+      getClassName(classFile)
+    } catch {
+      case e : NoSuchElementException => "Main"
+    }
 	}
-	
+  
   def run: Unit = lib.runMainIfFound( runClass, Seq(), classLoader ) 
 
   def test: Unit = lib.test(context)
