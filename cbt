@@ -15,6 +15,13 @@ if [ ! $javac_installed -eq 0 ]; then
 	echo "You need to install javac! CBT needs it to bootstrap from Java sources into Scala." 2>&1
 	exit 1
 fi
+javac_version=$(javac -version 2>&1 | cut -d ' ' -f 2)
+javac_version_minor=$(echo -n $javac_version | cut -d '.' -f 2)
+if [ ! "$javac_version_minor" -ge "8" ]; then
+	echo "You need to install javac version 1.8 or greater! CBT currently relies on Java 8." 2>&1
+	echo "Current javac version is $javac_version" 2>&1
+	exit 1
+fi
 which ng 2>&1 > /dev/null
 ng_installed=$?
 which ng-server 2>&1 > /dev/null
