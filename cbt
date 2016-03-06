@@ -11,15 +11,15 @@
 # utility function to log message to stderr with stating the time
 log () {
 	msg=$1
-	enabled=0
+	enabled=1
 	while test $# -gt 0; do
 	    case "$1" in
-	    	"-Dlog=time") enabled=1 ;;
-	    	"-Dlog=all") enabled=1 ;;
+	    	"-Dlog=time") enabled=0 ;;
+	    	"-Dlog=all") enabled=0 ;;
 	    esac
 	    shift
 	done
-	if [ $enabled -eq 1 ]; then
+	if [ $enabled -eq 0 ]; then
 		which gdate 2>&1 > /dev/null
 		gdate_installed=$?
 		if [ $gdate_installed -eq 0 ]; then
@@ -82,7 +82,6 @@ export SCALA_VERSION="2.11.7"
 export NAILGUN=$CBT_HOME/nailgun_launcher/
 export STAGE1=$CBT_HOME/stage1/
 export TARGET=target/scala-2.11/classes/
-INDICATOR=$STAGE1$TARGET/cbt/Stage1.class
 mkdir -p $NAILGUN$TARGET
 mkdir -p $STAGE1$TARGET
 
@@ -99,59 +98,69 @@ else
 	echo "(Note: nc not found. It will make slightly startup faster.)" 1>&2
 fi
 
-if [ ! $nc_installed -eq 0 ] || [ ! $server_up -eq 0 ]; then
+if [ $nc_installed -eq 0 ] || [ ! $server_up -eq 0 ]; then
 	log "Starting up nailgun server." $*
 	# try to start nailgun-server, just in case it's not up
 	ng-server 127.0.0.1:$NAILGUN_PORT >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
 fi
 
-log "Grabbing Scala classpath..." $*
-# fetch / find scala jars
+log "Downloading Scala jars if necessary..." $*
 export SCALA_CLASSPATH=`$CBT_HOME/bootstrap_scala/bootstrap_scala $SCALA_VERSION`
 if [ ! $? -eq 0 ]; then echo "Problem with bootstrap_scala" 1>&2; exit 1; fi
 
-#gdate +"%T.%N"
-# detect source changes in CBT itself
-changed=0
-for file in `ls $NAILGUN/* $STAGE1/*`
-do  
-	if [ $file -nt $INDICATOR ]
-    then changed=1
-    fi
-done
+SCALAC="java -Xmx256M -Xms32M\
+	-Xbootclasspath/a:$SCALA_CLASSPATH\
+	-Dscala.usejavacp=true\
+	-Denv.emacs=\
+	scala.tools.nsc.Main\
+	-deprecation\
+	-feature"
 
-compiles1=0
-compiles2=0
+stage1 () { 
+	log "Checking for source changes in NailgunLauncher and maybe compiling." $*
+	NAILGUN_INDICATOR=$NAILGUN$TARGET/cbt/NailgunLauncher.class
+	changed=0
+	for file in `ls $NAILGUN/*.java`; do  
+		if [ $file -nt $NAILGUN_INDICATOR ]; then changed=1; fi
+	done
+	compiles=0
+	if [ $changed -eq 1 ]; then
+		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null
+		echo "Recompiling NailgunLauncher. Detected source changes." 1>&2
+		javac -Xlint:deprecation -d $NAILGUN$TARGET `ls $NAILGUN*.java`
+		compiles=$?
+		if [ $compiles -ne 0 ]; then exit 1; fi
+		if [ $nailgun_installed -eq 1 ]; then
+			echo "Stopping nailgun" 1>&2
+			$NG ng-stop >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
+			echo "Restarting nailgun" 1>&2
+			ng-server 127.0.0.1:$NAILGUN_PORT >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log &
+		fi
+	fi
 
-log "Checking for source changes in CBT and maybe compiling." $*
-# recompile CBT itself if needed
-if [ ! $changed -eq 0 ]
-then
-	echo "Recompiling CBT. Detected source changes..." 1>&2
-	javac -Xlint:deprecation -d $NAILGUN$TARGET `ls $NAILGUN/*.java`
-	compiles1=$?
-	
-	rm $STAGE1$TARGET/cbt/*.class 2>/dev/null
-	
-	java -Xmx256M -Xms32M\
-		-Xbootclasspath/a:$SCALA_CLASSPATH\
-		-Dscala.usejavacp=true\
-		-Denv.emacs=\
-		scala.tools.nsc.Main\
-		-deprecation\
-		-feature\
-		-cp $NAILGUN$TARGET\
-		-d $STAGE1$TARGET\
-		`ls $STAGE1/*.scala`
-	compiles2=$?
-	echo "Stopping nailgun" 1>&2
-	$NG ng-stop >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
-	echo "Restarting nailgun" 1>&2
-	ng-server 127.0.0.1:$NAILGUN_PORT >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
-fi
+	log "Checking for source changes in Stage1 and maybe compiling." $*
+	STAGE1_INDICATOR=$STAGE1$TARGET/cbt/Stage1.class
+	changed2=0
+	for file in `ls $STAGE1*.scala`; do  
+		if [ $file -nt $STAGE1_INDICATOR ]; then changed2=1; fi
+	done
+	compiles2=0
 
-build ()
-{ 
+	if [ $changed2 -eq 1 ]; then
+		echo "Recompiling Stage1. Detected source changes." 1>&2
+		rm $STAGE1$TARGET/cbt/*.class 2>/dev/null
+		$SCALAC -cp $NAILGUN$TARGET -d $STAGE1$TARGET `ls $STAGE1/*.scala`
+		compiles2=$?
+		if [ $compiles2 -ne 0 ]; then exit 1; fi
+	fi
+
+	log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." $*
+	if [ "$1" = "admin" ]; then
+		mainClass=cbt.AdminStage1
+	else
+		mainClass=cbt.Stage1
+	fi
+
 	CP=$STAGE1$TARGET:$SCALA_CLASSPATH
 	if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ] || [ "$2" = "publishSigned" ] || [ "$1" = "direct" ] || [ "$2" = "direct" ]
 	then
@@ -161,7 +170,6 @@ build ()
 	else
 		log "Running via nailgun." $*
 		while true; do
-			echo "Waiting for nailgun to start..." 1>&2
 			log "Adding classpath." $*
 			$NG ng-cp $NAILGUN$TARGET >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log
 			log "Checking if nailgun is up yet." $*
@@ -171,6 +179,7 @@ build ()
 				break
 			else
 				log "Nope. Sleeping for 1 second" $*
+				echo "Waiting for nailgun to start..." 1>&2
 				sleep 1
 			fi
 		done
@@ -180,22 +189,12 @@ build ()
 	log "Done running $mainClass." $*
 } 
 
-log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." $*
-if [ $compiles1 -eq 0 ] && [ $compiles2 -eq 0 ]
-then
-	if [ "$1" = "admin" ]; then
-		mainClass=cbt.AdminStage1
-	else
-		mainClass=cbt.Stage1
+while true; do
+	stage1 $*
+	if [ ! "$1" = "loop" ]; then
+		break
 	fi
-	build $*
-	if [ "$1" = "loop" ]
-	then
-		while true; do
-			echo "======= Restarting CBT =======" 1>&2
-			build $*
-		done
-	fi
-fi
+	echo "======= Restarting CBT =======" 1>&2
+done
 
 log "Exiting CBT" $*
