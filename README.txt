@@ -1,6 +1,6 @@
 Join the chat at https://gitter.im/cvogt/cbt
 
-Welcome to Compossible Build Tool (CBT) for Scala
+Welcome to Chris' Build Tool (CBT) for Scala
 
 Fun, fast, intuitive, composable and statically checked builds written in Scala.
 
