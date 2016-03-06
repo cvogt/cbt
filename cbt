@@ -84,6 +84,7 @@ fi
 
 export SCALA_CLASSPATH=$($CBT_HOME/bootstrap_scala/bootstrap_scala $SCALA_VERSION)
 if [ ! $? -eq 0 ]; then echo "Problem with bootstrap_scala" 2>&1; exit 1; fi
+
 changed=0
 for file in $(ls $NAILGUN/* $STAGE1/*); do  
 	if [ $file -nt $INDICATOR ]; then 
