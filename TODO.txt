@@ -7,6 +7,7 @@ TODO:
    - condition guarding zinc is too eager, needs to invalid
 
  - immediate features
+   - maybe rename context.cwd
    - add another class that makes all pom required fields abstract
    - fix main project main method being run during tests
    - DI lib into depencies
@@ -15,6 +16,7 @@ TODO:
    - investigate and solve multiple compilations of the same SourceDependency Build. Maybe introduce global Build map.
 
  - cleanup
+   - move from java File to nio Path
    - defs for all tasks and cached where needed
    - unify work classpath
    - unify argument order

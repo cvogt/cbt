@@ -7,7 +7,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** 
+/**
  * This launcher allows to start the JVM without loading anything else permanently into its
  * classpath except for the launcher itself. That's why it is written in Java without
  * dependencies outside the JDK.
@@ -17,16 +17,16 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class NailgunLauncher{
 
-  /** 
+  /**
    * Persistent cache for caching classloaders for the JVM life time. Can be used as needed by user
-   * code to improve startup time. 
+   * code to improve startup time.
    */
-  public static ConcurrentHashMap<String,ClassLoader> classLoaderCache = 
+  public static ConcurrentHashMap<String,ClassLoader> classLoaderCache =
     new ConcurrentHashMap<String,ClassLoader>();
 
-  public static void main(String[] args) throws ClassNotFoundException, 
-                                                NoSuchMethodException, 
-                                                IllegalAccessException, 
+  public static void main(String[] args) throws ClassNotFoundException,
+                                                NoSuchMethodException,
+                                                IllegalAccessException,
                                                 InvocationTargetException,
                                                 MalformedURLException {
     if (args.length < 3) {
@@ -41,7 +41,7 @@ public class NailgunLauncher{
       }
 
       String[] newArgs = new String[args.length-2];
-      for(int i = 0; i < args.length-2; i++){      
+      for(int i = 0; i < args.length-2; i++){
         newArgs[i] = args[i+2];
       }
 

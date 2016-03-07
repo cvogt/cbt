@@ -10,7 +10,7 @@ private final class Tree( val root: Dependency, computeChildren: => Seq[Tree] ){
   lazy val children = computeChildren
   def linearize: Seq[Dependency] = root +: children.flatMap(_.linearize)
   def show(indent: Int = 0): Stream[Char] = {
-    ("  " * indent + root.show + "\n").toStream #::: children.map(_.show(indent+1)).foldLeft(Stream.empty[Char])(_ #::: _)
+    ("  " * indent ++ root.show ++ "\n").toStream #::: children.map(_.show(indent+1)).foldLeft(Stream.empty[Char])(_ #::: _)
   }
 }
 
@@ -20,9 +20,11 @@ trait ArtifactInfo extends Dependency{
   def version: String
 
   protected def str = s"$groupId:$artifactId:$version"
-  override def show = super.show + s"($str)"
+  override def show = super.show ++ s"($str)"
 }
 abstract class Dependency{
+  implicit def logger: Logger
+  protected def lib = new Stage1Lib(logger)
 
   def updated: Boolean
   //def cacheClassLoader: Boolean = false
@@ -49,11 +51,10 @@ abstract class Dependency{
       ).par.map(_.exportedClasspath).seq.sortBy(_.string)
     )
     if(cacheDependencyClassLoader){    
-      val mavenClassPathKey = mavenClassPath.strings.sorted.mkString(":")
       new URLClassLoader(
         exportedClasspath ++ buildClassPath,
         ClassLoaderCache.classLoader(
-          mavenClassPathKey, new URLClassLoader( mavenClassPath, ClassLoader.getSystemClassLoader )
+          mavenClassPath, new URLClassLoader( mavenClassPath, ClassLoader.getSystemClassLoader )
         )
       )
     } else {
@@ -85,11 +86,13 @@ abstract class Dependency{
   def show: String = this.getClass.getSimpleName
   // ========== debug ==========
   def dependencyTree: String = dependencyTreeRecursion()
-  def logger: Logger
-  protected def lib = new Stage1Lib(logger)
-  private def dependencyTreeRecursion(indent: Int = 0): String = ( " " * indent ) + (if(updated) lib.red(show) else show) + dependencies.map(_.dependencyTreeRecursion(indent + 1)).map("\n"+_).mkString("")
-
-  private object cacheDependencyClassLoaderBasicBuild extends Cache[ClassLoader]
+  private def dependencyTreeRecursion(indent: Int = 0): String = (
+    ( " " * indent )
+    ++ (if(updated) lib.red(show) else show)
+    ++ dependencies.map(
+      _.dependencyTreeRecursion(indent + 1)
+    ).map( "\n" ++ _.toString ).mkString("")
+  )
 }
 
 // TODO: all this hard codes the scala version, needs more flexibility
@@ -140,16 +143,18 @@ case class MavenDependency( groupId: String, artifactId: String, version: String
   def updated = false
 
   private val groupPath = groupId.split("\\.").mkString("/")
-  def basePath = s"/$groupPath/$artifactId/$version/$artifactId-$version"+(if(sources) "-sources" else "")
+  def basePath = s"/$groupPath/$artifactId/$version/$artifactId-$version"++(if(sources) "-sources" else "")
   
-  private def resolverUrl = if(version.endsWith("-SNAPSHOT")) "https://oss.sonatype.org/content/repositories/snapshots" else "https://repo1.maven.org/maven2"
-  private def baseUrl = resolverUrl + basePath
-  private def baseFile = mavenCache + basePath
-  private def pomFile = baseFile+".pom"
-  private def jarFile = baseFile+".jar"
-  //private def coursierJarFile = userHome+"/.coursier/cache/v1/https/repo1.maven.org/maven2"+basePath+".jar"
-  private def pomUrl = baseUrl+".pom"
-  private def jarUrl = baseUrl+".jar"    
+  private def resolverUrl:URL = new URL(
+    if(version.endsWith("-SNAPSHOT")) "https://oss.sonatype.org/content/repositories/snapshots" else "https://repo1.maven.org/maven2"
+  )
+  private def baseUrl: URL = resolverUrl ++ basePath
+  private def baseFile: File = mavenCache ++ basePath
+  private def pomFile: File = baseFile ++ ".pom"
+  private def jarFile: File = baseFile ++ ".jar"
+  //private def coursierJarFile = userHome++"/.coursier/cache/v1/https/repo1.maven.org/maven2"++basePath++".jar"
+  private def pomUrl: URL = baseUrl ++ ".pom"
+  private def jarUrl: URL = baseUrl ++ ".jar"    
 
   def exportedJars = Seq( jar )
   def exportedClasspath = ClassPath( exportedJars )
@@ -157,33 +162,32 @@ case class MavenDependency( groupId: String, artifactId: String, version: String
   import scala.collection.JavaConversions._
   
   def jarSha1 = {
-    val file = jarFile+".sha1"
-    def url = jarUrl+".sha1"    
+    val file = jarFile ++ ".sha1"
     scala.util.Try{
-      lib.download( new URL(url), Paths.get(file), None )
+      lib.download( jarUrl ++ ".sha1"  , file, None )
       // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
-      Files.readAllLines(Paths.get(file)).mkString("\n").split(" ").head.trim
-    }.toOption // FIXME: .toOption is a temporary solution to ignore if libs don't have one
+      Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
+    }.toOption // FIXME: .toOption is a temporary solution to ignore if libs don't have one (not sure that's even possible)
   }
+
   def pomSha1 = {
-    val file = pomFile+".sha1"
-    def url = pomUrl+".sha1"    
+    val file = pomFile++".sha1"
     scala.util.Try{ 
-      lib.download( new URL(url), Paths.get(file), None )
+      lib.download( pomUrl++".sha1" , file, None )
       // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
-      Files.readAllLines(Paths.get(file)).mkString("\n").split(" ").head.trim
-    }.toOption // FIXME: .toOption is a temporary solution to ignore if libs don't have one
+      Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
+    }.toOption // FIXME: .toOption is a temporary solution to ignore if libs don't have one (not sure that's even possible)
   }
+
   def jar = {
-    lib.download( new URL(jarUrl), Paths.get(jarFile), jarSha1 )
-    new File(jarFile)
+    lib.download( jarUrl, jarFile, jarSha1 )
+    jarFile
   }
-  def pomXml = {
-    XML.loadFile(pom.toString)
-  }
+  def pomXml = XML.loadFile(pom.toString)
+
   def pom = {
-    lib.download( new URL(pomUrl), Paths.get(pomFile), pomSha1 )
-    new File(pomFile)
+    lib.download( pomUrl, pomFile, pomSha1 )
+    pomFile
   }
 
   // ========== pom traversal ==========
@@ -211,13 +215,13 @@ case class MavenDependency( groupId: String, artifactId: String, version: String
     }.toVector
   }
   def lookup( xml: Node, accessor: Node => NodeSeq ): Option[String] = {
-    //println("lookup in "+pomUrl)
-    val Substitution = "\\$\\{([a-z0-9\\.]+)\\}".r
+    //println("lookup in "++pomUrl)
+    val Substitution = "\\$\\{([a-z0-9\\.]++)\\}".r
     accessor(xml).headOption.flatMap{v =>
-      //println("found: "+v.text)
+      //println("found: "++v.text)
       v.text match {
         case Substitution(path) =>
-          //println("lookup "+path + ": "+(pomXml\path).text)
+          //println("lookup "++path ++ ": "++(pomXml\path).text)
           lookup(pomXml, _ \ "properties" \ path)
         case value => Option(value)
       }
@@ -247,7 +251,7 @@ object MavenDependency{
   def removeOutdated(
     deps: Seq[ArtifactInfo],
     versionLessThan: (String, String) => Boolean = semanticVersionLessThan
-  ): Seq[ArtifactInfo] = {
+  )(implicit logger: Logger): Seq[ArtifactInfo] = {
     val latest = deps
       .groupBy( d => (d.groupId, d.artifactId) )
       .mapValues(
@@ -257,7 +261,7 @@ object MavenDependency{
     deps.flatMap{
       d => 
         val l = latest.get((d.groupId,d.artifactId))
-        //if(d != l) println("EVICTED: "+d.show)
+        if(d != l) logger.resolver("outdated: "++d.show)
         l
     }.distinct
   }

@@ -27,7 +27,7 @@ object Stage2{
     }
     val task = argsV.lift( taskIndex )
 
-    val context = Context( argsV(0), argsV.drop( taskIndex + 1 ), logger )
+    val context = Context( new File(argsV(0)), argsV.drop( taskIndex + 1 ), logger )
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
@@ -38,7 +38,7 @@ object Stage2{
         val triggerCbtFiles = Seq( nailgun, stage1, stage2 ).map(lib.realpath _)
         val allTriggerFiles = triggerFiles ++ triggerCbtFiles
 
-        logger.loop("Looping change detection over:\n - "+allTriggerFiles.mkString("\n - "))
+        logger.loop("Looping change detection over:\n - "++allTriggerFiles.mkString("\n - "))
 
         lib.watch(allTriggerFiles) {
           case file if triggerCbtFiles.exists(file.toString startsWith _.toString) =>

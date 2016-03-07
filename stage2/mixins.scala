@@ -3,15 +3,15 @@ package mixins
 import scala.collection.immutable.Seq
 import java.io._
 trait Test extends Build{
-  lazy val testedBuild = BuildDependency(projectDirectory+"/../")
+  lazy val testedBuild = BuildDependency( projectDirectory.parent )
   override def dependencies = Seq( testedBuild ) ++ super.dependencies
   override def scalaVersion = testedBuild.build.scalaVersion
 }
 trait Sbt extends Build{
-  override def sources = Seq(new File(projectDirectory+"/src/main/scala/"))
+  override def sources = Seq( projectDirectory ++ "/src/main/scala" )
 }
 trait SbtTest extends Test{
-  override def sources = Vector(new File(projectDirectory+"/../src/test/scala"))
+  override def sources = Vector( projectDirectory.parent ++ "/src/test/scala" )
 }
 trait ScalaTest extends Build with Test{
   def scalaTestVersion: String
@@ -24,8 +24,8 @@ trait ScalaTest extends Build with Test{
   override def cacheDependencyClassLoader = false
 
   override def run: ExitCode = {
-    val discoveryPath = compile.toString+"/"
-    context.logger.lib("discoveryPath: "+discoveryPath)
+    val discoveryPath = compile.toString++"/"
+    context.logger.lib("discoveryPath: " ++ discoveryPath)
     lib.runMain(
       "org.scalatest.tools.Runner",
       Seq("-R", discoveryPath, "-oF") ++ context.args.drop(1),

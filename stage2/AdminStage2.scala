@@ -5,7 +5,7 @@ object AdminStage2{
     val lib = new Lib(init.logger)
     val adminTasks = new AdminTasks(lib, args.drop(3))
     new lib.ReflectObject(adminTasks){
-      def usage = "Available methods: " + lib.taskNames(subclassType)
+      def usage: String = "Available methods: " ++ lib.taskNames(subclassType).mkString("  ")
     }.callNullary(args.lift(2))
   }
 }
