@@ -156,11 +156,14 @@ stage1 () {
 	done
 	compiles=0
 	if [ $changed -eq 1 ]; then
-		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null
+		rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
 		javac -Xlint:deprecation -d $NAILGUN$TARGET `ls $NAILGUN*.java`
 		compiles=$?
-		if [ $compiles -ne 0 ]; then break; fi
+		if [ $compiles -ne 0 ]; then
+			rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # triggers recompilation next time.
+			break
+		fi
 		if [ $use_nailgun -eq 0 ]; then
 			echo "Stopping nailgun" 1>&2
 			$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
@@ -178,11 +181,14 @@ stage1 () {
 	compiles2=0
 
 	if [ $changed2 -eq 1 ]; then
+		rm $STAGE1$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/stage1" 1>&2
-		rm $STAGE1$TARGET/cbt/*.class 2>/dev/null
 		$SCALAC -cp $NAILGUN$TARGET -d $STAGE1$TARGET `ls $STAGE1/*.scala`
 		compiles2=$?
-		if [ $compiles2 -ne 0 ]; then break; fi
+		if [ $compiles2 -ne 0 ]; then
+			rm $STAGE1$TARGET/cbt/*.class 2>/dev/null # triggers recompilation next time.
+			break
+		fi
 	fi
 
 	log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." $*
