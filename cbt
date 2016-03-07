@@ -39,8 +39,8 @@ if [ ! $javac_installed -eq 0 ]; then
 fi
 javac_version=$(javac -version 2>&1 | cut -d ' ' -f 2)
 javac_version_minor=$(echo -n $javac_version | cut -d '.' -f 2)
-if [ ! "$javac_version_minor" -ge "8" ]; then
-	echo "You need to install javac version 1.8 or greater! CBT currently relies on Java 8." 2>&1
+if [ ! "$javac_version_minor" -ge "7" ]; then
+	echo "You need to install javac version 1.7 or greater!" 2>&1
 	echo "Current javac version is $javac_version" 2>&1
 	exit 1
 fi
