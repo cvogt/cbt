@@ -19,7 +19,7 @@ case class Logger(enabledLoggers: Set[String]) {
     System.err.println( s"[${" "*(6-timeTaken.size)}$timeTaken][$name] $msg" )
   }
 
-  def showInvocation(method: String, args: Any) = method + "( " + args + " )"
+  def showInvocation(method: String, args: Any) = method ++ "( " ++ args.toString ++ " )"
 
   final def stage1(msg: => String) = logGuarded(names.stage1, msg)
   final def stage2(msg: => String) = logGuarded(names.stage2, msg)

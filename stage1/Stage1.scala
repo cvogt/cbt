@@ -63,12 +63,12 @@ abstract class Stage1Base{
     val cwd = args(0)
 
     val src = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
-    val changeIndicator = new File(stage2Target+"/cbt/Build.class")
+    val changeIndicator = stage2Target ++ "/cbt/Build.class"
 
     logger.stage1("before conditionally running zinc to recompile CBT")
     if( src.exists(newerThan(_, changeIndicator)) ) {
       val stage1Classpath = CbtDependency(logger).dependencyClasspath
-      logger.stage1("cbt.lib has changed. Recompiling with cp: "+stage1Classpath)
+      logger.stage1("cbt.lib has changed. Recompiling with cp: " ++ stage1Classpath.string)
       zinc( true, src, stage2Target, stage1Classpath )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
     }
     logger.stage1(s"[$now] calling CbtDependency.classLoader")

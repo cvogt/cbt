@@ -30,35 +30,13 @@ object TrappedExitCode{
     }
 }
 
+case class Context( cwd: File, args: Seq[String], logger: Logger )
 
-case class Context( cwd: String, args: Seq[String], logger: Logger )
-
-case class ClassPath(files: Seq[File]){
-  private val duplicates = (files diff files.distinct).distinct
-  assert(
-    duplicates.isEmpty,
-    "Duplicate classpath entries found:\n" + duplicates.mkString("\n") + "\nin classpath:\n"+string
-  )
-  private val nonExisting = files.distinct.filterNot(_.exists)
-  assert(
-    duplicates.isEmpty,
-    "Classpath contains entires that don't exist on disk:\n" + nonExisting.mkString("\n") + "\nin classpath:\n"+string
-  )
-  
-  def +:(file: File) = ClassPath(file +: files)
-  def :+(file: File) = ClassPath(files :+ file)
-  def ++(other: ClassPath) = ClassPath(files ++ other.files)
-  def string = strings.mkString( File.pathSeparator )
-  def strings = files.map{
-    f => f.toString + ( if(f.isDirectory) "/" else "" )
-  }
-  def toConsole = string
-}
-object ClassPath{
-  def flatten( classPaths: Seq[ClassPath] ): ClassPath = ClassPath( classPaths.map(_.files).flatten )
+class BaseLib{
+  def realpath(name: File) = new File(Paths.get(name.getAbsolutePath).normalize.toString)
 }
 
-class Stage1Lib( val logger: Logger ){
+class Stage1Lib( val logger: Logger ) extends BaseLib{
   lib =>
 
   // ========== reflection ==========
@@ -76,24 +54,24 @@ class Stage1Lib( val logger: Logger ){
   }
 
   // ========== file system / net ==========
-  
+
   def array2hex(padTo: Int, array: Array[Byte]): String = {
     val hex = new java.math.BigInteger(1, array).toString(16)
-    ("0" * (padTo-hex.size)) + hex
+    ("0" * (padTo-hex.size)) ++ hex
   }
   def md5( bytes: Array[Byte] ): String = array2hex(32, MessageDigest.getInstance("MD5").digest(bytes))
   def sha1( bytes: Array[Byte] ): String = array2hex(40, MessageDigest.getInstance("SHA-1").digest(bytes))
 
-  def red(string: String) = scala.Console.RED+string+scala.Console.RESET
-  def blue(string: String) = scala.Console.BLUE+string+scala.Console.RESET
-  def green(string: String) = scala.Console.GREEN+string+scala.Console.RESET
+  def red(string: String) = scala.Console.RED++string++scala.Console.RESET
+  def blue(string: String) = scala.Console.BLUE++string++scala.Console.RESET
+  def green(string: String) = scala.Console.GREEN++string++scala.Console.RESET
 
-  def download(urlString: URL, target: Path, sha1: Option[String]){
-    val incomplete = Paths.get(target+".incomplete");
-    if( !Files.exists(target) ){
-      new File(target.toString).getParentFile.mkdirs
-      logger.resolver(blue("downloading ")+urlString)
-      logger.resolver(blue("to ")+target)
+  def download(urlString: URL, target: File, sha1: Option[String]){
+    val incomplete = Paths.get( target.string ++ ".incomplete" );
+    if( !target.exists ){
+      target.getParentFile.mkdirs
+      logger.resolver(blue("downloading ") ++ urlString.string)
+      logger.resolver(blue("to ") ++ target.string)
       val stream = urlString.openStream
       Files.copy(stream, incomplete, StandardCopyOption.REPLACE_EXISTING)
       sha1.foreach{
@@ -101,10 +79,10 @@ class Stage1Lib( val logger: Logger ){
           val expected = hash
           val actual = this.sha1(Files.readAllBytes(incomplete))
           assert( expected == actual, s"$expected == $actual" )
-          logger.resolver(green("verified")+" checksum for "+target)
+          logger.resolver( green("verified") ++ " checksum for " ++ target.string)
       }
       stream.close
-      Files.move(incomplete, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+      Files.move(incomplete, Paths.get(target.string), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
   }
  
@@ -123,7 +101,7 @@ class Stage1Lib( val logger: Logger ){
   }
 
   def runMain(cls: String, args: Seq[String], classLoader: ClassLoader ): ExitCode = {
-    logger.lib(s"Running $cls.main($args) with classLoader: "+classLoader)
+    logger.lib(s"Running $cls.main($args) with classLoader: " ++ classLoader.toString)
     trapExitCode{
       classLoader
         .loadClass(cls)
@@ -148,8 +126,8 @@ class Stage1Lib( val logger: Logger ){
   )( zincVersion: String, scalaVersion: String ): Unit = {
 
     val cp = classpath.string
-    if(classpath.files.isEmpty) throw new Exception("Trying to compile with empty classpath. Source files: "+files)
-    if(files.isEmpty) throw new Exception("Trying to compile no files. ClassPath: "+cp)
+    if(classpath.files.isEmpty) throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
+    if(files.isEmpty) throw new Exception("Trying to compile no files. ClassPath: " ++ cp)
 
     // only run zinc if files changed, for performance reasons
     // FIXME: this is broken, need invalidate on changes in dependencies as well
@@ -187,7 +165,7 @@ class Stage1Lib( val logger: Logger ){
               "-scala-extra", scalaReflect.toString,
               "-cp", cp,
               "-d", compileTarget.toString
-            ) ++ extraArgs.map("-S"+_) ++ files.map(_.toString),
+            ) ++ extraArgs.map("-S"++_) ++ files.map(_.toString),
             zinc.classLoader
           )
         }

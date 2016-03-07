@@ -13,11 +13,11 @@ log () {
 	msg=$1
 	enabled=1
 	while test $# -gt 0; do
-	    case "$1" in
-	    	"-Dlog=time") enabled=0 ;;
-	    	"-Dlog=all") enabled=0 ;;
-	    esac
-	    shift
+		case "$1" in
+			"-Dlog=time") enabled=0 ;;
+			"-Dlog=all") enabled=0 ;;
+		esac
+		shift
 	done
 	if [ $enabled -eq 0 ]; then
 		which gdate 2>&1 > /dev/null
@@ -89,17 +89,17 @@ nailgun_out=$NAILGUN/target/nailgun.stdout.log
 nailgun_err=$NAILGUN/target/nailgun.strerr.log
 foo(){
 	while test $# -gt 0; do
-	    case "$1" in
-	    	"-Dlog=nailgun")
+		case "$1" in
+			"-Dlog=nailgun")
 				nailgun_out=/dev/stderr
 				nailgun_err=/dev/stderr
-	    	;;
-	    	"-Dlog=all")
+			;;
+			"-Dlog=all")
 				nailgun_out=/dev/stderr
 				nailgun_err=/dev/stderr
-	    	;;
-	    esac
-	    shift
+			;;
+		esac
+		shift
 	done
 }
 
@@ -147,11 +147,11 @@ SCALAC="java -Xmx256M -Xms32M\
 	-deprecation\
 	-feature"
 
-stage1 () { 
+stage1 () {	
 	log "Checking for changes in cbt/nailgun_launcher" $*
 	NAILGUN_INDICATOR=$NAILGUN$TARGET/cbt/NailgunLauncher.class
 	changed=0
-	for file in `ls $NAILGUN/*.java`; do  
+	for file in `ls $NAILGUN/*.java`; do
 		if [ $file -nt $NAILGUN_INDICATOR ]; then changed=1; fi
 	done
 	compiles=0
@@ -175,7 +175,7 @@ stage1 () {
 	log "Checking for changes in cbt/stage1" $*
 	STAGE1_INDICATOR=$STAGE1$TARGET/cbt/Stage1.class
 	changed2=0
-	for file in `ls $STAGE1*.scala`; do  
+	for file in `ls $STAGE1*.scala`; do
 		if [ $file -nt $STAGE1_INDICATOR ]; then changed2=1; fi
 	done
 	compiles2=0
@@ -229,7 +229,7 @@ stage1 () {
 	fi
 	exitCode=$?
 	log "Done running $mainClass." $*
-} 
+}
 
 while true; do
 	stage1 $*

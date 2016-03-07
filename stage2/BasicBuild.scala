@@ -15,80 +15,17 @@ import scala.util._
 
 import ammonite.ops.{cwd => _,_}
 
-
-
-
-abstract class PackageBuild(context: Context) extends Build(context) with ArtifactInfo{
-  def `package`: Seq[File] = lib.concurrently( enableConcurrency )(
-    Seq(() => jar, () => docJar, () => srcJar)
-  )( _() )
-
-  private object cacheJarBasicBuild extends Cache[File]
-  def jar: File = cacheJarBasicBuild{
-    lib.jar( artifactId, version, compile, jarTarget )
-  }
-
-  private object cacheSrcJarBasicBuild extends Cache[File]
-  def srcJar: File = cacheSrcJarBasicBuild{
-    lib.srcJar(sources, artifactId, version, scalaTarget)
-  }
-
-  private object cacheDocBasicBuild extends Cache[File]
-  def docJar: File = cacheDocBasicBuild{
-    lib.docJar( sources, dependencyClasspath, apiTarget, jarTarget, artifactId, version, scalacOptions )
-  }
-
-  override def jars = jar +: dependencyJars
-  override def exportedJars: Seq[File] = Seq(jar)
-}
-abstract class PublishBuild(context: Context) extends PackageBuild(context){
-  def name = artifactId
-  def description: String
-  def url: URL
-  def developers: Seq[Developer]
-  def licenses: Seq[License]
-  def scmUrl: String
-  def scmConnection: String
-  def pomExtra: Seq[scala.xml.Node] = Seq()
-
-  // ========== package ==========
-
-  /** put additional xml that should go into the POM file in here */
-  def pom: File = lib.pom(
-    groupId = groupId,
-    artifactId = artifactId,
-    version = version,
-    name = name,
-    description = description,
-    url = url,
-    developers = developers,
-    licenses = licenses,
-    scmUrl = scmUrl,
-    scmConnection = scmConnection,
-    dependencies = dependencies,
-    pomExtra = pomExtra,
-    jarTarget = jarTarget
-  )
-
-  // ========== publish ==========
-  final protected def releaseFolder = s"/${groupId.replace(".","/")}/$artifactId/$version/"
-  def snapshotUrl = new URL("https://oss.sonatype.org/content/repositories/snapshots")
-  def releaseUrl = new URL("https://oss.sonatype.org/service/local/staging/deploy/maven2")
-  def publishSnapshot: Unit = lib.publishSnapshot(sourceFiles, pom +: `package`, new URL(snapshotUrl + releaseFolder) )
-  def publishSigned: Unit = lib.publishSigned(sourceFiles, pom +: `package`, new URL(releaseUrl + releaseFolder) )
-}
-
-
 class BasicBuild(context: Context) extends Build(context)
 class Build(val context: Context) extends Dependency with TriggerLoop{
   // library available to builds
   final val logger = context.logger
   override final protected val lib: Lib = new Lib(logger)
+  
   // ========== general stuff ==========
 
   def enableConcurrency = false
-  final def projectDirectory: File = new File(context.cwd)
-  assert( projectDirectory.exists, "projectDirectory does not exist: "+projectDirectory )
+  final def projectDirectory: File = context.cwd
+  assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   final def usage: Unit = new lib.ReflectBuild(this).usage
 /*
   def scaffold: Unit = lib.generateBasicBuildFile(
@@ -106,18 +43,18 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   )
 
   // ========== paths ==========
-  final private val defaultSourceDirectory = new File(projectDirectory+"/src/")
+  final private val defaultSourceDirectory = projectDirectory ++ "/src"
 
   /** base directory where stuff should be generated */
-  def target = new File(projectDirectory+"/target")
+  def target: File = projectDirectory ++ "/target"
   /** base directory where stuff should be generated for this scala version*/
-  def scalaTarget = new File(target + s"/scala-$scalaMajorVersion")
+  def scalaTarget: File = target ++ s"/scala-$scalaMajorVersion"
   /** directory where jars (and the pom file) should be put */
-  def jarTarget = scalaTarget
+  def jarTarget: File = scalaTarget
   /** directory where the scaladoc should be put */
-  def apiTarget = new File(scalaTarget + "/api")
+  def apiTarget: File = scalaTarget ++ "/api"
   /** directory where the class files should be put (in package directories) */
-  def compileTarget = new File(scalaTarget + "/classes")
+  def compileTarget: File = scalaTarget ++ "/classes"
 
   /** Source directories and files. Defaults to .scala and .java files in src/ and top-level. */
   def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
@@ -138,12 +75,10 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
         .diff( Seq(defaultSourceDirectory) )
     assert(
       nonExisting.isEmpty,
-      "Some sources do not exist: \n"+nonExisting.mkString("\n")
+      "Some sources do not exist: \n"++nonExisting.mkString("\n")
     )
   }
   assertSourceDirectories()
-
-
 
 
   /** SBT-like dependency builder DSL */
@@ -151,23 +86,18 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     def %(version: String) = new MavenDependency(groupId, artifactId, version)(lib.logger)
   }
   implicit class DependencyBuilder(groupId: String){
-    def %%(artifactId: String) = new GroupIdAndArtifactId( groupId, artifactId+"_"+scalaMajorVersion )
+    def %%(artifactId: String) = new GroupIdAndArtifactId( groupId, artifactId++"_"++scalaMajorVersion )
     def  %(artifactId: String) = new GroupIdAndArtifactId( groupId, artifactId )
   }
 
-  final def BuildDependency(path: String) = cbt.BuildDependency(
-    context.copy(
-      cwd = path,
-      args = Seq()
-    )
+  final def BuildDependency(path: File) = cbt.BuildDependency(
+    context.copy( cwd = path, args = Seq() )
   )
 
   def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
   
-  
   def localJars           : Seq[File] =
-    Seq(projectDirectory + "/lib/")
-      .map(new File(_))
+    Seq(projectDirectory ++ "/lib")
       .filter(_.exists)
       .flatMap(_.listFiles)
       .filter(_.toString.endsWith(".jar"))
@@ -220,15 +150,15 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   def test: ExitCode = lib.test(context)
 
   context.logger.composition(">"*80)
-  context.logger.composition("class   "+this.getClass)
-  context.logger.composition("dir     "+context.cwd)
-  context.logger.composition("sources "+sources.toList.mkString(" "))
-  context.logger.composition("target  "+target)
-  context.logger.composition("context "+context)
-  context.logger.composition("dependencyTree\n"+dependencyTree)
+  context.logger.composition("class   " ++ this.getClass.toString)
+  context.logger.composition("dir     " ++ context.cwd.string)
+  context.logger.composition("sources " ++ sources.toList.mkString(" "))
+  context.logger.composition("target  " ++ target.string)
+  context.logger.composition("context " ++ context.toString)
+  context.logger.composition("dependencyTree\n" ++ dependencyTree)
   context.logger.composition("<"*80)
 
   // ========== cbt internals ==========
   private[cbt] def finalBuild = this
-  override def show = this.getClass.getSimpleName + "("+context.cwd+")"
+  override def show = this.getClass.getSimpleName ++ "(" ++ context.cwd.string ++ ")"
 }
