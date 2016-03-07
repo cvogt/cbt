@@ -215,9 +215,17 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     )
   }
 
-  def runClass: String = lib.getRunClass(compileTarget, classLoader)
-  
-  def run: Unit = lib.runMainIfFound( runClass, Seq(), classLoader ) 
+  // def runClass: String = lib.getRunClass(compileTarget, classLoader)
+  def run: Unit = lib.run( runClass, classLoader )
+  def runClass: Option[String] = {
+	  if (mainClasses.size == 1) 
+      mainClasses.headOption 
+	  else {
+      println(lib.red("[error] ") + "Multiple main classes found.")
+		  None
+    }
+  }
+  def mainClasses: Seq[String] = lib.mainClasses(compileTarget, classLoader) 
 
   def test: Unit = lib.test(context)
 
