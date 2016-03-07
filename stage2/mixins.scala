@@ -23,7 +23,7 @@ trait ScalaTest extends Build with Test{
   // workaround probable ScalaTest bug throwing away the outer classloader. Not caching doesn't nest them.
   override def cacheDependencyClassLoader = false
 
-  override def run = {
+  override def run: ExitCode = {
     val discoveryPath = compile.toString+"/"
     context.logger.lib("discoveryPath: "+discoveryPath)
     lib.runMain(
