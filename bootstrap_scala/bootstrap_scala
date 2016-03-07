@@ -16,10 +16,10 @@ XML_JAR=scala-xml_2.11-1.0.5.jar # this is a bit fishy, because it doesn't take 
 mkdir -p $CLASSES
 
 if [ ! -f $CACHE$COMPILER_JAR ] || [ ! -f $CACHE$LIBRARY_JAR ] || [ ! -f $CACHE$REFLECT_JAR ]\
- || [ ! -f $CACHE$XML_JAR ] || [ $DIR/BootstrapScala.java -nt $CLASSES/BootstrapScala.class ]
+ || [ ! -f $CACHE$XML_JAR ] || [ $DIR/BootstrapScala.java -nt $CLASSES/BootstrapScala.class ] || [ $DIR/Dependency.java -nt $CLASSES/Dependency.class ]
 then
-	echo "Recompiling CBT BootstrapScala.java" 1>&2
-	$JAVAC -d $CLASSES $DIR/BootstrapScala.java
+	echo "Compiling cbt/bootstrap_scala" 1>&2
+	$JAVAC -d $CLASSES $DIR/BootstrapScala.java $DIR/Dependency.java
 	java -cp $CLASSES BootstrapScala $1 $CACHE
 else
 	# for speedup
