@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** 
- * This launcher allows to use Nailgun without loading anything else permanenetly into its
+ * This launcher allows to start the JVM without loading anything else permanently into its
  * classpath except for the launcher itself. That's why it is written in Java without
  * dependencies outside the JDK.
  *
@@ -36,10 +36,14 @@ public class NailgunLauncher{
       String[] cp = args[1].split(File.pathSeparator);
 
       URL[] urls = new URL[cp.length];
-      for(int i = 0; i < cp.length; i++){ urls[i] = new URL("file:"+cp[i]); }
+      for(int i = 0; i < cp.length; i++){
+        urls[i] = new URL("file:"+cp[i]);
+      }
 
-      String[] newArgs = new String[cp.length - 2];
-      for(int i = 2; i < cp.length; i++){ newArgs[i] = args[i]; }
+      String[] newArgs = new String[args.length-2];
+      for(int i = 0; i < args.length-2; i++){      
+        newArgs[i] = args[i+2];
+      }
 
       new URLClassLoader( urls )
         .loadClass(args[0])

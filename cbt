@@ -85,6 +85,12 @@ export TARGET=target/scala-2.11/classes/
 mkdir -p $NAILGUN$TARGET
 mkdir -p $STAGE1$TARGET
 
+if [ "$1" = "kill" ]; then
+	echo "Stopping nailgun" 1>&2
+	$NG ng-stop >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
+	exit 1
+fi
+
 which nc 2>&1 > /dev/null
 nc_installed=$?
 
@@ -117,7 +123,7 @@ SCALAC="java -Xmx256M -Xms32M\
 	-feature"
 
 stage1 () { 
-	log "Checking for source changes in NailgunLauncher and maybe compiling." $*
+	log "Checking for changes in cbt/nailgun_launcher" $*
 	NAILGUN_INDICATOR=$NAILGUN$TARGET/cbt/NailgunLauncher.class
 	changed=0
 	for file in `ls $NAILGUN/*.java`; do  
@@ -126,11 +132,11 @@ stage1 () {
 	compiles=0
 	if [ $changed -eq 1 ]; then
 		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null
-		echo "Recompiling NailgunLauncher. Detected source changes." 1>&2
+		echo "Compiling cbt/nailgun_launcher" 1>&2
 		javac -Xlint:deprecation -d $NAILGUN$TARGET `ls $NAILGUN*.java`
 		compiles=$?
 		if [ $compiles -ne 0 ]; then exit 1; fi
-		if [ $nailgun_installed -eq 1 ]; then
+		if [ $nailgun_installed -eq 0 ]; then
 			echo "Stopping nailgun" 1>&2
 			$NG ng-stop >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log & 
 			echo "Restarting nailgun" 1>&2
@@ -138,7 +144,7 @@ stage1 () {
 		fi
 	fi
 
-	log "Checking for source changes in Stage1 and maybe compiling." $*
+	log "Checking for changes in cbt/stage1" $*
 	STAGE1_INDICATOR=$STAGE1$TARGET/cbt/Stage1.class
 	changed2=0
 	for file in `ls $STAGE1*.scala`; do  
@@ -147,7 +153,7 @@ stage1 () {
 	compiles2=0
 
 	if [ $changed2 -eq 1 ]; then
-		echo "Recompiling Stage1. Detected source changes." 1>&2
+		echo "Compiling cbt/stage1" 1>&2
 		rm $STAGE1$TARGET/cbt/*.class 2>/dev/null
 		$SCALAC -cp $NAILGUN$TARGET -d $STAGE1$TARGET `ls $STAGE1/*.scala`
 		compiles2=$?
@@ -175,7 +181,9 @@ stage1 () {
 			log "Checking if nailgun is up yet." $*
 			$NG cbt.NailgunLauncher cbt.CheckAlive $CP "$CWD" $* >> $NAILGUN/target/nailgun.stdout.log 2>> $NAILGUN/target/nailgun.stderr.log
 			alive=$?
-			if [[ $alive -eq 33 ]]; then
+			if [[ $alive -eq 131 ]]; then
+				echo "Nailgun call failed. Try 'cbt kill' and check the error log cbt/nailgun_launcher/target/nailgun.stderr.log" 1>&2
+			elif [[ $alive -eq 33 ]]; then
 				break
 			else
 				log "Nope. Sleeping for 1 second" $*
