@@ -16,7 +16,7 @@ trait TriggerLoop extends Dependency{
 }
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
 case class BuildDependency(context: Context) extends TriggerLoop{
-  override def show = this.getClass.getSimpleName + "("+context.cwd+")"
+  override def show = this.getClass.getSimpleName ++ "(" ++ context.cwd.string ++ ")"
   final override lazy val logger = context.logger
   final override lazy val lib: Lib = new Lib(logger)
   private val root = lib.loadRoot( context.copy(args=Seq()) )

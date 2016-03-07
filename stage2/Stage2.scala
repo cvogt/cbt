@@ -10,7 +10,7 @@ import cbt.paths._
 
 
 object Stage2{
-  def main(args: Array[String]) = {
+  def main(args: Array[String]): Unit = {
     val init = new Init(args)
     import init._
 
@@ -27,32 +27,33 @@ object Stage2{
     }
     val task = argsV.lift( taskIndex )
 
-    val context = Context( cwd, argsV.drop( taskIndex + 1 ), logger )
+    val context = Context( new File(argsV(0)), argsV.drop( taskIndex + 1 ), logger )
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
-    val res = if (loop) {
-      // TODO: this should allow looping over task specific files, like test files as well
-      val triggerFiles = first.triggerLoopFiles.map(lib.realpath)
-      val triggerCbtFiles = Seq( nailgun, stage1, stage2 ).map(lib.realpath _)
-      val allTriggerFiles = triggerFiles ++ triggerCbtFiles
+    val res = lib.trapExitCode{
+      if (loop) {
+        // TODO: this should allow looping over task specific files, like test files as well
+        val triggerFiles = first.triggerLoopFiles.map(lib.realpath)
+        val triggerCbtFiles = Seq( nailgun, stage1, stage2 ).map(lib.realpath _)
+        val allTriggerFiles = triggerFiles ++ triggerCbtFiles
 
-      logger.loop("Looping change detection over:\n - "+allTriggerFiles.mkString("\n - "))
+        logger.loop("Looping change detection over:\n - "++allTriggerFiles.mkString("\n - "))
 
-      lib.watch(allTriggerFiles) {
-        case file if triggerCbtFiles.exists(file.toString startsWith _.toString) =>
-          logger.loop("Change is in CBT's own source code.")
-          logger.loop("Restarting CBT.")
-          scala.util.control.Breaks.break
+        lib.watch(allTriggerFiles) {
+          case file if triggerCbtFiles.exists(file.toString startsWith _.toString) =>
+            logger.loop("Change is in CBT's own source code.")
+            logger.loop("Restarting CBT.")
+            scala.util.control.Breaks.break
 
-        case file if triggerFiles.exists(file.toString startsWith _.toString) =>
-          new lib.ReflectBuild( lib.loadDynamic(context) ).callNullary(task)
+          case file if triggerFiles.exists(file.toString startsWith _.toString) =>
+            new lib.ReflectBuild( lib.loadDynamic(context) ).callNullary(task)
+        }
+      } else {
+        new lib.ReflectBuild(build).callNullary(task)
       }
-    } else {
-      new lib.ReflectBuild(build).callNullary(task)
     }
 
     init.logger.stage2(s"[$now] Stage2 end")
-    res
   }
 }

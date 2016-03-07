@@ -15,6 +15,7 @@ import scala.util._
 
 import ammonite.ops.{cwd => _,_}
 
+// pom model
 case class Developer(id: String, name: String, timezone: String, url: URL)
 case class License(name: String, url: URL)
 
@@ -36,9 +37,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   */
   def loadRoot(context: Context, default: Context => Build = new Build(_)): Build = {
     context.logger.composition( context.logger.showInvocation("Build.loadRoot",context) )
-    def findStartDir(cwd: String): String = {    
-      val buildDir = realpath(cwd+"/build")
-      if(new File(buildDir).exists) findStartDir(buildDir) else cwd
+    def findStartDir(cwd: File): File = {    
+      val buildDir = realpath( cwd ++ "/build" )
+      if(buildDir.exists) findStartDir(buildDir) else cwd
     }
 
     val start = findStartDir(context.cwd)
@@ -50,7 +51,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       if(useBasicBuildBuild) default( context ) else new cbt.BuildBuild( context.copy( cwd = start ) )
     } catch {
       case e:ClassNotFoundException if e.getMessage == rootBuildClassName =>
-        throw new Exception(s"no class $rootBuildClassName found in "+start)
+        throw new Exception(s"no class $rootBuildClassName found in " ++ start.string)
     }
   }
 
@@ -67,13 +68,13 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   def srcJar(sources: Seq[File], artifactId: String, version: String, jarTarget: File): File = {
-    val file = new File(jarTarget+"/"+artifactId+"-"+version+"-sources.jar")
+    val file = jarTarget ++ ("/"++artifactId++"-"++version++"-sources.jar")
     lib.jarFile(file, sources)
     file
   }
 
   def jar(artifactId: String, version: String, compileTarget: File, jarTarget: File): File = {
-    val file = new File(jarTarget+"/"+artifactId+"-"+version+".jar")
+    val file = jarTarget ++ ("/"++artifactId++"-"++version++".jar")
     lib.jarFile(file, Seq(compileTarget))
     file
   }
@@ -87,17 +88,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     version: String,
     compileArgs: Seq[String]
   ): File = {
-    class DisableSystemExit extends Exception
-    object DisableSystemExit{
-      def apply(e: Throwable): Boolean = {
-        e match {
-          case i: InvocationTargetException => apply(i.getTargetException)
-          case _: DisableSystemExit => true
-          case _ => false
-        }
-      }
-    }
-
     // FIXME: get this dynamically somehow, or is this even needed?
     val javacp = ClassPath(
       "/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/cldrdata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/dnsns.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/jaccess.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/jfxrt.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/localedata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/nashorn.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunec.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunjce_provider.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunpkcs11.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/zipfs.jar:/System/Library/Java/Extensions/MRJToolkit.jar".split(":").toVector.map(new File(_))
@@ -106,20 +96,13 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     mkdir(Path(apiTarget))
     if(sourceFiles.nonEmpty){    
       System.err.println("creating docs")
-      try{    
-        System.setSecurityManager(
-          new SecurityManager{
-            override def checkPermission( permission: java.security.Permission ) = {
-              if( permission.getName.startsWith("exitVM") ) throw new DisableSystemExit
-            }
-          }
-        )
+      trapExitCode{
         redirectOutToErr{        
           runMain(
             "scala.tools.nsc.ScalaDoc",
             Seq(
               // FIXME: can we use compiler dependency here?
-              "-cp", /*javacp+":"+*/ScalaDependencies(logger).classpath.string + ":" + dependenyClasspath.string,
+              "-cp", /*javacp++":"++*/ScalaDependencies(logger).classpath.string ++ ":" ++ dependenyClasspath.string,
               "-d",  apiTarget.toString
             ) ++ compileArgs ++ sourceFiles.map(_.toString),
             new URLClassLoader(
@@ -128,32 +111,33 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             )
           )
         }
-      } catch {
-        case e:InvocationTargetException if DisableSystemExit(e) =>
-      } finally {
-        System.setSecurityManager(null)
       }
     }
-    val docJar = new File(jarTarget+"/"+artifactId+"-"+version+"-javadoc.jar")
+    val docJar = jarTarget ++ ("/"++artifactId++"-"++version++"-javadoc.jar")
     lib.jarFile(docJar, Vector(apiTarget))
     docJar
   }
 
-  def test( context: Context ) = {
+  def test( context: Context ): ExitCode = {
+    val loggers = logger.enabledLoggers.mkString(",")
+    // FIXME: this is a hack to pass logger args on to the tests.
+    // should probably have a more structured way
+    val loggerArg = if(loggers != "") Some("-Dlog="++loggers) else None
+
     logger.lib(s"invoke testDefault( $context )")
-    loadDynamic(
-      context.copy( cwd = context.cwd+"/test/" ),
+    val exitCode: ExitCode = loadDynamic(
+      context.copy( cwd = context.cwd ++ "/test", args = loggerArg.toVector ++ context.args ),
       new Build(_) with mixins.Test
     ).run
-    logger.lib(s"return testDefault( $context )")
-    
+    logger.lib(s"return testDefault( $context )")    
+    exitCode
   }
 
   // task reflection helpers
   import ru._
-  private lazy val anyRefMembers = ru.typeOf[AnyRef].members.toVector.map(taskName)
-  def taskNames(tpe: Type) = tpe.members.toVector.flatMap(lib.toTask).map(taskName).sorted
-  private def taskName(method: Symbol) = method.name.decodedName.toString
+  private lazy val anyRefMembers: Set[String] = ru.typeOf[AnyRef].members.toSet.map(taskName)
+  def taskNames(tpe: Type): Seq[String] = tpe.members.toVector.flatMap(lib.toTask).map(taskName).sorted
+  private def taskName(method: Symbol): String = method.name.decodedName.toString
   def toTask(symbol: Symbol): Option[MethodSymbol] = {
     Option(symbol)
       .filter(_.isPublic)
@@ -177,10 +161,10 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
 """
           } else ""
-        ) + s"""Methods provided by CBT (but possibly overwritten)
+        ) ++ s"""Methods provided by CBT (but possibly overwritten)
 
   ${baseTasks.mkString("  ")}"""
-      ) + "\n"
+      ) ++ "\n"
     }
   }
 
@@ -203,6 +187,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             case e:NoSuchMethodException if e.getMessage contains "toConsole" =>
               result match {
                 case () => ""
+                case ExitCode(code) => System.exit(code)
                 case other => println( other.toString ) // no method .toConsole, using to String
               }
           }
@@ -217,17 +202,13 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-
   // file system helpers
-  def basename(path: String) = path.stripSuffix("/").split("/").last
-  def basename(path: File) = path.toString.stripSuffix("/").split("/").last
-  def dirname(path: String) = realpath(path).stripSuffix("/").split("/").dropRight(1).mkString("/")
-  def realpath(name: String) = Paths.get(new File(name).getAbsolutePath).normalize.toString
-  def realpath(name: File) = new File(Paths.get(name.getAbsolutePath).normalize.toString)
-  def nameAndContents(file: File) = basename(file.toString) -> readAllBytes(Paths.get(file.toString))
+  def basename(path: File): String = path.toString.stripSuffix("/").split("/").last
+  def dirname(path: File): File = new File(realpath(path).string.stripSuffix("/").split("/").dropRight(1).mkString("/"))
+  def nameAndContents(file: File) = basename(file) -> readAllBytes(Paths.get(file.toString))
 
   def jarFile( jarFile: File, files: Seq[File] ): Unit = {
-    logger.lib("Start packaging "+jarFile)
+    logger.lib("Start packaging "++jarFile.string)
     val manifest = new Manifest
     manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
     val jar = new JarOutputStream(new FileOutputStream(jarFile.toString), manifest)
@@ -242,7 +223,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         val entry = new JarEntry( name )
         entry.setTime(file.lastModified)
         jar.putNextEntry(entry)
-        jar.write( Files.readAllBytes( Paths.get(file.toString) ) )
+        jar.write( readAllBytes( Paths.get(file.toString) ) )
         jar.closeEntry
         name
     }
@@ -250,11 +231,11 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val duplicateFiles = (names diff names.distinct).distinct
     assert(
       duplicateFiles.isEmpty,
-      s"Conflicting file names when trying to create $jarFile: "+duplicateFiles.mkString(", ")
+      s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
     )
 
     jar.close
-    logger.lib("Done packaging "+jarFile)
+    logger.lib("Done packaging " ++ jarFile.toString)
   }
 
   lazy val passphrase =
@@ -270,9 +251,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       new ProcessBuilder( "gpg", "--batch", "--yes", "-a", "-b", "-s", "--passphrase", passphrase, file.toString )
         .inheritIO.start.waitFor
     
-    if( 0 != statusCode ) throw new Exception("gpg exited with status code "+statusCode)
+    if( 0 != statusCode ) throw new Exception("gpg exited with status code " ++ statusCode.toString)
 
-    new File(file+".asc")
+    file ++ ".asc"
   }
 
   //def requiredForPom[T](name: String): T = throw new Exception(s"You need to override `def $name` in order to generate a valid pom.")
@@ -339,9 +320,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           }
           </dependencies>
       </project>
-    val path = new File(jarTarget+"/"+artifactId+"-"+version+".pom")
-    write.over(Path(path), "<?xml version='1.0' encoding='UTF-8'?>\n" + xml.toString)
-    path
+    val path = jarTarget.toString ++ ( "/" ++ artifactId ++ "-" ++ version ++ ".pom" )
+    write.over(Path(path), "<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString)
+    new File(path)
   }
 
   def concurrently[T,R]( concurrencyEnabled: Boolean )( items: Seq[T] )( projection: T => R ): Seq[R] = {
@@ -362,8 +343,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       val files = (artifacts ++ artifacts.map(sign)).map(nameAndContents)
       lazy val checksums = files.flatMap{
         case (name, content) => Seq(
-          name+".md5" -> md5(content).toArray.map(_.toByte),
-          name+".sha1" -> sha1(content).toArray.map(_.toByte)
+          name++".md5" -> md5(content).toArray.map(_.toByte),
+          name++".sha1" -> sha1(content).toArray.map(_.toByte)
         )
       }  
       val all = (files ++ checksums)
@@ -378,16 +359,14 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL): Unit = {
     import java.net._
     import java.io._
-    logger.task("uploading "+fileName)
-    val url = new URL(
-      baseUrl + fileName
-    )
+    logger.task("uploading "++fileName)
+    val url = baseUrl ++ fileName
     val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")
     val userPassword = read(Path(sonatypeLogin)).trim
     val encoding = new sun.misc.BASE64Encoder().encode(userPassword.getBytes)
-    httpCon.setRequestProperty("Authorization", "Basic " + encoding)
+    httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
     httpCon.setRequestProperty("Content-Type", "application/binary")
     httpCon.getOutputStream.write(
       fileContents
@@ -404,7 +383,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     files.map{
       file =>
-      if(file.isFile) new File( dirname(file.toString) )
+      if(file.isFile) dirname(file)
       else file
     }.distinct.map{ file =>
       val watchableFile = new WatchableFile(file)
@@ -426,7 +405,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             .filterNot(_.kind == StandardWatchEventKind.OVERFLOW)
             .map(_.context.toString)
             .map(new File(_))
-          changedFiles.foreach( f => logger.loop("Changed: "+f) )
+          changedFiles.foreach( f => logger.loop( "Changed: " ++ f.toString ) )
           changedFiles.collect(action)
           key.reset
         }

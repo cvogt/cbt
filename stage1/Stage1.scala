@@ -14,7 +14,7 @@ object CheckAlive{
   }
 }
 
-private[cbt] class Init(args: Array[String]) {
+class Init(args: Array[String]) {
   /**
    * Raw parameters including their `-D` flag.
   **/
@@ -35,8 +35,6 @@ private[cbt] class Init(args: Array[String]) {
     }).toMap ++ System.getProperties.asScala
 
   val logger = new Logger(props.get("log"))
-
-  val cwd = argsV(0)
 }
 
 object Stage1 extends Stage1Base{
@@ -57,25 +55,27 @@ abstract class Stage1Base{
   def main(args: Array[String]): Unit = {
     val init = new Init(args)
     val lib = new Stage1Lib(init.logger)
+    import lib._
 
-    lib.logger.stage1(s"[$now] Stage1 start")
-    lib.logger.stage1("Stage1: after creating lib")
+    logger.stage1(s"[$now] Stage1 start")
+    logger.stage1("Stage1: after creating lib")
 
     val cwd = args(0)
 
     val src = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
-    val changeIndicator = new File(stage2Target+"/cbt/Build.class")
+    val changeIndicator = stage2Target ++ "/cbt/Build.class"
 
-    lib.logger.stage1("before conditionally running zinc to recompile CBT")
+    logger.stage1("before conditionally running zinc to recompile CBT")
     if( src.exists(newerThan(_, changeIndicator)) ) {
-      val stage1Classpath = CbtDependency(init.logger).dependencyClasspath
-      lib.logger.stage1("cbt.lib has changed. Recompiling with cp: "+stage1Classpath)
-      lib.zinc( true, src, stage2Target, stage1Classpath )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
+      val stage1Classpath = CbtDependency(logger).dependencyClasspath
+      logger.stage1("cbt.lib has changed. Recompiling with cp: " ++ stage1Classpath.string)
+      zinc( true, src, stage2Target, stage1Classpath )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
     }
-    lib.logger.stage1(s"[$now] calling CbtDependency.classLoader")
+    logger.stage1(s"[$now] calling CbtDependency.classLoader")
 
-    lib.logger.stage1(s"[$now] Run Stage2")
-    lib.runMain( mainClass, cwd +: args.drop(1).toVector, CbtDependency(init.logger).classLoader )
-    lib.logger.stage1(s"[$now] Stage1 end")
+    logger.stage1(s"[$now] Run Stage2")
+    val ExitCode(exitCode) = runMain( mainClass, cwd +: args.drop(1).toVector, CbtDependency(logger).classLoader )
+    logger.stage1(s"[$now] Stage1 end")
+    System.exit(exitCode)
   }
 }

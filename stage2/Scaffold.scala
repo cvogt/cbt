@@ -49,7 +49,7 @@ class Build(context: Context) extends BuildBuild(context){
   override def scalaVersion: String = "2.11.7"
   
   override def dependencies = super.dependencies ++ Seq(
-    BuildDependency( projectDirectory + "/../build-shared/")
+    BuildDependency( projectDirectory.parent ++ "/build-shared")
     // , "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
   )
 }
@@ -85,7 +85,7 @@ class Build(context: Context) extends BuildBuild(context){
   override def scalaVersion: String = "2.11.7"
   
   override def dependencies = super.dependencies ++ Seq(
-    BuildDependency( projectDirectory + "/../../build-shared/")
+    BuildDependency( projectDirectory.parent.parent ++ "/build-shared")
     // , "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
   )
 }
@@ -132,9 +132,9 @@ trait BuildShared extends BasicBuild{
     generatedFiles.map{
       case ( fileName, code ) =>
         scala.util.Try{
-          write( Path(projectDirectory+"/"+fileName), code )
+          write( Path( projectDirectory.string ++ "/" ++ fileName ), code )
           import scala.Console._
-          println( GREEN + "Created " + fileName + RESET )
+          println( GREEN ++ "Created " ++ fileName ++ RESET )
         }
     }.foreach(
       _.recover{

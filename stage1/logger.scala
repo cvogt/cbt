@@ -19,7 +19,7 @@ case class Logger(enabledLoggers: Set[String]) {
     System.err.println( s"[${" "*(6-timeTaken.size)}$timeTaken][$name] $msg" )
   }
 
-  def showInvocation(method: String, args: Any) = method + "( " + args + " )"
+  def showInvocation(method: String, args: Any) = method ++ "( " ++ args.toString ++ " )"
 
   final def stage1(msg: => String) = logGuarded(names.stage1, msg)
   final def stage2(msg: => String) = logGuarded(names.stage2, msg)
@@ -28,6 +28,7 @@ case class Logger(enabledLoggers: Set[String]) {
   final def composition(msg: => String) = logGuarded(names.composition, msg)
   final def resolver(msg: => String) = logGuarded(names.resolver, msg)
   final def lib(msg: => String) = logGuarded(names.lib, msg)
+  final def test(msg: => String) = logGuarded(names.test, msg)
 
   private object names{
     val stage1 = "stage1"
@@ -37,6 +38,7 @@ case class Logger(enabledLoggers: Set[String]) {
     val resolver = "resolver"
     val composition = "composition"
     val lib = "lib"
+    val test = "test"
   }
 
   private def logGuarded(name: String, msg: => String) = {
