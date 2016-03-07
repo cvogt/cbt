@@ -3,6 +3,7 @@ package cbt
 import cbt.paths._
 
 import java.io._
+import java.lang.reflect.InvocationTargetException
 import java.net._
 import java.nio.file._
 import javax.tools._
@@ -11,6 +12,24 @@ import java.util._
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
 import scala.collection.immutable.Seq
+
+// CLI interop
+case class ExitCode(code: Int)
+object ExitCode{
+  val Success = ExitCode(0)
+  val Failure = ExitCode(1)
+}
+
+class TrappedExitCode(private val exitCode: Int) extends Exception
+object TrappedExitCode{
+  def unapply(e: Throwable): Option[ExitCode] =
+    Option(e) flatMap {
+      case i: InvocationTargetException => unapply(i.getTargetException)
+      case e: TrappedExitCode => Some( ExitCode(e.exitCode) )
+      case _ => None
+    }
+}
+
 
 case class Context( cwd: String, args: Seq[String], logger: Logger )
 
@@ -97,16 +116,20 @@ class Stage1Lib( val logger: Logger ){
 
   // ========== compilation / execution ==========
 
-  def runMainIfFound(cls: String, args: Seq[String], classLoader: ClassLoader ){
-    if( classLoader.canLoad(cls) ) runMain(cls: String, args: Seq[String], classLoader: ClassLoader )
+  def runMainIfFound(cls: String, args: Seq[String], classLoader: ClassLoader ): ExitCode = {
+    if( classLoader.canLoad(cls) ){
+      runMain(cls, args, classLoader )
+    } else ExitCode.Success
   }
 
-  def runMain(cls: String, args: Seq[String], classLoader: ClassLoader ){
+  def runMain(cls: String, args: Seq[String], classLoader: ClassLoader ): ExitCode = {
     logger.lib(s"Running $cls.main($args) with classLoader: "+classLoader)
-    classLoader
-      .loadClass(cls)
-      .getMethod( "main", scala.reflect.classTag[Array[String]].runtimeClass )
-      .invoke( null, args.toArray.asInstanceOf[AnyRef] );
+    trapExitCode{
+      classLoader
+        .loadClass(cls)
+        .getMethod( "main", scala.reflect.classTag[Array[String]].runtimeClass )
+        .invoke( null, args.toArray.asInstanceOf[AnyRef] )
+    }
   }
 
   implicit class ClassLoaderExtensions(classLoader: ClassLoader){
@@ -116,7 +139,7 @@ class Stage1Lib( val logger: Logger ){
         true
       } catch {
         case e: ClassNotFoundException => false
-      }      
+      }
     }
   }
 
@@ -152,25 +175,33 @@ class Stage1Lib( val logger: Logger ){
       val scalaReflect = MavenDependency("org.scala-lang","scala-reflect",scalaVersion)(logger).jar
       val scalaCompiler = MavenDependency("org.scala-lang","scala-compiler",scalaVersion)(logger).jar
 
-      redirectOutToErr{
-        lib.runMain(
-          "com.typesafe.zinc.Main",
-          Seq(
-            "-scala-compiler", scalaCompiler.toString,
-            "-scala-library", scalaLibrary.toString,
-            "-sbt-interface", sbtInterface.toString,
-            "-compiler-interface", compilerInterface.toString,
-            "-scala-extra", scalaReflect.toString,
-            "-cp", cp,
-            "-d", compileTarget.toString
-          ) ++ extraArgs.map("-S"+_) ++ files.map(_.toString),
-          zinc.classLoader
-        )
+      val code = redirectOutToErr{
+        trapExitCode{
+          lib.runMain(
+            "com.typesafe.zinc.Main",
+            Seq(
+              "-scala-compiler", scalaCompiler.toString,
+              "-scala-library", scalaLibrary.toString,
+              "-sbt-interface", sbtInterface.toString,
+              "-compiler-interface", compilerInterface.toString,
+              "-scala-extra", scalaReflect.toString,
+              "-cp", cp,
+              "-d", compileTarget.toString
+            ) ++ extraArgs.map("-S"+_) ++ files.map(_.toString),
+            zinc.classLoader
+          )
+        }
+      }
+      if(code != ExitCode.Success){
+        // FIXME: zinc currently always returns exit code 0
+        // hack that triggers recompilation next time. Nicer solution?
+        val now = System.currentTimeMillis()
+        files.foreach{_.setLastModified(now)}
       }
     }
 
   }
-  def redirectOutToErr[T](code: => T): Unit = {
+  def redirectOutToErr[T](code: => T): T = {
     val oldOut = System.out
     try{
       System.setOut(System.err)
@@ -180,5 +211,34 @@ class Stage1Lib( val logger: Logger ){
     }
   }
 
+  def trapExitCode( code: => Unit ): ExitCode = {
+    val old: Option[SecurityManager] = Option(System.getSecurityManager())
+    try{
+      val securityManager = new SecurityManager{
+        override def checkPermission( permission: Permission ) = {
+          /*
+          NOTE: is it actually ok, to just make these empty?
+          Calling .super leads to ClassNotFound exteption for a lambda.
+          Calling to the previous SecurityManager leads to a stack overflow
+          */
+        }
+        override def checkPermission( permission: Permission, context: Any ) = {
+          /* Does this methods need to be overidden? */
+        }
+        override def checkExit( status: Int ) = {
+          super.checkExit(status)
+          logger.lib(s"checkExit($status)")
+          throw new TrappedExitCode(status)
+        }
+      }
+      System.setSecurityManager( securityManager )
+      code
+      ExitCode.Success
+    } catch {
+      case TrappedExitCode(exitCode) => exitCode
+    } finally {
+      System.setSecurityManager(old.getOrElse(null))
+    }
+  }
 }
 

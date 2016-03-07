@@ -227,6 +227,7 @@ stage1 () {
 		log "Running $mainClass via Nailgun." $*
 		$NG cbt.NailgunLauncher $mainClass $CP "$CWD" $*
 	fi
+	exitCode=$?
 	log "Done running $mainClass." $*
 } 
 
@@ -238,4 +239,9 @@ while true; do
 	echo "======= Restarting CBT =======" 1>&2
 done
 
+if [ $compiles -ne 0 ] || [ $compiles2 -ne 0 ]; then
+	exitCode=1
+fi
+
 log "Exiting CBT" $*
+exit $exitCode

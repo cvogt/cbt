@@ -15,6 +15,7 @@ import scala.util._
 
 import ammonite.ops.{cwd => _,_}
 
+// pom model
 case class Developer(id: String, name: String, timezone: String, url: URL)
 case class License(name: String, url: URL)
 
@@ -87,17 +88,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     version: String,
     compileArgs: Seq[String]
   ): File = {
-    class DisableSystemExit extends Exception
-    object DisableSystemExit{
-      def apply(e: Throwable): Boolean = {
-        e match {
-          case i: InvocationTargetException => apply(i.getTargetException)
-          case _: DisableSystemExit => true
-          case _ => false
-        }
-      }
-    }
-
     // FIXME: get this dynamically somehow, or is this even needed?
     val javacp = ClassPath(
       "/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/cldrdata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/dnsns.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/jaccess.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/jfxrt.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/localedata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/nashorn.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunec.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunjce_provider.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunpkcs11.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/zipfs.jar:/System/Library/Java/Extensions/MRJToolkit.jar".split(":").toVector.map(new File(_))
@@ -106,14 +96,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     mkdir(Path(apiTarget))
     if(sourceFiles.nonEmpty){    
       System.err.println("creating docs")
-      try{    
-        System.setSecurityManager(
-          new SecurityManager{
-            override def checkPermission( permission: java.security.Permission ) = {
-              if( permission.getName.startsWith("exitVM") ) throw new DisableSystemExit
-            }
-          }
-        )
+      trapExitCode{
         redirectOutToErr{        
           runMain(
             "scala.tools.nsc.ScalaDoc",
@@ -128,10 +111,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             )
           )
         }
-      } catch {
-        case e:InvocationTargetException if DisableSystemExit(e) =>
-      } finally {
-        System.setSecurityManager(null)
       }
     }
     val docJar = new File(jarTarget+"/"+artifactId+"-"+version+"-javadoc.jar")
@@ -139,14 +118,19 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     docJar
   }
 
-  def test( context: Context ) = {
+  def test( context: Context ): ExitCode = {
+    val loggers = logger.enabledLoggers.mkString(",")
+    // FIXME: this is a hack to pass logger args on to the tests.
+    // should probably have a more structured way
+    val loggerArg = if(loggers != "") Some("-Dlog="+loggers) else None
+
     logger.lib(s"invoke testDefault( $context )")
-    loadDynamic(
-      context.copy( cwd = context.cwd+"/test/" ),
+    val exitCode: ExitCode = loadDynamic(
+      context.copy( cwd = context.cwd+"/test/", args = loggerArg.toVector ++ context.args ),
       new Build(_) with mixins.Test
     ).run
-    logger.lib(s"return testDefault( $context )")
-    
+    logger.lib(s"return testDefault( $context )")    
+    exitCode
   }
 
   // task reflection helpers
@@ -203,6 +187,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             case e:NoSuchMethodException if e.getMessage contains "toConsole" =>
               result match {
                 case () => ""
+                case ExitCode(code) => System.exit(code)
                 case other => println( other.toString ) // no method .toConsole, using to String
               }
           }

@@ -85,7 +85,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   final val logger = context.logger
   override final protected val lib: Lib = new Lib(logger)
   // ========== general stuff ==========
- 
+
   def enableConcurrency = false
   final def projectDirectory: File = new File(context.cwd)
   assert( projectDirectory.exists, "projectDirectory does not exist: "+projectDirectory )
@@ -104,7 +104,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   def dependencies: Seq[Dependency] = Seq(
     "org.scala-lang" % "scala-library" % scalaVersion
   )
- 
+
   // ========== paths ==========
   final private val defaultSourceDirectory = new File(projectDirectory+"/src/")
 
@@ -122,7 +122,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   /** Source directories and files. Defaults to .scala and .java files in src/ and top-level. */
   def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
 
-  /** Which file endings to consider being source files. */  
+  /** Which file endings to consider being source files. */
   def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
 
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
@@ -130,7 +130,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     base <- sources.filter(_.exists).map(lib.realpath)
     file <- lib.listFilesRecursive(base) if file.isFile && sourceFileFilter(file)
   } yield file
-  
+
   protected def assertSourceDirectories(): Unit = {
     val nonExisting =
       sources
@@ -215,15 +215,16 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   }
 
   def runClass: String = "Main"
-  def run: Unit = lib.runMainIfFound( runClass, Seq(), classLoader ) 
+  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader ) 
 
-  def test: Unit = lib.test(context)
+  def test: ExitCode = lib.test(context)
 
   context.logger.composition(">"*80)
   context.logger.composition("class   "+this.getClass)
   context.logger.composition("dir     "+context.cwd)
   context.logger.composition("sources "+sources.toList.mkString(" "))
   context.logger.composition("target  "+target)
+  context.logger.composition("context "+context)
   context.logger.composition("dependencyTree\n"+dependencyTree)
   context.logger.composition("<"*80)
 
