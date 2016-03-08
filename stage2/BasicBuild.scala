@@ -106,6 +106,8 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   //def cacheJar = false
   override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
   override def dependencyJars      : Seq[File] = localJars ++ super.dependencyJars
+  
+  def clean : ExitCode = lib.clean(target)
 
   def exportedClasspath   : ClassPath = ClassPath(Seq(compile))
   def exportedJars: Seq[File] = Seq()

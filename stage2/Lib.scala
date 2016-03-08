@@ -5,7 +5,7 @@ import java.io._
 import java.net._
 import java.lang.reflect.InvocationTargetException
 import java.nio.file.{Path =>_,_}
-import java.nio.file.Files.readAllBytes
+import java.nio.file.Files.{readAllBytes, deleteIfExists}
 import java.security.MessageDigest
 import java.util.jar._
 
@@ -67,7 +67,22 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     compileTarget
   }
   
-  
+  def clean (compileTarget : File) : ExitCode = {
+    println(s"""[info] Cleaning ${compileTarget.toPath}""")
+    def deleteRecursive(file: File) : Boolean = {
+      if (file.isDirectory) {
+        file.listFiles().map(deleteRecursive(_))
+      }
+      deleteIfExists(file.toPath)
+    }
+    if (deleteRecursive(compileTarget)) {
+      println("[info] Succeeded")
+      return ExitCode.Success
+    } else {
+      println("[info] Failed")
+      return ExitCode.Failure
+    }
+  }
 
   
   def run( mainClass: Option[String], classLoader: ClassLoader ) : ExitCode = mainClass match {
