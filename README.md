@@ -118,12 +118,9 @@ Missing features in comparison with SBT
 ---------------------------------------
 
 Not implemented yet, but rather easily possible without API changes or
-major refactors is concurrently building / downloading dependencies and
+major refactors is concurrently building dependencies and
 running tests. Right now it is sequential.
-
-CBT allows tasks to lazily depend on other tasks.
-SBT currently does not, because it uses an Applicative, not a Monad, so
-task dependencies are eager.
+Maven downloads already happen in parallel as well as some tasks like packaging.
 
 Another edge case that may need a solution is dynamically overwriting
 tasks. SBT allows that. Classes and traits are static. The only use
