@@ -5,6 +5,7 @@ import java.time.LocalTime.now
 
 import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 
 import paths._
 
@@ -62,27 +63,8 @@ abstract class Stage1Base{
 
     val cwd = args(0)
 
-<<<<<<< HEAD
-    val src  = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
-
-    val changeIndicator = new File(stage2Target+"/cbt/Build.class")
-
-    def newerThan( a: File, b: File ) ={
-      val res =  a.lastModified > b.lastModified
-      if(res) {
-        /*
-        println(a)
-        println(a.lastModified)
-        println(b)
-        println(b.lastModified)
-        */
-      }
-      res
-    }
-=======
     val src = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
     val changeIndicator = stage2Target ++ "/cbt/Build.class"
->>>>>>> upstream/master
 
     logger.stage1("before conditionally running zinc to recompile CBT")
     if( src.exists(newerThan(_, changeIndicator)) ) {

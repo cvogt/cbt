@@ -145,9 +145,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     )
   }
 
-<<<<<<< HEAD:stage2/DefaultBuild.scala
-  // def runClass: String = lib.getRunClass(compileTarget, classLoader)
-  def run: Unit = lib.run( runClass, classLoader )
+  def run: ExitCode = lib.run( runClass, classLoader )
   def runClass: Option[String] = {
 	  if (mainClasses.size == 1) 
       mainClasses.headOption 
@@ -157,10 +155,6 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     }
   }
   def mainClasses: Seq[String] = lib.mainClasses(compileTarget, classLoader) 
-=======
-  def runClass: String = "Main"
-  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader ) 
->>>>>>> upstream/master:stage2/BasicBuild.scala
 
   def test: ExitCode = lib.test(context)
 

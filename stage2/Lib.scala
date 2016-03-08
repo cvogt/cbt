@@ -70,7 +70,10 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   
 
   
-  def run( mainClass: Option[String], classLoader: ClassLoader ) = mainClass.foreach( runMain( _, Seq(), classLoader )  )
+  def run( mainClass: Option[String], classLoader: ClassLoader ) : ExitCode = mainClass match {
+	  case Some(className) =>  runMain( className, Seq(), classLoader )
+	  case _               => ExitCode.Failure
+	}
   
   def mainClasses(compileTarget : File, classLoader : ClassLoader): Seq[String] = {
     def className(file : File) = file.getName.takeWhile(_ != '.')
