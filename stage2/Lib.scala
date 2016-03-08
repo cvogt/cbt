@@ -67,27 +67,28 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     compileTarget
   }
   
-  def clean (compileTarget : File) : ExitCode = {
-    println(s"""[info] Cleaning ${compileTarget.toPath}""")
-    def deleteRecursive(file: File) : Boolean = {
-      if (file.isDirectory) {
-        file.listFiles().map(deleteRecursive(_))
-      }
-      deleteIfExists(file.toPath)
+  /* recursive deletes folders*/
+  def deleteRecursive(file: File) : Boolean = {
+    if (file.isDirectory) {
+      file.listFiles().map(deleteRecursive(_))
     }
+    deleteIfExists(file.toPath)
+  }
+  
+  def clean (compileTarget : File) : ExitCode = {
+    logger.lib(s"""Cleaning ${compileTarget}""")
     if (deleteRecursive(compileTarget)) {
-      println("[info] Succeeded")
+      logger.lib("Succeeded")
       return ExitCode.Success
     } else {
-      println("[info] Failed")
+      logger.lib("Failed")
       return ExitCode.Failure
     }
   }
 
   
-  def run( mainClass: Option[String], classLoader: ClassLoader ) : ExitCode = mainClass match {
-	  case Some(className) =>  runMain( className, Seq(), classLoader )
-	  case _               => ExitCode.Failure
+  def run( mainClass: Option[String], classLoader: ClassLoader ) : ExitCode = {
+    mainClass.map( runMain( _, Seq(), classLoader ) ).getOrElse( ExitCode.Failure )
 	}
   
   def mainClasses(compileTarget : File, classLoader : ClassLoader): Seq[String] = {
@@ -101,6 +102,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         inspectClass.getDeclaredMethods().map(_.getName).contains("main")
       }
 
+      // FIXME: Check if argument list has exactly one element of type Array[String]
       def isInnerClass(file : File) : Boolean = file.toString.contains("$")
       val files = target.listFiles
 

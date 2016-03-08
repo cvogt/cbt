@@ -148,14 +148,8 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   }
 
   def run: ExitCode = lib.run( runClass, classLoader )
-  def runClass: Option[String] = {
-	  if (mainClasses.size == 1) 
-      mainClasses.headOption 
-	  else {
-      println(lib.red("[error] ") + "Multiple main classes found.")
-		  None
-    }
-  }
+  def runClass: Option[String] = mainClasses.headOption 
+  
   def mainClasses: Seq[String] = lib.mainClasses(compileTarget, classLoader) 
 
   def test: ExitCode = lib.test(context)

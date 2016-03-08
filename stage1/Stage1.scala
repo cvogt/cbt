@@ -5,7 +5,6 @@ import java.time.LocalTime.now
 
 import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
-import scala.language.postfixOps
 
 import paths._
 
