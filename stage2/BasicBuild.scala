@@ -24,7 +24,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   // ========== general stuff ==========
 
   def enableConcurrency = false
-  final def projectDirectory: File = context.cwd
+  final def projectDirectory: File = lib.realpath(context.cwd)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   final def usage: Unit = new lib.ReflectBuild(this).usage
 /*
@@ -151,7 +151,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
 
   context.logger.composition(">"*80)
   context.logger.composition("class   " ++ this.getClass.toString)
-  context.logger.composition("dir     " ++ context.cwd.string)
+  context.logger.composition("dir     " ++ projectDirectory.string)
   context.logger.composition("sources " ++ sources.toList.mkString(" "))
   context.logger.composition("target  " ++ target.string)
   context.logger.composition("context " ++ context.toString)
@@ -160,5 +160,5 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
 
   // ========== cbt internals ==========
   private[cbt] def finalBuild = this
-  override def show = this.getClass.getSimpleName ++ "(" ++ context.cwd.string ++ ")"
+  override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
 }
