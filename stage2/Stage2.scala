@@ -40,14 +40,16 @@ object Stage2{
 
         logger.loop("Looping change detection over:\n - "++allTriggerFiles.mkString("\n - "))
 
-        lib.watch(allTriggerFiles) {
+        lib.watch(allTriggerFiles){
           case file if triggerCbtFiles.exists(file.toString startsWith _.toString) =>
             logger.loop("Change is in CBT's own source code.")
             logger.loop("Restarting CBT.")
             scala.util.control.Breaks.break
 
           case file if triggerFiles.exists(file.toString startsWith _.toString) =>
-            new lib.ReflectBuild( lib.loadDynamic(context) ).callNullary(task)
+            val reflectBuild = new lib.ReflectBuild( lib.loadDynamic(context) )
+            logger.loop(s"Re-running $task for " ++ reflectBuild.build.projectDirectory.toString)
+            reflectBuild.callNullary(task)
         }
       } else {
         new lib.ReflectBuild(build).callNullary(task)

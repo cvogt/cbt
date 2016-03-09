@@ -148,7 +148,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       .filterNot(t => anyRefMembers contains taskName(t))
   }
 
-  class ReflectBuild(build: Build) extends ReflectObject(build){
+  class ReflectBuild(val build: Build) extends ReflectObject(build){
     def usage = {
       val baseTasks = lib.taskNames(ru.typeOf[Build])
       val thisTasks = lib.taskNames(subclassType) diff baseTasks
@@ -381,10 +381,12 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     import scala.collection.JavaConversions._
     val watcher = WatchService.newWatchService
 
-    files.map{
-      file =>
-      if(file.isFile) dirname(file)
-      else file
+    val realFiles = files.map(realpath)
+
+    realFiles.map{
+      // WatchService can only watch folders
+      case file if file.isFile => dirname(file)
+      case file => file
     }.distinct.map{ file =>
       val watchableFile = new WatchableFile(file)
       val key = watchableFile.register(
@@ -398,13 +400,19 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     scala.util.control.Breaks.breakable{
       while(true){
         logger.loop("Waiting for file changes...")
+        logger.loop("Waiting for file changes...2")
         Option(watcher.take).map{
           key =>
           val changedFiles = key
             .pollEvents
+            .toVector
             .filterNot(_.kind == StandardWatchEventKind.OVERFLOW)
             .map(_.context.toString)
+            // make sure we don't react on other files changed
+            // in the same folder like the files we care about
+            .filter{ name => realFiles.exists(name startsWith _.toString) }
             .map(new File(_))
+
           changedFiles.foreach( f => logger.loop( "Changed: " ++ f.toString ) )
           changedFiles.collect(action)
           key.reset
