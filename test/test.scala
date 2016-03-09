@@ -51,8 +51,8 @@ object Main{
       val res = runCbt(path, Seq())
       logger.test(res.toString)
       assertSuccess(res)
-      assert(res.out == "", res.toString)
-      assert(res.err contains usageString, res.toString)
+      assert(res.out == "", "usage " + path +" "+ res.toString)
+      assert(res.err contains usageString, "usage " + path +" "+res.toString)
     }
     def compile(path: String)(implicit logger: Logger) = {
       val res = runCbt(path, Seq("compile"))
@@ -62,8 +62,11 @@ object Main{
 
     logger.test( "Running tests " ++ args.toList.toString )
 
-    usage("nothing")
+    //usage("nothing")
     compile("nothing")
+    //usage("multi-build")
+    compile("multi-build")
+    
 
     {
       val noContext = Context(cbtHome ++ "/test/nothing", Seq(), logger)
