@@ -212,17 +212,18 @@ stage1 () {
 			log "Checking if nailgun is up yet." $*
 			$NG cbt.NailgunLauncher cbt.CheckAlive $CP "$CWD" $* >> $nailgun_out 2>> $nailgun_err
 			alive=$?
-			if [ $alive -eq 131 ]; then
-				echo "Nailgun call failed. Try 'cbt kill' and check the error log cbt/nailgun_launcher/target/nailgun.stderr.log" 1>&2
-			elif [ $alive -eq 33 ]; then
+			if [ $alive -eq 131 ] || [ $alive -eq 33 ]; then
+			# the 33 is not working right now
+			#	echo "Nailgun call failed. Try 'cbt kill' and check the error log cbt/nailgun_launcher/target/nailgun.stderr.log" 1>&2
+			#elif [ $alive -eq 33 ]; then
 				break
 			else
 				log "Nope. Sleeping for 0.5 seconds" $*
 				if [ "$i" -gt "1" ]; then
 					echo "Waiting for nailgun to start... (For problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log)" 1>&2
 				fi
-				sleep 0.5
 			fi
+			sleep 0.5
 		done
 		log "Running $mainClass via Nailgun." $*
 		$NG cbt.NailgunLauncher $mainClass $CP "$CWD" $*
