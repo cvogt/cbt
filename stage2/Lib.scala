@@ -80,35 +80,29 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   def docJar(
+    scalaVersion: String,
     sourceFiles: Seq[File],
-    dependenyClasspath: ClassPath,
+    dependencyClasspath: ClassPath,
     apiTarget: File,
     jarTarget: File,
     artifactId: String,
     version: String,
     compileArgs: Seq[String]
   ): File = {
-    // FIXME: get this dynamically somehow, or is this even needed?
-    val javacp = ClassPath(
-      "/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/cldrdata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/dnsns.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/jaccess.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/jfxrt.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/localedata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/nashorn.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunec.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunjce_provider.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunpkcs11.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/zipfs.jar:/System/Library/Java/Extensions/MRJToolkit.jar".split(":").toVector.map(new File(_))
-    )
-
     mkdir(Path(apiTarget))
     if(sourceFiles.nonEmpty){    
-      System.err.println("creating docs")
+      val args = Seq(
+        // FIXME: can we use compiler dependency here?
+        "-cp", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
+        "-d",  apiTarget.toString
+      ) ++ compileArgs ++ sourceFiles.map(_.toString)
+      logger.lib("creating docs for source files "+args.mkString(", "))
       trapExitCode{
         redirectOutToErr{        
           runMain(
             "scala.tools.nsc.ScalaDoc",
-            Seq(
-              // FIXME: can we use compiler dependency here?
-              "-cp", /*javacp++":"++*/ScalaDependencies(logger).classpath.string ++ ":" ++ dependenyClasspath.string,
-              "-d",  apiTarget.toString
-            ) ++ compileArgs ++ sourceFiles.map(_.toString),
-            new URLClassLoader(
-              ScalaDependencies(logger).classpath ++ javacp,
-              ClassLoader.getSystemClassLoader
-            )
+            args,
+            ScalaDependencies(scalaVersion)(logger).classLoader
           )
         }
       }
