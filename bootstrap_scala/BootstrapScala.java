@@ -22,9 +22,9 @@ public class BootstrapScala {
 
   public final static Dependency[] dependencies(String target, String scalaVersion) throws MalformedURLException {
     return new Dependency[] {
-      Dependency.scala(target, scalaVersion, "library", "f75e7acabd57b213d6f61483240286c07213ec0e"),
-      Dependency.scala(target, scalaVersion, "compiler","1454c21d39a4d991006a2a47c164f675ea1dafaf"),
-      Dependency.scala(target, scalaVersion, "reflect", "bf1649c9d33da945dea502180855b56caf06288c"),
+      Dependency.scala(target, scalaVersion, "library", "DDD5A8BCED249BEDD86FB4578A39B9FB71480573"),
+      Dependency.scala(target, scalaVersion, "compiler","FE1285C9F7B58954C5EF6D80B59063569C065E9A"),
+      Dependency.scala(target, scalaVersion, "reflect", "B74530DEEBA742AB4F3134DE0C2DA0EDC49CA361"),
       new Dependency(target, "modules/scala-xml_2.11/1.0.5", "scala-xml_2.11-1.0.5", "77ac9be4033768cf03cc04fbd1fc5e5711de2459")
     };
   }

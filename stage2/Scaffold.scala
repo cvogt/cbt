@@ -46,7 +46,7 @@ import java.io.File
 import scala.collection.immutable.Seq
 
 class Build(context: Context) extends BuildBuild(context){
-  override def scalaVersion: String = "2.11.7"
+  override def scalaVersion: String = "2.11.8"
   
   override def dependencies = super.dependencies ++ Seq(
     BuildDependency( projectDirectory.parent ++ "/build-shared")
@@ -82,7 +82,7 @@ import java.io.File
 import scala.collection.immutable.Seq
 
 class Build(context: Context) extends BuildBuild(context){
-  override def scalaVersion: String = "2.11.7"
+  override def scalaVersion: String = "2.11.8"
   
   override def dependencies = super.dependencies ++ Seq(
     BuildDependency( projectDirectory.parent.parent ++ "/build-shared")
