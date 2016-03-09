@@ -45,21 +45,20 @@ abstract class Dependency{
         _.right.toOption.map(_.exportedClasspath)
       )
     )
-    val mavenClassPath = ClassPath.flatten(
+    val cachedClassPath = ClassPath.flatten(
       transitiveClassPath.flatMap(
         _.left.toOption
       ).par.map(_.exportedClasspath).seq.sortBy(_.string)
     )
+
     if(cacheDependencyClassLoader){    
       new URLClassLoader(
         exportedClasspath ++ buildClassPath,
-        ClassLoaderCache.classLoader(
-          mavenClassPath, new URLClassLoader( mavenClassPath, ClassLoader.getSystemClassLoader )
-        )
+        ClassLoaderCache.get( cachedClassPath )
       )
     } else {
       new URLClassLoader(
-        exportedClasspath ++ buildClassPath ++ mavenClassPath, ClassLoader.getSystemClassLoader
+        exportedClasspath ++ buildClassPath ++ cachedClassPath, ClassLoader.getSystemClassLoader
       )
     }
   }
