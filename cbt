@@ -78,7 +78,7 @@ log "Find out real path. Build realpath if needed." $*
 
 export CBT_HOME=$(dirname $($_DIR/realpath/realpath.sh $0))
 
-export SCALA_VERSION="2.11.7"
+export SCALA_VERSION="2.11.8"
 export NAILGUN=$CBT_HOME/nailgun_launcher/
 export STAGE1=$CBT_HOME/stage1/
 export TARGET=target/scala-2.11/classes/
