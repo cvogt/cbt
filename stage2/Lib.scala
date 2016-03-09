@@ -5,7 +5,7 @@ import java.io._
 import java.net._
 import java.lang.reflect.InvocationTargetException
 import java.nio.file.{Path =>_,_}
-import java.nio.file.Files.readAllBytes
+import java.nio.file.Files.{readAllBytes, deleteIfExists}
 import java.security.MessageDigest
 import java.util.jar._
 
@@ -65,6 +65,25 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         updated, sourceFiles, compileTarget, dependenyClasspath, compileArgs
       )( zincVersion = zincVersion, scalaVersion = scalaVersion )
     compileTarget
+  }
+
+  /* recursively deletes folders*/
+  def deleteRecursive(file: File) : Boolean = {
+    if (file.isDirectory) {
+      file.listFiles().map(deleteRecursive(_))
+    }
+    deleteIfExists(file.toPath)
+  }
+  
+  def clean (compileTarget : File) : ExitCode = {
+    logger.lib(s"""Cleaning ${compileTarget}""")
+    if (deleteRecursive(compileTarget)) {
+      logger.lib("Succeeded")
+      return ExitCode.Success
+    } else {
+      logger.lib("Failed")
+      return ExitCode.Failure
+    }
   }
 
   def srcJar(sources: Seq[File], artifactId: String, version: String, jarTarget: File): File = {
