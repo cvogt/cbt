@@ -10,7 +10,11 @@ dependencies:
     - "nailgun_launcher/target"
     - "stage1/target"
     - "stage2/target"
-        
+  override:
+    - ./cbt direct -Dlog=all
+    - ./cbt -Dlog=all
+
 test:
   override:
-    - ./cbt test
+    - ./cbt direct test -Dlog=all
+    - ./cbt test -Dlog=all
