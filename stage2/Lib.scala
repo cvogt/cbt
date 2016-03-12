@@ -192,7 +192,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           }
           System.err.println(usage)
           taskName.foreach{ _ =>
-            System.exit(1)
+            ExitCode.Failure
           }
         }
     }

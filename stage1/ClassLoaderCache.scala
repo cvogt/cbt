@@ -2,7 +2,7 @@ package cbt
 
 import java.net._
 
-object ClassLoaderCache{
+private[cbt] object ClassLoaderCache{
   private val cache = NailgunLauncher.classLoaderCache
   def get( classpath: ClassPath )(implicit logger: Logger): ClassLoader
     = cache.synchronized{
