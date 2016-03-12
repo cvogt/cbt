@@ -121,13 +121,31 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
+  private def getZincDependencyJar(zincDeps: Seq[Dependency], zincVersion: String, group: String, name: String) = {
+    zincDeps
+      .collect {
+        case dependency @ MavenDependency( group, name, _, false ) =>
+          dependency
+      }
+      .headOption
+      .getOrElse( throw new Exception(s"cannot find $name in zinc $zincVersion dependencies") )
+      .jar
+  }
+
   def zinc(
-    needsRecompile: Boolean, files: Seq[File], compileTarget: File, classpath: ClassPath, extraArgs: Seq[String] = Seq()
+    needsRecompile: Boolean,
+    files: Seq[File],
+    compileTarget: File,
+    classpath: ClassPath,
+    extraArgs: Seq[String] = Seq()
   )( zincVersion: String, scalaVersion: String ): Unit = {
 
     val cp = classpath.string
-    if(classpath.files.isEmpty) throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
-    if(files.isEmpty) throw new Exception("Trying to compile no files. ClassPath: " ++ cp)
+    if(classpath.files.isEmpty)
+      throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
+
+    if(files.isEmpty)
+      throw new Exception("Trying to compile no files. ClassPath: " ++ cp)
 
     // only run zinc if files changed, for performance reasons
     // FIXME: this is broken, need invalidate on changes in dependencies as well
@@ -135,19 +153,8 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       val zinc = MavenDependency("com.typesafe.zinc","zinc", zincVersion)(logger)
       val zincDeps = zinc.transitiveDependencies
 
-      val sbtInterface =
-        zincDeps
-          .collect{ case d @ MavenDependency( "com.typesafe.sbt", "sbt-interface", _, false ) => d }
-          .headOption
-          .getOrElse( throw new Exception(s"cannot find sbt-interface in zinc $zincVersion dependencies") )
-          .jar
-
-      val compilerInterface =
-        zincDeps
-          .collect{ case d @ MavenDependency( "com.typesafe.sbt", "compiler-interface", _, true ) => d }
-          .headOption
-          .getOrElse( throw new Exception(s"cannot find compiler-interface in zinc $zincVersion dependencies") )
-          .jar
+      val sbtInterface = getZincDependencyJar(zincDeps, zincVersion, "com.typesafe.sbt", "sbt-interface")
+      val compilerInterface = getZincDependencyJar(zincDeps, zincVersion, "com.typesafe.sbt", "compiler-interface")
 
       val scalaLibrary = MavenDependency("org.scala-lang","scala-library",scalaVersion)(logger).jar
       val scalaReflect = MavenDependency("org.scala-lang","scala-reflect",scalaVersion)(logger).jar
@@ -170,9 +177,11 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       }
 
       if(code != ExitCode.Success){
-        // hack that triggers recompilation next time. Nicer solution?
+        // Ensure we trigger recompilation next time. This is currently required because we
+        // don't record the time of the last successful build elsewhere. But hopefully that will
+        // change soon.
         val now = System.currentTimeMillis()
-        files.foreach{_.setLastModified(now)}
+        files.foreach(_.setLastModified(now))
 
         // Tell the caller that things went wrong.
         System.exit(code.code)

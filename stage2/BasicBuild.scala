@@ -145,7 +145,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   }
 
   def runClass: String = "Main"
-  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader ) 
+  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader )
 
   def test: ExitCode = lib.test(context)
 
