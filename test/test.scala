@@ -67,13 +67,15 @@ object Main{
     compile("nothing")
     usage("multi-build")
     compile("multi-build")
+    usage("simple")
+    compile("simple")
     
     {
       val noContext = Context(cbtHome ++ "/test/nothing", Seq(), logger)
       val b = new Build(noContext){
         override def dependencies = Seq(
-          MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")(logger),
-          MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")(logger)
+          JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+          JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0")
         )
       }
       val cp = b.classpath

@@ -49,7 +49,12 @@ class Build(context: cbt.Context) extends PackageBuild(context){
   override def groupId = "org.cvogt"
   override def artifactId = "play-json-extensions"
   override def dependencies = super.dependencies ++ Vector(
-    "com.typesafe.play" %% "play-json" % "2.4.4"
+    // encouraged way to declare dependencies
+    ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
+    JavaDependency("joda-time", "joda-time", "2.9.2")
+    // also supported for SBT syntax compatibility:
+    // "com.typesafe.play" %% "play-json" % "2.4.4"
+    // "joda-time" % "joda-time % "2.9.2"
   )
   override def compile = {
     println("Compiling...")

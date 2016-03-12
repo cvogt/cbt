@@ -80,7 +80,7 @@ abstract class Dependency{
       case _:ArtifactInfo => false
       case _ => true
     }
-    noInfo ++ MavenDependency.removeOutdated( hasInfo )
+    noInfo ++ JavaDependency.removeOutdated( hasInfo )
   }
 
   def show: String = this.getClass.getSimpleName
@@ -96,9 +96,9 @@ abstract class Dependency{
 }
 
 // TODO: all this hard codes the scala version, needs more flexibility
-class ScalaCompilerDependency(version: String)(implicit logger: Logger) extends MavenDependency("org.scala-lang","scala-compiler",version)
-class ScalaLibraryDependency (version: String)(implicit logger: Logger) extends MavenDependency("org.scala-lang","scala-library",version)
-class ScalaReflectDependency (version: String)(implicit logger: Logger) extends MavenDependency("org.scala-lang","scala-reflect",version)
+class ScalaCompilerDependency(version: String)(implicit logger: Logger) extends JavaDependency("org.scala-lang","scala-compiler",version)
+class ScalaLibraryDependency (version: String)(implicit logger: Logger) extends JavaDependency("org.scala-lang","scala-library",version)
+class ScalaReflectDependency (version: String)(implicit logger: Logger) extends JavaDependency("org.scala-lang","scala-reflect",version)
 
 case class ScalaDependencies(version: String)(implicit val logger: Logger) extends Dependency{ sd =>
   final val updated = false
@@ -106,9 +106,9 @@ case class ScalaDependencies(version: String)(implicit val logger: Logger) exten
   def exportedClasspath = ClassPath(Seq())
   def exportedJars = Seq[File]()  
   def dependencies = Seq(
-    new ScalaCompilerDependency(version)(logger),
-    new ScalaLibraryDependency(version)(logger),
-    new ScalaReflectDependency(version)(logger)
+    new ScalaCompilerDependency(version),
+    new ScalaLibraryDependency(version),
+    new ScalaReflectDependency(version)
   )
 }
 
@@ -128,27 +128,34 @@ case class CbtDependency()(implicit val logger: Logger) extends Dependency{
   def exportedClasspath = ClassPath( Seq( stage2Target ) )
   def exportedJars = Seq[File]()  
   override def dependencies = Seq(
-    Stage1Dependency()(logger),
-    MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")(logger),
-    MavenDependency("com.lihaoyi","ammonite-repl_2.11.7","0.5.5")(logger),
-    MavenDependency("org.scala-lang.modules","scala-xml_2.11","1.0.5")(logger)
+    Stage1Dependency(),
+    JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+    lib.ScalaDependency(
+      "com.lihaoyi","ammonite-ops","0.5.5", scalaVersion = constants.scalaMajorVersion
+    ),
+    lib.ScalaDependency(
+      "org.scala-lang.modules","scala-xml","1.0.5", scalaVersion = constants.scalaMajorVersion
+    )
   )
   def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
 }
 
-sealed trait ClassifierBase
-final case class Classifier(name: String) extends ClassifierBase
-case object javadoc extends ClassifierBase
-case object sources extends ClassifierBase
+case class Classifier(name: Option[String])
+object Classifier{
+  object none extends Classifier(None)
+  object javadoc extends Classifier(Some("javadoc"))
+  object sources extends Classifier(Some("sources"))
+}
 
-case class MavenDependency( groupId: String, artifactId: String, version: String, sources: Boolean = false )(implicit val logger: Logger)
-  extends ArtifactInfo{
+case class JavaDependency(
+  groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
+)(implicit val logger: Logger) extends ArtifactInfo{
 
   def updated = false
   override def canBeCached = true
 
   private val groupPath = groupId.split("\\.").mkString("/")
-  def basePath = s"/$groupPath/$artifactId/$version/$artifactId-$version"++(if(sources) "-sources" else "")
+  def basePath = s"/$groupPath/$artifactId/$version/$artifactId-$version" ++ classifier.name.map("-"++_).getOrElse("")
   
   private def resolverUrl:URL = new URL(
     if(version.endsWith("-SNAPSHOT")) "https://oss.sonatype.org/content/repositories/snapshots" else "https://repo1.maven.org/maven2"
@@ -197,25 +204,25 @@ case class MavenDependency( groupId: String, artifactId: String, version: String
 
   // ========== pom traversal ==========
 
-  lazy val pomParents: Seq[MavenDependency] = {
+  lazy val pomParents: Seq[JavaDependency] = {
     (pomXml \ "parent").collect{
       case parent =>
-        MavenDependency(
+        JavaDependency(
           (parent \ "groupId").text,
           (parent \ "artifactId").text,
           (parent \ "version").text
         )(logger)
     }
   }
-  def dependencies: Seq[MavenDependency] = {
-    if(sources) Seq()
+  def dependencies: Seq[JavaDependency] = {
+    if(classifier == Classifier.sources) Seq()
     else (pomXml \ "dependencies" \ "dependency").collect{
       case xml if (xml \ "scope").text == "" && (xml \ "optional").text != "true" =>
-        MavenDependency(
+        JavaDependency(
           lookup(xml,_ \ "groupId").get,
           lookup(xml,_ \ "artifactId").get,
           lookup(xml,_ \ "version").get,
-          (xml \ "classifier").text == "sources"
+          Classifier( Some( (xml \ "classifier").text ).filterNot(_ == "").filterNot(_ == null) )
         )(logger)
     }.toVector
   }
@@ -235,7 +242,7 @@ case class MavenDependency( groupId: String, artifactId: String, version: String
     )
   }
 }
-object MavenDependency{
+object JavaDependency{
   def semanticVersionLessThan(left: String, right: String) = {
     // FIXME: this ignores ends when different size
     val zipped = left.split("\\.|\\-").map(toInt) zip right.split("\\.|\\-").map(toInt)
