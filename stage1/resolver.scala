@@ -35,8 +35,8 @@ abstract class Dependency{
   def canBeCached = false
   def cacheDependencyClassLoader = true
 
-  private object cacheClassLoaderBasicBuild extends Cache[URLClassLoader]
-  def classLoader: URLClassLoader = cacheClassLoaderBasicBuild{
+  private object classLoaderCache extends Cache[URLClassLoader]
+  def classLoader: URLClassLoader = classLoaderCache{
     val transitiveClassPath = transitiveDependencies.map{
       case d if d.canBeCached => Left(d)
       case d => Right(d)

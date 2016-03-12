@@ -134,9 +134,8 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     sourcesChanged || transitiveDependencies.map(_.updated).fold(false)(_ || _)
   }
 
-  private object cacheCompileBasicBuild extends Cache[File]
-  def compile: File = cacheCompileBasicBuild{
-    //println(transitiveDependencies.filter(_.updated).mkString("\n"))
+  private object compileCache extends Cache[File]
+  def compile: File = compileCache{
     lib.compile(
       updated,
       sourceFiles, compileTarget, dependencyClasspath, scalacOptions,
