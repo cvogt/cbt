@@ -143,7 +143,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   class ReflectBuild(val build: Build) extends ReflectObject(build){
-    def usage = {
+    def usage: String = {
       val baseTasks = lib.taskNames(ru.typeOf[Build])
       val thisTasks = lib.taskNames(subclassType) diff baseTasks
       (
@@ -191,7 +191,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             System.err.println("")
           }
           System.err.println(usage)
-          System.exit(1)
+          taskName.foreach{ _ =>
+            System.exit(1)
+          }
         }
     }
   }
