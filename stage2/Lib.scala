@@ -25,7 +25,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
   val buildClassName = "Build"
   val buildBuildClassName = "BuildBuild"
-  
+
   /** Loads Build for given Context */
   def loadDynamic(context: Context, default: Context => Build = new Build(_)): Build = {
     context.logger.composition( context.logger.showInvocation("Build.loadDynamic",context) )
@@ -37,7 +37,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   */
   def loadRoot(context: Context, default: Context => Build = new Build(_)): Build = {
     context.logger.composition( context.logger.showInvocation("Build.loadRoot",context) )
-    def findStartDir(cwd: File): File = {    
+    def findStartDir(cwd: File): File = {
       val buildDir = realpath( cwd ++ "/build" )
       if(buildDir.exists) findStartDir(buildDir) else cwd
     }
@@ -59,7 +59,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     updated: Boolean,
     sourceFiles: Seq[File], compileTarget: File, dependenyClasspath: ClassPath,
     compileArgs: Seq[String], zincVersion: String, scalaVersion: String
-  ): File = {    
+  ): File = {
     if(sourceFiles.nonEmpty)
       lib.zinc(
         updated, sourceFiles, compileTarget, dependenyClasspath, compileArgs
@@ -90,7 +90,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     compileArgs: Seq[String]
   ): File = {
     mkdir(Path(apiTarget))
-    if(sourceFiles.nonEmpty){    
+    if(sourceFiles.nonEmpty){
       val args = Seq(
         // FIXME: can we use compiler dependency here?
         "-cp", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
@@ -98,7 +98,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
       trapExitCode{
-        redirectOutToErr{        
+        redirectOutToErr{
           runMain(
             "scala.tools.nsc.ScalaDoc",
             args,
@@ -123,7 +123,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       context.copy( cwd = context.cwd ++ "/test", args = loggerArg.toVector ++ context.args ),
       new Build(_) with mixins.Test
     ).run
-    logger.lib(s"return testDefault( $context )")    
+    logger.lib(s"return testDefault( $context )")
     exitCode
   }
 
@@ -223,7 +223,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         jar.closeEntry
         name
     }
-    
+
     val duplicateFiles = (names diff names.distinct).distinct
     assert(
       duplicateFiles.isEmpty,
@@ -246,7 +246,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val statusCode =
       new ProcessBuilder( "gpg", "--batch", "--yes", "-a", "-b", "-s", "--passphrase", passphrase, file.toString )
         .inheritIO.start.waitFor
-    
+
     if( 0 != statusCode ) throw new Exception("gpg exited with status code " ++ statusCode.toString)
 
     file ++ ".asc"
@@ -342,7 +342,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           name++".md5" -> md5(content).toArray.map(_.toByte),
           name++".sha1" -> sha1(content).toArray.map(_.toByte)
         )
-      }  
+      }
       val all = (files ++ checksums)
       uploadAll(url, all)
     }
