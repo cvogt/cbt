@@ -190,6 +190,11 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   }
 
   def trapExitCode( code: => Unit ): ExitCode = {
+    /*
+    Doesn't seem to work reliably. Seems like the Security manager is not always
+    reset properly. Maybe some non-thread-safety issue or some Nailgun interaction.
+
+
     val old: Option[SecurityManager] = Option(System.getSecurityManager())
     try{
       val securityManager = new SecurityManager{
@@ -217,6 +222,9 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     } finally {
       System.setSecurityManager(old.getOrElse(null))
     }
+    */
+    code
+    ExitCode.Success
   }
 }
 
