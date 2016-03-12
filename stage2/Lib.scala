@@ -173,17 +173,21 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         .flatMap(toTask _)
         .map{ methodSymbol =>
           val result = mirror.reflect(obj).reflectMethod(methodSymbol)()
+
           // Try to render console representation. Probably not the best way to do this.
-          val method = scala.util.Try( result.getClass.getDeclaredMethod("toConsole") )
-          
-          method.foreach(m => println(m.invoke(result)))
-          method.recover{
-            case e:NoSuchMethodException if e.getMessage contains "toConsole" =>
+          scala.util.Try( result.getClass.getDeclaredMethod("toConsole") ) match {
+            case scala.util.Success(m) =>
+              println(m.invoke(result))
+
+            case scala.util.Failure(e) if e.getMessage contains "toConsole" =>
               result match {
                 case () => ""
                 case ExitCode(code) => System.exit(code)
                 case other => println( other.toString ) // no method .toConsole, using to String
               }
+
+            case scala.util.Failure(e) =>
+              throw e
           }
         }.getOrElse{
           taskName.foreach{ n =>
