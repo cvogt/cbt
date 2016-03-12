@@ -5,6 +5,8 @@ import java.io._
 import scala.collection.immutable.Seq
 import scala.xml._
 import paths._
+import scala.concurrent._
+import scala.concurrent.duration._
 
 private final class Tree( val root: Dependency, computeChildren: => Seq[Tree] ){
   lazy val children = computeChildren
@@ -35,8 +37,60 @@ abstract class Dependency{
   def canBeCached = false
   def cacheDependencyClassLoader = true
 
+  //private type BuildCache = KeyLockedLazyCache[Dependency, Future[ClassPath]]
+  def exportClasspathConcurrently: ClassPath = {
+    // FIXME: this should separate a blocking and a non-blocking EC
+    import scala.concurrent.ExecutionContext.Implicits.global
+    Await.result(
+      exportClasspathConcurrently(
+        transitiveDependencies
+          .collect{ case d: ArtifactInfo => d }
+          .groupBy( d => (d.groupId,d.artifactId) )
+          .mapValues( _.head )
+        //, new BuildCache
+      ),
+      Duration.Inf
+    )
+  }
+
+  def concurrencyEnabled = false
+
+  /**
+  The implementation of this method is untested and likely buggy
+  at this stage.
+  */
+  private object cacheExportClasspathConcurrently extends Cache[Future[ClassPath]]
+  private def exportClasspathConcurrently(
+    latest: Map[(String, String),ArtifactInfo]//, cache: BuildCache
+  )( implicit ec: ExecutionContext ): Future[ClassPath] = cacheExportClasspathConcurrently{
+    Future.sequence( // trigger compilation / download of all dependencies first
+      this.dependencies.map{
+        d =>
+          // find out latest version of the required dependency
+          val l = d match {
+            case m: MavenDependency => latest( (m.groupId,m.artifactId) )
+            case _ => d
+          }
+          // // trigger compilation if not already triggered
+          // cache.get( l, l.exportClasspathConcurrently( latest, cache ) )
+          l.exportClasspathConcurrently( latest )
+      }
+    ).map(
+      // merge dependency classpaths into one
+      ClassPath.flatten(_)
+    ).map(
+      _ =>
+      // now that all dependencies are done, compile the code of this
+      exportedClasspath
+    )
+  }
+
   private object cacheClassLoaderBasicBuild extends Cache[URLClassLoader]
   def classLoader: URLClassLoader = cacheClassLoaderBasicBuild{
+    if( concurrencyEnabled ){
+      // trigger concurrent building / downloading dependencies
+      exportClasspathConcurrently
+    }
     val transitiveClassPath = transitiveDependencies.map{
       case d if d.canBeCached => Left(d)
       case d => Right(d)
