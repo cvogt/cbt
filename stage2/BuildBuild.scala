@@ -3,7 +3,7 @@ import java.io.File
 import scala.collection.immutable.Seq
 
 class BuildBuild(context: Context) extends Build(context){
-  override def dependencies = Seq( CbtDependency(context.logger) ) ++ super.dependencies
+  override def dependencies = Seq( CbtDependency()(context.logger) ) ++ super.dependencies
   def managedBuildDirectory: File = lib.realpath( projectDirectory.parent )
   val managedBuild = {
     val managedContext = context.copy( cwd = managedBuildDirectory )

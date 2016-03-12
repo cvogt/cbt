@@ -15,10 +15,10 @@ import scala.util._
 
 import ammonite.ops.{cwd => _,_}
 
-class BasicBuild(context: Context) extends Build(context)
+class BasicBuild( context: Context ) extends Build( context )
 class Build(val context: Context) extends Dependency with TriggerLoop{
   // library available to builds
-  final val logger = context.logger
+  implicit final val logger: Logger = context.logger
   override final protected val lib: Lib = new Lib(logger)
   
   // ========== general stuff ==========

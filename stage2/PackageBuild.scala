@@ -2,7 +2,7 @@ package cbt
 import java.io.File
 import java.net.URL
 import scala.collection.immutable.Seq
-abstract class PackageBuild(context: Context) extends Build(context) with ArtifactInfo{
+abstract class PackageBuild(context: Context) extends BasicBuild(context) with ArtifactInfo{
   def `package`: Seq[File] = lib.concurrently( enableConcurrency )(
     Seq(() => jar, () => docJar, () => srcJar)
   )( _() )
@@ -14,12 +14,12 @@ abstract class PackageBuild(context: Context) extends Build(context) with Artifa
 
   private object cacheSrcJarBasicBuild extends Cache[File]
   def srcJar: File = cacheSrcJarBasicBuild{
-    lib.srcJar(sources, artifactId, version, scalaTarget)
+    lib.srcJar( sourceFiles, artifactId, version, scalaTarget )
   }
 
   private object cacheDocBasicBuild extends Cache[File]
   def docJar: File = cacheDocBasicBuild{
-    lib.docJar( sources, dependencyClasspath, apiTarget, jarTarget, artifactId, version, scalacOptions )
+    lib.docJar( scalaVersion, sourceFiles, dependencyClasspath, apiTarget, jarTarget, artifactId, version, scalacOptions )
   }
 
   override def jars = jar +: dependencyJars

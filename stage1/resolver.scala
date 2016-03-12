@@ -32,12 +32,13 @@ abstract class Dependency{
   def exportedJars: Seq[File]
   def jars: Seq[File] = exportedJars ++ dependencyJars
 
+  def canBeCached = false
   def cacheDependencyClassLoader = true
 
   private object cacheClassLoaderBasicBuild extends Cache[URLClassLoader]
   def classLoader: URLClassLoader = cacheClassLoaderBasicBuild{
     val transitiveClassPath = transitiveDependencies.map{
-      case d: MavenDependency => Left(d)
+      case d if d.canBeCached => Left(d)
       case d => Right(d)
     }
     val buildClassPath = ClassPath.flatten(
@@ -95,35 +96,39 @@ abstract class Dependency{
 }
 
 // TODO: all this hard codes the scala version, needs more flexibility
-class ScalaCompiler(logger: Logger) extends MavenDependency("org.scala-lang","scala-compiler",constants.scalaVersion)(logger)
-class ScalaLibrary(logger: Logger) extends MavenDependency("org.scala-lang","scala-library",constants.scalaVersion)(logger)
-class ScalaReflect(logger: Logger) extends MavenDependency("org.scala-lang","scala-reflect",constants.scalaVersion)(logger)
+class ScalaCompilerDependency(version: String)(implicit logger: Logger) extends MavenDependency("org.scala-lang","scala-compiler",version)
+class ScalaLibraryDependency (version: String)(implicit logger: Logger) extends MavenDependency("org.scala-lang","scala-library",version)
+class ScalaReflectDependency (version: String)(implicit logger: Logger) extends MavenDependency("org.scala-lang","scala-reflect",version)
 
-case class ScalaDependencies(logger: Logger) extends Dependency{
+case class ScalaDependencies(version: String)(implicit val logger: Logger) extends Dependency{ sd =>
+  final val updated = false
+  override def canBeCached = true
   def exportedClasspath = ClassPath(Seq())
   def exportedJars = Seq[File]()  
-  def dependencies = Seq( new ScalaCompiler(logger), new ScalaLibrary(logger), new ScalaReflect(logger) )
-  final val updated = false
+  def dependencies = Seq(
+    new ScalaCompilerDependency(version)(logger),
+    new ScalaLibraryDependency(version)(logger),
+    new ScalaReflectDependency(version)(logger)
+  )
 }
 
-/*
-case class BinaryDependency( path: File, dependencies: Seq[Dependency] ) extends Dependency{
+case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implicit val logger: Logger) extends Dependency{
+  def updated = false
   def exportedClasspath = ClassPath(Seq(path))
-  def exportedJars = Seq[File]()
+  def exportedJars = Seq[File](path)
 }
-*/
 
-case class Stage1Dependency(logger: Logger) extends Dependency{
+case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
   def exportedClasspath = ClassPath( Seq(nailgunTarget, stage1Target) )
   def exportedJars = Seq[File]()  
-  def dependencies = ScalaDependencies(logger: Logger).dependencies
+  def dependencies = ScalaDependencies(constants.scalaVersion).dependencies
   def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
 }
-case class CbtDependency(logger: Logger) extends Dependency{
+case class CbtDependency()(implicit val logger: Logger) extends Dependency{
   def exportedClasspath = ClassPath( Seq( stage2Target ) )
   def exportedJars = Seq[File]()  
   override def dependencies = Seq(
-    Stage1Dependency(logger),
+    Stage1Dependency()(logger),
     MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")(logger),
     MavenDependency("com.lihaoyi","ammonite-repl_2.11.7","0.5.5")(logger),
     MavenDependency("org.scala-lang.modules","scala-xml_2.11","1.0.5")(logger)
@@ -136,10 +141,11 @@ final case class Classifier(name: String) extends ClassifierBase
 case object javadoc extends ClassifierBase
 case object sources extends ClassifierBase
 
-case class MavenDependency( groupId: String, artifactId: String, version: String, sources: Boolean = false )(val logger: Logger)
+case class MavenDependency( groupId: String, artifactId: String, version: String, sources: Boolean = false )(implicit val logger: Logger)
   extends ArtifactInfo{
 
   def updated = false
+  override def canBeCached = true
 
   private val groupPath = groupId.split("\\.").mkString("/")
   def basePath = s"/$groupPath/$artifactId/$version/$artifactId-$version"++(if(sources) "-sources" else "")

@@ -67,14 +67,16 @@ abstract class Stage1Base{
 
     logger.stage1("before conditionally running zinc to recompile CBT")
     if( src.exists(newerThan(_, changeIndicator)) ) {
-      val stage1Classpath = CbtDependency(logger).dependencyClasspath
+      val stage1Classpath = CbtDependency()(logger).dependencyClasspath
       logger.stage1("cbt.lib has changed. Recompiling with cp: " ++ stage1Classpath.string)
       zinc( true, src, stage2Target, stage1Classpath )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
     }
     logger.stage1(s"[$now] calling CbtDependency.classLoader")
 
     logger.stage1(s"[$now] Run Stage2")
-    val ExitCode(exitCode) = runMain( mainClass, cwd +: args.drop(1).toVector, CbtDependency(logger).classLoader )
+    val ExitCode(exitCode) = /*trapExitCode*/{ // this 
+      runMain( mainClass, cwd +: args.drop(1).toVector, CbtDependency()(logger).classLoader )
+    }
     logger.stage1(s"[$now] Stage1 end")
     System.exit(exitCode)
   }
