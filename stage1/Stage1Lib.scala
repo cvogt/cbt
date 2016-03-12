@@ -85,7 +85,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       Files.move(incomplete, Paths.get(target.string), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
   }
- 
+
   def listFilesRecursive(f: File): Seq[File] = {
     f +: (
       if( f.isDirectory ) f.listFiles.flatMap(listFilesRecursive).toVector else Seq[File]()
@@ -154,30 +154,30 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       val scalaCompiler = MavenDependency("org.scala-lang","scala-compiler",scalaVersion)(logger).jar
 
       val code = redirectOutToErr{
-        trapExitCode{
-          lib.runMain(
-            "com.typesafe.zinc.Main",
-            Seq(
-              "-scala-compiler", scalaCompiler.toString,
-              "-scala-library", scalaLibrary.toString,
-              "-sbt-interface", sbtInterface.toString,
-              "-compiler-interface", compilerInterface.toString,
-              "-scala-extra", scalaReflect.toString,
-              "-cp", cp,
-              "-d", compileTarget.toString
-            ) ++ extraArgs.map("-S"++_) ++ files.map(_.toString),
-            zinc.classLoader
-          )
-        }
+        lib.runMain(
+          "com.typesafe.zinc.Main",
+          Seq(
+            "-scala-compiler", scalaCompiler.toString,
+            "-scala-library", scalaLibrary.toString,
+            "-sbt-interface", sbtInterface.toString,
+            "-compiler-interface", compilerInterface.toString,
+            "-scala-extra", scalaReflect.toString,
+            "-cp", cp,
+            "-d", compileTarget.toString
+          ) ++ extraArgs.map("-S"++_) ++ files.map(_.toString),
+          zinc.classLoader
+        )
       }
+
       if(code != ExitCode.Success){
-        // FIXME: zinc currently always returns exit code 0
         // hack that triggers recompilation next time. Nicer solution?
         val now = System.currentTimeMillis()
         files.foreach{_.setLastModified(now)}
+
+        // Tell the caller that things went wrong.
+        System.exit(code.code)
       }
     }
-
   }
   def redirectOutToErr[T](code: => T): T = {
     val oldOut = System.out
@@ -189,42 +189,35 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
+  private val trapSecurityManager = new SecurityManager {
+    override def checkPermission( permission: Permission ) = {
+      /*
+      NOTE: is it actually ok, to just make these empty?
+      Calling .super leads to ClassNotFound exteption for a lambda.
+      Calling to the previous SecurityManager leads to a stack overflow
+      */
+    }
+    override def checkPermission( permission: Permission, context: Any ) = {
+      /* Does this methods need to be overidden? */
+    }
+    override def checkExit( status: Int ) = {
+      super.checkExit(status)
+      logger.lib(s"checkExit($status)")
+      throw new TrappedExitCode(status)
+    }
+  }
+
   def trapExitCode( code: => Unit ): ExitCode = {
-    /*
-    Doesn't seem to work reliably. Seems like the Security manager is not always
-    reset properly. Maybe some non-thread-safety issue or some Nailgun interaction.
-
-
     val old: Option[SecurityManager] = Option(System.getSecurityManager())
     try{
-      val securityManager = new SecurityManager{
-        override def checkPermission( permission: Permission ) = {
-          /*
-          NOTE: is it actually ok, to just make these empty?
-          Calling .super leads to ClassNotFound exteption for a lambda.
-          Calling to the previous SecurityManager leads to a stack overflow
-          */
-        }
-        override def checkPermission( permission: Permission, context: Any ) = {
-          /* Does this methods need to be overidden? */
-        }
-        override def checkExit( status: Int ) = {
-          super.checkExit(status)
-          logger.lib(s"checkExit($status)")
-          throw new TrappedExitCode(status)
-        }
-      }
-      System.setSecurityManager( securityManager )
+      System.setSecurityManager( trapSecurityManager )
       code
       ExitCode.Success
     } catch {
-      case TrappedExitCode(exitCode) => exitCode
+      case TrappedExitCode(exitCode) =>
+        exitCode
     } finally {
       System.setSecurityManager(old.getOrElse(null))
     }
-    */
-    code
-    ExitCode.Success
   }
 }
-
