@@ -68,7 +68,7 @@ abstract class Dependency{
         d =>
           // find out latest version of the required dependency
           val l = d match {
-            case m: MavenDependency => latest( (m.groupId,m.artifactId) )
+            case m: JavaDependency => latest( (m.groupId,m.artifactId) )
             case _ => d
           }
           // // trigger compilation if not already triggered
