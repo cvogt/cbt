@@ -30,19 +30,18 @@ object Main{
       logger.test(allArgs.toString)
       val pb = new ProcessBuilder( allArgs :_* )
       pb.directory(cbtHome ++ ("/test/" ++ path))
-      val p = pb.inheritIO.start
-      p.waitFor
+      val p = pb.start
       val berr = new BufferedReader(new InputStreamReader(p.getErrorStream));
       val bout = new BufferedReader(new InputStreamReader(p.getInputStream));
-      p.waitFor
       import collection.JavaConversions._
       val err = Stream.continually(berr.readLine()).takeWhile(_ != null).mkString("\n")
       val out = Stream.continually(bout.readLine()).takeWhile(_ != null).mkString("\n")
-      Result(out, err, p.exitValue == 0)
+      p.waitFor
+      Result(p.exitValue == 0, out, err)
     }
-    case class Result(out: String, err: String, exit0: Boolean)
-    def assertSuccess(res: Result)(implicit logger: Logger) = {
-      assert(res.exit0, res.toString)
+    case class Result(exit0: Boolean, out: String, err: String)
+    def assertSuccess(res: Result, msg: => String)(implicit logger: Logger) = {
+      assert(res.exit0, msg + res.toString)
     }
 
     // tests
@@ -50,30 +49,33 @@ object Main{
       val usageString = "Methods provided by CBT"
       val res = runCbt(path, Seq())
       logger.test(res.toString)
-      assertSuccess(res)
-      assert(res.out == "", "usage " + path +" "+ res.toString)
-      assert(res.err contains usageString, "usage " + path +" "+res.toString)
+      val debugToken = "usage " + path +" "
+      assertSuccess(res,debugToken)
+      assert(res.out == "", debugToken+ res.toString)
+      assert(res.err contains usageString, debugToken+res.toString)
     }
     def compile(path: String)(implicit logger: Logger) = {
       val res = runCbt(path, Seq("compile"))
-      assertSuccess(res)
+      val debugToken = "compile " + path +" "
+      assertSuccess(res,debugToken)
       // assert(res.err == "", res.err) // FIXME: enable this
     }
 
     logger.test( "Running tests " ++ args.toList.toString )
 
-    //usage("nothing")
+    usage("nothing")
     compile("nothing")
-    //usage("multi-build")
+    usage("multi-build")
     compile("multi-build")
+    usage("simple")
+    compile("simple")
     
-
     {
       val noContext = Context(cbtHome ++ "/test/nothing", Seq(), logger)
       val b = new Build(noContext){
         override def dependencies = Seq(
-          MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")(logger),
-          MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")(logger)
+          JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+          JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0")
         )
       }
       val cp = b.classpath

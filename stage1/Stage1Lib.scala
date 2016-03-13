@@ -38,6 +38,9 @@ class BaseLib{
 
 class Stage1Lib( val logger: Logger ) extends BaseLib{
   lib =>
+  implicit val implicitLogger: Logger = logger
+
+  def scalaMajorVersion(scalaMinorVersion: String) = scalaMinorVersion.split("\\.").take(2).mkString(".")
 
   // ========== reflection ==========
 
@@ -85,7 +88,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       Files.move(incomplete, Paths.get(target.string), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
   }
- 
+
   def listFilesRecursive(f: File): Seq[File] = {
     f +: (
       if( f.isDirectory ) f.listFiles.flatMap(listFilesRecursive).toVector else Seq[File]()
@@ -122,62 +125,71 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   }
 
   def zinc(
-    needsRecompile: Boolean, files: Seq[File], compileTarget: File, classpath: ClassPath, extraArgs: Seq[String] = Seq()
+    needsRecompile: Boolean,
+    files: Seq[File],
+    compileTarget: File,
+    classpath: ClassPath,
+    extraArgs: Seq[String] = Seq()
   )( zincVersion: String, scalaVersion: String ): Unit = {
 
     val cp = classpath.string
-    if(classpath.files.isEmpty) throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
-    if(files.isEmpty) throw new Exception("Trying to compile no files. ClassPath: " ++ cp)
+    if(classpath.files.isEmpty)
+      throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
+
+    if(files.isEmpty)
+      throw new Exception("Trying to compile no files. ClassPath: " ++ cp)
 
     // only run zinc if files changed, for performance reasons
     // FIXME: this is broken, need invalidate on changes in dependencies as well
-    if( true || needsRecompile ){
-      val zinc = MavenDependency("com.typesafe.zinc","zinc", zincVersion)(logger)
+    if( needsRecompile ){
+      val zinc = JavaDependency("com.typesafe.zinc","zinc", zincVersion)
       val zincDeps = zinc.transitiveDependencies
-
+      
       val sbtInterface =
         zincDeps
-          .collect{ case d @ MavenDependency( "com.typesafe.sbt", "sbt-interface", _, false ) => d }
+          .collect{ case d @ JavaDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none ) => d }
           .headOption
-          .getOrElse( throw new Exception(s"cannot find sbt-interface in zinc $zincVersion dependencies") )
+          .getOrElse( throw new Exception(s"cannot find sbt-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
           .jar
 
       val compilerInterface =
         zincDeps
-          .collect{ case d @ MavenDependency( "com.typesafe.sbt", "compiler-interface", _, true ) => d }
+          .collect{ case d @ JavaDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources ) => d }
           .headOption
-          .getOrElse( throw new Exception(s"cannot find compiler-interface in zinc $zincVersion dependencies") )
+          .getOrElse( throw new Exception(s"cannot find compiler-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
           .jar
 
-      val scalaLibrary = MavenDependency("org.scala-lang","scala-library",scalaVersion)(logger).jar
-      val scalaReflect = MavenDependency("org.scala-lang","scala-reflect",scalaVersion)(logger).jar
-      val scalaCompiler = MavenDependency("org.scala-lang","scala-compiler",scalaVersion)(logger).jar
+      val scalaLibrary = JavaDependency("org.scala-lang","scala-library",scalaVersion).jar
+      val scalaReflect = JavaDependency("org.scala-lang","scala-reflect",scalaVersion).jar
+      val scalaCompiler = JavaDependency("org.scala-lang","scala-compiler",scalaVersion).jar
 
       val code = redirectOutToErr{
-        trapExitCode{
-          lib.runMain(
-            "com.typesafe.zinc.Main",
-            Seq(
-              "-scala-compiler", scalaCompiler.toString,
-              "-scala-library", scalaLibrary.toString,
-              "-sbt-interface", sbtInterface.toString,
-              "-compiler-interface", compilerInterface.toString,
-              "-scala-extra", scalaReflect.toString,
-              "-cp", cp,
-              "-d", compileTarget.toString
-            ) ++ extraArgs.map("-S"++_) ++ files.map(_.toString),
-            zinc.classLoader
-          )
-        }
+        lib.runMain(
+          "com.typesafe.zinc.Main",
+          Seq(
+            "-scala-compiler", scalaCompiler.toString,
+            "-scala-library", scalaLibrary.toString,
+            "-sbt-interface", sbtInterface.toString,
+            "-compiler-interface", compilerInterface.toString,
+            "-scala-extra", scalaReflect.toString,
+            "-cp", cp,
+            "-d", compileTarget.toString
+          ) ++ extraArgs.map("-S"++_) ++ files.map(_.toString),
+          zinc.classLoader
+        )
       }
+
       if(code != ExitCode.Success){
-        // FIXME: zinc currently always returns exit code 0
-        // hack that triggers recompilation next time. Nicer solution?
+        // Ensure we trigger recompilation next time. This is currently required because we
+        // don't record the time of the last successful build elsewhere. But hopefully that will
+        // change soon.
         val now = System.currentTimeMillis()
-        files.foreach{_.setLastModified(now)}
+        files.foreach(_.setLastModified(now))
+
+        // Tell the caller that things went wrong.
+        System.exit(code.code)
       }
     }
-
   }
   def redirectOutToErr[T](code: => T): T = {
     val oldOut = System.out
@@ -189,34 +201,42 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
+  private val trapSecurityManager = new SecurityManager {
+    override def checkPermission( permission: Permission ) = {
+      /*
+      NOTE: is it actually ok, to just make these empty?
+      Calling .super leads to ClassNotFound exteption for a lambda.
+      Calling to the previous SecurityManager leads to a stack overflow
+      */
+    }
+    override def checkPermission( permission: Permission, context: Any ) = {
+      /* Does this methods need to be overidden? */
+    }
+    override def checkExit( status: Int ) = {
+      super.checkExit(status)
+      logger.lib(s"checkExit($status)")
+      throw new TrappedExitCode(status)
+    }
+  }
+
   def trapExitCode( code: => Unit ): ExitCode = {
-    val old: Option[SecurityManager] = Option(System.getSecurityManager())
     try{
-      val securityManager = new SecurityManager{
-        override def checkPermission( permission: Permission ) = {
-          /*
-          NOTE: is it actually ok, to just make these empty?
-          Calling .super leads to ClassNotFound exteption for a lambda.
-          Calling to the previous SecurityManager leads to a stack overflow
-          */
-        }
-        override def checkPermission( permission: Permission, context: Any ) = {
-          /* Does this methods need to be overidden? */
-        }
-        override def checkExit( status: Int ) = {
-          super.checkExit(status)
-          logger.lib(s"checkExit($status)")
-          throw new TrappedExitCode(status)
-        }
-      }
-      System.setSecurityManager( securityManager )
+      System.setSecurityManager( trapSecurityManager )
       code
       ExitCode.Success
     } catch {
-      case TrappedExitCode(exitCode) => exitCode
+      case TrappedExitCode(exitCode) =>
+        exitCode
     } finally {
-      System.setSecurityManager(old.getOrElse(null))
+      System.setSecurityManager(NailgunLauncher.defaultSecurityManager)
     }
   }
-}
 
+  def ScalaDependency(
+    groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
+    scalaVersion: String
+  ) =
+    JavaDependency(
+      groupId, artifactId ++ "_" ++ scalaVersion, version, classifier
+    )
+}

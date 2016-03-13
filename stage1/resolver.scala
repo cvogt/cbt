@@ -5,6 +5,8 @@ import java.io._
 import scala.collection.immutable.Seq
 import scala.xml._
 import paths._
+import scala.concurrent._
+import scala.concurrent.duration._
 
 private final class Tree( val root: Dependency, computeChildren: => Seq[Tree] ){
   lazy val children = computeChildren
@@ -28,16 +30,70 @@ abstract class Dependency{
 
   def updated: Boolean
   //def cacheClassLoader: Boolean = false
+  private[cbt] def targetClasspath: ClassPath
   def exportedClasspath: ClassPath
   def exportedJars: Seq[File]
   def jars: Seq[File] = exportedJars ++ dependencyJars
 
+  def canBeCached = false
   def cacheDependencyClassLoader = true
 
-  private object cacheClassLoaderBasicBuild extends Cache[URLClassLoader]
-  def classLoader: URLClassLoader = cacheClassLoaderBasicBuild{
+  //private type BuildCache = KeyLockedLazyCache[Dependency, Future[ClassPath]]
+  def exportClasspathConcurrently: ClassPath = {
+    // FIXME: this should separate a blocking and a non-blocking EC
+    import scala.concurrent.ExecutionContext.Implicits.global
+    Await.result(
+      exportClasspathConcurrently(
+        transitiveDependencies
+          .collect{ case d: ArtifactInfo => d }
+          .groupBy( d => (d.groupId,d.artifactId) )
+          .mapValues( _.head )
+        //, new BuildCache
+      ),
+      Duration.Inf
+    )
+  }
+
+  def concurrencyEnabled = false
+
+  /**
+  The implementation of this method is untested and likely buggy
+  at this stage.
+  */
+  private object cacheExportClasspathConcurrently extends Cache[Future[ClassPath]]
+  private def exportClasspathConcurrently(
+    latest: Map[(String, String),ArtifactInfo]//, cache: BuildCache
+  )( implicit ec: ExecutionContext ): Future[ClassPath] = cacheExportClasspathConcurrently{
+    Future.sequence( // trigger compilation / download of all dependencies first
+      this.dependencies.map{
+        d =>
+          // find out latest version of the required dependency
+          val l = d match {
+            case m: JavaDependency => latest( (m.groupId,m.artifactId) )
+            case _ => d
+          }
+          // // trigger compilation if not already triggered
+          // cache.get( l, l.exportClasspathConcurrently( latest, cache ) )
+          l.exportClasspathConcurrently( latest )
+      }
+    ).map(
+      // merge dependency classpaths into one
+      ClassPath.flatten(_)
+    ).map(
+      _ =>
+      // now that all dependencies are done, compile the code of this
+      exportedClasspath
+    )
+  }
+
+  private object classLoaderCache extends Cache[URLClassLoader]
+  def classLoader: URLClassLoader = classLoaderCache{
+    if( concurrencyEnabled ){
+      // trigger concurrent building / downloading dependencies
+      exportClasspathConcurrently
+    }
     val transitiveClassPath = transitiveDependencies.map{
-      case d: MavenDependency => Left(d)
+      case d if d.canBeCached => Left(d)
       case d => Right(d)
     }
     val buildClassPath = ClassPath.flatten(
@@ -79,8 +135,8 @@ abstract class Dependency{
       case _:ArtifactInfo => false
       case _ => true
     }
-    noInfo ++ MavenDependency.removeOutdated( hasInfo )
-  }
+    noInfo ++ JavaDependency.removeOutdated( hasInfo )
+  }.sortBy(_.targetClasspath.string)
 
   def show: String = this.getClass.getSimpleName
   // ========== debug ==========
@@ -95,54 +151,70 @@ abstract class Dependency{
 }
 
 // TODO: all this hard codes the scala version, needs more flexibility
-class ScalaCompiler(logger: Logger) extends MavenDependency("org.scala-lang","scala-compiler",constants.scalaVersion)(logger)
-class ScalaLibrary(logger: Logger) extends MavenDependency("org.scala-lang","scala-library",constants.scalaVersion)(logger)
-class ScalaReflect(logger: Logger) extends MavenDependency("org.scala-lang","scala-reflect",constants.scalaVersion)(logger)
+class ScalaCompilerDependency(version: String)(implicit logger: Logger) extends JavaDependency("org.scala-lang","scala-compiler",version)
+class ScalaLibraryDependency (version: String)(implicit logger: Logger) extends JavaDependency("org.scala-lang","scala-library",version)
+class ScalaReflectDependency (version: String)(implicit logger: Logger) extends JavaDependency("org.scala-lang","scala-reflect",version)
 
-case class ScalaDependencies(logger: Logger) extends Dependency{
+case class ScalaDependencies(version: String)(implicit val logger: Logger) extends Dependency{ sd =>
+  final val updated = false
+  override def canBeCached = true
+  def targetClasspath = ClassPath(Seq())
   def exportedClasspath = ClassPath(Seq())
   def exportedJars = Seq[File]()  
-  def dependencies = Seq( new ScalaCompiler(logger), new ScalaLibrary(logger), new ScalaReflect(logger) )
-  final val updated = false
+  def dependencies = Seq(
+    new ScalaCompilerDependency(version),
+    new ScalaLibraryDependency(version),
+    new ScalaReflectDependency(version)
+  )
 }
 
-/*
-case class BinaryDependency( path: File, dependencies: Seq[Dependency] ) extends Dependency{
+case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implicit val logger: Logger) extends Dependency{
+  def updated = false
   def exportedClasspath = ClassPath(Seq(path))
-  def exportedJars = Seq[File]()
+  def exportedJars = Seq[File](path)
+  def targetClasspath = exportedClasspath
 }
-*/
 
-case class Stage1Dependency(logger: Logger) extends Dependency{
+case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
   def exportedClasspath = ClassPath( Seq(nailgunTarget, stage1Target) )
   def exportedJars = Seq[File]()  
-  def dependencies = ScalaDependencies(logger: Logger).dependencies
+  def dependencies = ScalaDependencies(constants.scalaVersion).dependencies
   def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
+  def targetClasspath = exportedClasspath
 }
-case class CbtDependency(logger: Logger) extends Dependency{
+case class CbtDependency()(implicit val logger: Logger) extends Dependency{
   def exportedClasspath = ClassPath( Seq( stage2Target ) )
   def exportedJars = Seq[File]()  
   override def dependencies = Seq(
-    Stage1Dependency(logger),
-    MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")(logger),
-    MavenDependency("com.lihaoyi","ammonite-repl_2.11.7","0.5.5")(logger),
-    MavenDependency("org.scala-lang.modules","scala-xml_2.11","1.0.5")(logger)
+    Stage1Dependency(),
+    JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+    lib.ScalaDependency(
+      "com.lihaoyi","ammonite-ops","0.5.5", scalaVersion = constants.scalaMajorVersion
+    ),
+    lib.ScalaDependency(
+      "org.scala-lang.modules","scala-xml","1.0.5", scalaVersion = constants.scalaMajorVersion
+    )
   )
   def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
+  def targetClasspath = exportedClasspath
 }
 
-sealed trait ClassifierBase
-final case class Classifier(name: String) extends ClassifierBase
-case object javadoc extends ClassifierBase
-case object sources extends ClassifierBase
+case class Classifier(name: Option[String])
+object Classifier{
+  object none extends Classifier(None)
+  object javadoc extends Classifier(Some("javadoc"))
+  object sources extends Classifier(Some("sources"))
+}
 
-case class MavenDependency( groupId: String, artifactId: String, version: String, sources: Boolean = false )(val logger: Logger)
-  extends ArtifactInfo{
+case class JavaDependency(
+  groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
+)(implicit val logger: Logger) extends ArtifactInfo{
 
   def updated = false
+  override def canBeCached = true
 
   private val groupPath = groupId.split("\\.").mkString("/")
-  def basePath = s"/$groupPath/$artifactId/$version/$artifactId-$version"++(if(sources) "-sources" else "")
+  def basePath = s"/$groupPath/$artifactId/$version/$artifactId-$version" ++ classifier.name.map("-"++_).getOrElse("")
   
   private def resolverUrl:URL = new URL(
     if(version.endsWith("-SNAPSHOT")) "https://oss.sonatype.org/content/repositories/snapshots" else "https://repo1.maven.org/maven2"
@@ -157,7 +229,7 @@ case class MavenDependency( groupId: String, artifactId: String, version: String
 
   def exportedJars = Seq( jar )
   def exportedClasspath = ClassPath( exportedJars )
-
+  def targetClasspath = exportedClasspath
   import scala.collection.JavaConversions._
   
   def jarSha1 = {
@@ -191,25 +263,25 @@ case class MavenDependency( groupId: String, artifactId: String, version: String
 
   // ========== pom traversal ==========
 
-  lazy val pomParents: Seq[MavenDependency] = {
+  lazy val pomParents: Seq[JavaDependency] = {
     (pomXml \ "parent").collect{
       case parent =>
-        MavenDependency(
+        JavaDependency(
           (parent \ "groupId").text,
           (parent \ "artifactId").text,
           (parent \ "version").text
         )(logger)
     }
   }
-  def dependencies: Seq[MavenDependency] = {
-    if(sources) Seq()
+  def dependencies: Seq[JavaDependency] = {
+    if(classifier == Classifier.sources) Seq()
     else (pomXml \ "dependencies" \ "dependency").collect{
       case xml if (xml \ "scope").text == "" && (xml \ "optional").text != "true" =>
-        MavenDependency(
+        JavaDependency(
           lookup(xml,_ \ "groupId").get,
           lookup(xml,_ \ "artifactId").get,
           lookup(xml,_ \ "version").get,
-          (xml \ "classifier").text == "sources"
+          Classifier( Some( (xml \ "classifier").text ).filterNot(_ == "").filterNot(_ == null) )
         )(logger)
     }.toVector
   }
@@ -229,7 +301,7 @@ case class MavenDependency( groupId: String, artifactId: String, version: String
     )
   }
 }
-object MavenDependency{
+object JavaDependency{
   def semanticVersionLessThan(left: String, right: String) = {
     // FIXME: this ignores ends when different size
     val zipped = left.split("\\.|\\-").map(toInt) zip right.split("\\.|\\-").map(toInt)

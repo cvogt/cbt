@@ -31,7 +31,7 @@ object Stage2{
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
-    val res = lib.trapExitCode{
+    val res =
       if (loop) {
         // TODO: this should allow looping over task specific files, like test files as well
         val triggerFiles = first.triggerLoopFiles.map(lib.realpath)
@@ -54,7 +54,6 @@ object Stage2{
       } else {
         new lib.ReflectBuild(build).callNullary(task)
       }
-    }
 
     init.logger.stage2(s"[$now] Stage2 end")
   }

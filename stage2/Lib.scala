@@ -25,7 +25,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
   val buildClassName = "Build"
   val buildBuildClassName = "BuildBuild"
-  
+
   /** Loads Build for given Context */
   def loadDynamic(context: Context, default: Context => Build = new Build(_)): Build = {
     context.logger.composition( context.logger.showInvocation("Build.loadDynamic",context) )
@@ -37,7 +37,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   */
   def loadRoot(context: Context, default: Context => Build = new Build(_)): Build = {
     context.logger.composition( context.logger.showInvocation("Build.loadRoot",context) )
-    def findStartDir(cwd: File): File = {    
+    def findStartDir(cwd: File): File = {
       val buildDir = realpath( cwd ++ "/build" )
       if(buildDir.exists) findStartDir(buildDir) else cwd
     }
@@ -59,7 +59,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     updated: Boolean,
     sourceFiles: Seq[File], compileTarget: File, dependenyClasspath: ClassPath,
     compileArgs: Seq[String], zincVersion: String, scalaVersion: String
-  ): File = {    
+  ): File = {
     if(sourceFiles.nonEmpty)
       lib.zinc(
         updated, sourceFiles, compileTarget, dependenyClasspath, compileArgs
@@ -99,35 +99,29 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   def docJar(
+    scalaVersion: String,
     sourceFiles: Seq[File],
-    dependenyClasspath: ClassPath,
+    dependencyClasspath: ClassPath,
     apiTarget: File,
     jarTarget: File,
     artifactId: String,
     version: String,
     compileArgs: Seq[String]
   ): File = {
-    // FIXME: get this dynamically somehow, or is this even needed?
-    val javacp = ClassPath(
-      "/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/cldrdata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/dnsns.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/jaccess.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/jfxrt.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/localedata.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/nashorn.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunec.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunjce_provider.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/sunpkcs11.jar:/Library/Java/JavaVirtualMachines/jdk1.8.0_60.jdk/Contents/Home/jre/lib/ext/zipfs.jar:/System/Library/Java/Extensions/MRJToolkit.jar".split(":").toVector.map(new File(_))
-    )
-
     mkdir(Path(apiTarget))
-    if(sourceFiles.nonEmpty){    
-      System.err.println("creating docs")
+    if(sourceFiles.nonEmpty){
+      val args = Seq(
+        // FIXME: can we use compiler dependency here?
+        "-cp", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
+        "-d",  apiTarget.toString
+      ) ++ compileArgs ++ sourceFiles.map(_.toString)
+      logger.lib("creating docs for source files "+args.mkString(", "))
       trapExitCode{
-        redirectOutToErr{        
+        redirectOutToErr{
           runMain(
             "scala.tools.nsc.ScalaDoc",
-            Seq(
-              // FIXME: can we use compiler dependency here?
-              "-cp", /*javacp++":"++*/ScalaDependencies(logger).classpath.string ++ ":" ++ dependenyClasspath.string,
-              "-d",  apiTarget.toString
-            ) ++ compileArgs ++ sourceFiles.map(_.toString),
-            new URLClassLoader(
-              ScalaDependencies(logger).classpath ++ javacp,
-              ClassLoader.getSystemClassLoader
-            )
+            args,
+            ScalaDependencies(scalaVersion)(logger).classLoader
           )
         }
       }
@@ -148,7 +142,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       context.copy( cwd = context.cwd ++ "/test", args = loggerArg.toVector ++ context.args ),
       new Build(_) with mixins.Test
     ).run
-    logger.lib(s"return testDefault( $context )")    
+    logger.lib(s"return testDefault( $context )")
     exitCode
   }
 
@@ -168,7 +162,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   class ReflectBuild(val build: Build) extends ReflectObject(build){
-    def usage = {
+    def usage: String = {
       val baseTasks = lib.taskNames(ru.typeOf[Build])
       val thisTasks = lib.taskNames(subclassType) diff baseTasks
       (
@@ -198,17 +192,21 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         .flatMap(toTask _)
         .map{ methodSymbol =>
           val result = mirror.reflect(obj).reflectMethod(methodSymbol)()
+
           // Try to render console representation. Probably not the best way to do this.
-          val method = scala.util.Try( result.getClass.getDeclaredMethod("toConsole") )
-          
-          method.foreach(m => println(m.invoke(result)))
-          method.recover{
-            case e:NoSuchMethodException if e.getMessage contains "toConsole" =>
+          scala.util.Try( result.getClass.getDeclaredMethod("toConsole") ) match {
+            case scala.util.Success(m) =>
+              println(m.invoke(result))
+
+            case scala.util.Failure(e) if e.getMessage contains "toConsole" =>
               result match {
                 case () => ""
                 case ExitCode(code) => System.exit(code)
                 case other => println( other.toString ) // no method .toConsole, using to String
               }
+
+            case scala.util.Failure(e) =>
+              throw e
           }
         }.getOrElse{
           taskName.foreach{ n =>
@@ -216,7 +214,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             System.err.println("")
           }
           System.err.println(usage)
-          System.exit(1)
+          taskName.foreach{ _ =>
+            ExitCode.Failure
+          }
         }
     }
   }
@@ -246,7 +246,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         jar.closeEntry
         name
     }
-    
+
     val duplicateFiles = (names diff names.distinct).distinct
     assert(
       duplicateFiles.isEmpty,
@@ -269,7 +269,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val statusCode =
       new ProcessBuilder( "gpg", "--batch", "--yes", "-a", "-b", "-s", "--passphrase", passphrase, file.toString )
         .inheritIO.start.waitFor
-    
+
     if( 0 != statusCode ) throw new Exception("gpg exited with status code " ++ statusCode.toString)
 
     file ++ ".asc"
@@ -365,7 +365,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           name++".md5" -> md5(content).toArray.map(_.toByte),
           name++".sha1" -> sha1(content).toArray.map(_.toByte)
         )
-      }  
+      }
       val all = (files ++ checksums)
       uploadAll(url, all)
     }

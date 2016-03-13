@@ -24,6 +24,8 @@ public class NailgunLauncher{
   public static ConcurrentHashMap<String,ClassLoader> classLoaderCache =
     new ConcurrentHashMap<String,ClassLoader>();
 
+  public static SecurityManager defaultSecurityManager = System.getSecurityManager();
+
   public static void main(String[] args) throws ClassNotFoundException,
                                                 NoSuchMethodException,
                                                 IllegalAccessException,
