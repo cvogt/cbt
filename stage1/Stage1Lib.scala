@@ -217,7 +217,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   }
 
   def trapExitCode( code: => Unit ): ExitCode = {
-    val old: Option[SecurityManager] = Option(System.getSecurityManager())
     try{
       System.setSecurityManager( trapSecurityManager )
       code
@@ -226,7 +225,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       case TrappedExitCode(exitCode) =>
         exitCode
     } finally {
-      System.setSecurityManager(old.getOrElse(null))
+      System.setSecurityManager(NailgunLauncher.defaultSecurityManager)
     }
   }
 }
