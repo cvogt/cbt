@@ -30,6 +30,7 @@ abstract class Dependency{
 
   def updated: Boolean
   //def cacheClassLoader: Boolean = false
+  private[cbt] def targetClasspath: ClassPath
   def exportedClasspath: ClassPath
   def exportedJars: Seq[File]
   def jars: Seq[File] = exportedJars ++ dependencyJars
@@ -85,8 +86,8 @@ abstract class Dependency{
     )
   }
 
-  private object cacheClassLoaderBasicBuild extends Cache[URLClassLoader]
-  def classLoader: URLClassLoader = cacheClassLoaderBasicBuild{
+  private object classLoaderCache extends Cache[URLClassLoader]
+  def classLoader: URLClassLoader = classLoaderCache{
     if( concurrencyEnabled ){
       // trigger concurrent building / downloading dependencies
       exportClasspathConcurrently
@@ -135,7 +136,7 @@ abstract class Dependency{
       case _ => true
     }
     noInfo ++ JavaDependency.removeOutdated( hasInfo )
-  }
+  }.sortBy(_.targetClasspath.string)
 
   def show: String = this.getClass.getSimpleName
   // ========== debug ==========
@@ -157,6 +158,7 @@ class ScalaReflectDependency (version: String)(implicit logger: Logger) extends 
 case class ScalaDependencies(version: String)(implicit val logger: Logger) extends Dependency{ sd =>
   final val updated = false
   override def canBeCached = true
+  def targetClasspath = ClassPath(Seq())
   def exportedClasspath = ClassPath(Seq())
   def exportedJars = Seq[File]()  
   def dependencies = Seq(
@@ -170,6 +172,7 @@ case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implici
   def updated = false
   def exportedClasspath = ClassPath(Seq(path))
   def exportedJars = Seq[File](path)
+  def targetClasspath = exportedClasspath
 }
 
 case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
@@ -177,6 +180,7 @@ case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
   def exportedJars = Seq[File]()  
   def dependencies = ScalaDependencies(constants.scalaVersion).dependencies
   def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
+  def targetClasspath = exportedClasspath
 }
 case class CbtDependency()(implicit val logger: Logger) extends Dependency{
   def exportedClasspath = ClassPath( Seq( stage2Target ) )
@@ -192,6 +196,7 @@ case class CbtDependency()(implicit val logger: Logger) extends Dependency{
     )
   )
   def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
+  def targetClasspath = exportedClasspath
 }
 
 case class Classifier(name: Option[String])
@@ -224,7 +229,7 @@ case class JavaDependency(
 
   def exportedJars = Seq( jar )
   def exportedClasspath = ClassPath( exportedJars )
-
+  def targetClasspath = exportedClasspath
   import scala.collection.JavaConversions._
   
   def jarSha1 = {

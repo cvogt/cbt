@@ -26,6 +26,7 @@ case class BuildDependency(context: Context) extends TriggerLoop{
   def dependencies = Seq(build)
   def triggerLoopFiles = root.triggerLoopFiles
   final val updated = build.updated
+  def targetClasspath = ClassPath(Seq())
 }
 /*
 case class DependencyOr(first: BuildDependency, second: JavaDependency) extends ProjectProxy with BuildDependencyBase{

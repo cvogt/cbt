@@ -20,7 +20,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   // library available to builds
   implicit final val logger: Logger = context.logger
   override final protected val lib: Lib = new Lib(logger)
-  
+
   // ========== general stuff ==========
 
   def enableConcurrency = false
@@ -106,7 +106,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   )
 
   def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
-  
+
   def localJars           : Seq[File] =
     Seq(projectDirectory ++ "/lib")
       .filter(_.exists)
@@ -118,6 +118,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   override def dependencyJars      : Seq[File] = localJars ++ super.dependencyJars
 
   def exportedClasspath   : ClassPath = ClassPath(Seq(compile))
+  def targetClasspath = ClassPath(Seq(compileTarget))
   def exportedJars: Seq[File] = Seq()
   // ========== compile, run, test ==========
 
@@ -144,10 +145,9 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     }
     sourcesChanged || transitiveDependencies.map(_.updated).fold(false)(_ || _)
   }
- 
-  private object cacheCompileBasicBuild extends Cache[File]
-  def compile: File = cacheCompileBasicBuild{
-    //println(transitiveDependencies.filter(_.updated).mkString("\n"))
+
+  private object compileCache extends Cache[File]
+  def compile: File = compileCache{
     lib.compile(
       updated,
       sourceFiles, compileTarget, dependencyClasspath, scalacOptions,
@@ -156,7 +156,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   }
 
   def runClass: String = "Main"
-  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader ) 
+  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader )
 
   def test: ExitCode = lib.test(context)
 
