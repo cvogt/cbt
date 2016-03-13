@@ -124,17 +124,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
-  private def getZincDependencyJar(zincDeps: Seq[Dependency], zincVersion: String, group: String, name: String) = {
-    zincDeps
-      .collect {
-        case dependency @ JavaDependency( group, name, _, _ ) =>
-          dependency
-      }
-      .headOption
-      .getOrElse( throw new Exception(s"cannot find $name in zinc $zincVersion dependencies: " ++ zincDeps.toString) )
-      .jar
-  }
-
   def zinc(
     needsRecompile: Boolean,
     files: Seq[File],
@@ -156,8 +145,19 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       val zinc = JavaDependency("com.typesafe.zinc","zinc", zincVersion)
       val zincDeps = zinc.transitiveDependencies
       
-      val sbtInterface = getZincDependencyJar(zincDeps, zincVersion, "com.typesafe.sbt", "sbt-interface")
-      val compilerInterface = getZincDependencyJar(zincDeps, zincVersion, "com.typesafe.sbt", "compiler-interface")
+      val sbtInterface =
+        zincDeps
+          .collect{ case d @ JavaDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none ) => d }
+          .headOption
+          .getOrElse( throw new Exception(s"cannot find sbt-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
+          .jar
+
+      val compilerInterface =
+        zincDeps
+          .collect{ case d @ JavaDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources ) => d }
+          .headOption
+          .getOrElse( throw new Exception(s"cannot find compiler-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
+          .jar
 
       val scalaLibrary = JavaDependency("org.scala-lang","scala-library",scalaVersion).jar
       val scalaReflect = JavaDependency("org.scala-lang","scala-reflect",scalaVersion).jar
