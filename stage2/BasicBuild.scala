@@ -35,7 +35,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   // ========== meta data ==========
 
   def scalaVersion: String = constants.scalaVersion
-  final def scalaMajorVersion: String = scalaVersion.split("\\.").take(2).mkString(".")
+  final def scalaMajorVersion: String = lib.scalaMajorVersion(scalaVersion)
   def zincVersion = "0.3.9"
 
   def dependencies: Seq[Dependency] = Seq(
@@ -80,14 +80,25 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   }
   assertSourceDirectories()
 
+  def ScalaDependency(
+    groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
+    scalaVersion: String = scalaMajorVersion
+  ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
-  /** SBT-like dependency builder DSL */
-  class GroupIdAndArtifactId( groupId: String, artifactId: String ){
-    def %(version: String) = new MavenDependency(groupId, artifactId, version)(lib.logger)
+  /** SBT-like dependency builder DSL for syntax compatibility */
+  class DependencyBuilder2( groupId: String, artifactId: String, scalaVersion: Option[String] ){
+    def %(version: String) = scalaVersion.map(
+      v => ScalaDependency(groupId, artifactId, version, scalaVersion = v)
+    ).getOrElse(
+      JavaDependency(groupId, artifactId, version)
+    )
   }
   implicit class DependencyBuilder(groupId: String){
-    def %%(artifactId: String) = new GroupIdAndArtifactId( groupId, artifactId++"_"++scalaMajorVersion )
-    def  %(artifactId: String) = new GroupIdAndArtifactId( groupId, artifactId )
+    def %%(artifactId: String) = new DependencyBuilder2( groupId, artifactId, Some(scalaMajorVersion) )
+    def  %(artifactId: String) = new DependencyBuilder2( groupId, artifactId, None )
+  }
+  implicit class DependencyBuilder3(d: JavaDependency){
+    def  %(classifier: String) = d.copy(classifier = Classifier(Some(classifier)))
   }
 
   final def BuildDependency(path: File) = cbt.BuildDependency(

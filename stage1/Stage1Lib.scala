@@ -38,6 +38,9 @@ class BaseLib{
 
 class Stage1Lib( val logger: Logger ) extends BaseLib{
   lib =>
+  implicit val implicitLogger: Logger = logger
+
+  def scalaMajorVersion(scalaMinorVersion: String) = scalaMinorVersion.split("\\.").take(2).mkString(".")
 
   // ========== reflection ==========
 
@@ -124,11 +127,11 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   private def getZincDependencyJar(zincDeps: Seq[Dependency], zincVersion: String, group: String, name: String) = {
     zincDeps
       .collect {
-        case dependency @ MavenDependency( group, name, _, false ) =>
+        case dependency @ JavaDependency( group, name, _, _ ) =>
           dependency
       }
       .headOption
-      .getOrElse( throw new Exception(s"cannot find $name in zinc $zincVersion dependencies") )
+      .getOrElse( throw new Exception(s"cannot find $name in zinc $zincVersion dependencies: " ++ zincDeps.toString) )
       .jar
   }
 
@@ -150,15 +153,15 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     // only run zinc if files changed, for performance reasons
     // FIXME: this is broken, need invalidate on changes in dependencies as well
     if( needsRecompile ){
-      val zinc = MavenDependency("com.typesafe.zinc","zinc", zincVersion)(logger)
+      val zinc = JavaDependency("com.typesafe.zinc","zinc", zincVersion)
       val zincDeps = zinc.transitiveDependencies
-
+      
       val sbtInterface = getZincDependencyJar(zincDeps, zincVersion, "com.typesafe.sbt", "sbt-interface")
       val compilerInterface = getZincDependencyJar(zincDeps, zincVersion, "com.typesafe.sbt", "compiler-interface")
 
-      val scalaLibrary = MavenDependency("org.scala-lang","scala-library",scalaVersion)(logger).jar
-      val scalaReflect = MavenDependency("org.scala-lang","scala-reflect",scalaVersion)(logger).jar
-      val scalaCompiler = MavenDependency("org.scala-lang","scala-compiler",scalaVersion)(logger).jar
+      val scalaLibrary = JavaDependency("org.scala-lang","scala-library",scalaVersion).jar
+      val scalaReflect = JavaDependency("org.scala-lang","scala-reflect",scalaVersion).jar
+      val scalaCompiler = JavaDependency("org.scala-lang","scala-compiler",scalaVersion).jar
 
       val code = redirectOutToErr{
         lib.runMain(
@@ -228,4 +231,12 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       System.setSecurityManager(NailgunLauncher.defaultSecurityManager)
     }
   }
+
+  def ScalaDependency(
+    groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
+    scalaVersion: String
+  ) =
+    JavaDependency(
+      groupId, artifactId ++ "_" ++ scalaVersion, version, classifier
+    )
 }
