@@ -21,8 +21,8 @@ public class NailgunLauncher{
    * Persistent cache for caching classloaders for the JVM life time. Can be used as needed by user
    * code to improve startup time.
    */
-  public static ConcurrentHashMap<String,ClassLoader> classLoaderCache =
-    new ConcurrentHashMap<String,ClassLoader>();
+  public static ConcurrentHashMap classLoaderCache =
+    new ConcurrentHashMap();
 
   public static SecurityManager defaultSecurityManager = System.getSecurityManager();
 

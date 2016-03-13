@@ -27,7 +27,7 @@ object Stage2{
     }
     val task = argsV.lift( taskIndex )
 
-    val context = Context( new File(argsV(0)), argsV.drop( taskIndex + 1 ), logger )
+    val context = Context( new File(argsV(0)), argsV.drop( taskIndex + 1 ), logger, new ClassLoaderCache(logger) )
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 

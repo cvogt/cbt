@@ -29,7 +29,7 @@ trait ScalaTest extends Build with Test{
     lib.runMain(
       "org.scalatest.tools.Runner",
       Seq("-R", discoveryPath, "-oF") ++ context.args.drop(1),
-      classLoader
+      classLoader(context.classLoaderCache)
     )
   }
 }

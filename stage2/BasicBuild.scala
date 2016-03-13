@@ -19,6 +19,7 @@ class BasicBuild( context: Context ) extends Build( context )
 class Build(val context: Context) extends Dependency with TriggerLoop{
   // library available to builds
   implicit final val logger: Logger = context.logger
+  implicit final val classLoaderCache: ClassLoaderCache = context.classLoaderCache
   override final protected val lib: Lib = new Lib(logger)
 
   // ========== general stuff ==========
@@ -147,12 +148,12 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     lib.compile(
       updated,
       sourceFiles, compileTarget, dependencyClasspath, scalacOptions,
-      zincVersion = zincVersion, scalaVersion = scalaVersion
+      zincVersion = zincVersion, scalaVersion = scalaVersion, context.classLoaderCache
     )
   }
 
   def runClass: String = "Main"
-  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader )
+  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
 
   def test: ExitCode = lib.test(context)
 

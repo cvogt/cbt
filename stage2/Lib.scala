@@ -58,11 +58,11 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def compile(
     updated: Boolean,
     sourceFiles: Seq[File], compileTarget: File, dependenyClasspath: ClassPath,
-    compileArgs: Seq[String], zincVersion: String, scalaVersion: String
+    compileArgs: Seq[String], zincVersion: String, scalaVersion: String, classLoaderCache: ClassLoaderCache
   ): File = {
     if(sourceFiles.nonEmpty)
       lib.zinc(
-        updated, sourceFiles, compileTarget, dependenyClasspath, compileArgs
+        updated, sourceFiles, compileTarget, dependenyClasspath, classLoaderCache, compileArgs
       )( zincVersion = zincVersion, scalaVersion = scalaVersion )
     compileTarget
   }
@@ -87,7 +87,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     jarTarget: File,
     artifactId: String,
     version: String,
-    compileArgs: Seq[String]
+    compileArgs: Seq[String],
+    classLoaderCache: ClassLoaderCache
   ): File = {
     mkdir(Path(apiTarget))
     if(sourceFiles.nonEmpty){
@@ -101,7 +102,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           runMain(
             "scala.tools.nsc.ScalaDoc",
             args,
-            ScalaDependencies(scalaVersion)(logger).classLoader
+            ScalaDependencies(scalaVersion)(logger).classLoader(classLoaderCache)
           )
         }
       }

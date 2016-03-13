@@ -18,7 +18,7 @@ abstract class PackageBuild(context: Context) extends BasicBuild(context) with A
 
   private object cacheDocBasicBuild extends Cache[File]
   def docJar: File = cacheDocBasicBuild{
-    lib.docJar( scalaVersion, sourceFiles, dependencyClasspath, apiTarget, jarTarget, artifactId, version, scalacOptions )
+    lib.docJar( scalaVersion, sourceFiles, dependencyClasspath, apiTarget, jarTarget, artifactId, version, scalacOptions, context.classLoaderCache )
   }
 
   override def jars = jar +: dependencyJars

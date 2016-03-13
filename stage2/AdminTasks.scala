@@ -21,14 +21,14 @@ class AdminTasks(lib: Lib, args: Array[String], cwd: File){
     )
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
     lib.runMain(
-      "ammonite.repl.Main", Seq(), d.classLoader
+      "ammonite.repl.Main", Seq(), d.classLoader(new ClassLoaderCache(logger))
     )
   }
   def scala = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val scalac = new ScalaCompilerDependency( version )
     lib.runMain(
-      "scala.tools.nsc.MainGenericRunner", Seq("-cp", scalac.classpath.string), scalac.classLoader
+      "scala.tools.nsc.MainGenericRunner", Seq("-cp", scalac.classpath.string), scalac.classLoader(new ClassLoaderCache(logger))
     )
   }
   def scaffoldBasicBuild: Unit = lib.scaffoldBasicBuild( cwd )

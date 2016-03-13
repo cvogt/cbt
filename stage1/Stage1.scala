@@ -50,18 +50,21 @@ object Stage1{
 
     val src = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
     val changeIndicator = stage2Target ++ "/cbt/Build.class"
+    
+    val classLoaderCache = new ClassLoaderCache(logger)
 
     logger.stage1("before conditionally running zinc to recompile CBT")
     if( src.exists(newerThan(_, changeIndicator)) ) {
       val stage1Classpath = CbtDependency()(logger).dependencyClasspath
       logger.stage1("cbt.lib has changed. Recompiling with cp: " ++ stage1Classpath.string)
-      zinc( true, src, stage2Target, stage1Classpath, Seq("-deprecation") )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
+      zinc( true, src, stage2Target, stage1Classpath, classLoaderCache, Seq("-deprecation") )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
     }
     logger.stage1(s"[$now] calling CbtDependency.classLoader")
 
+
     logger.stage1(s"[$now] Run Stage2")
     val ExitCode(exitCode) = /*trapExitCode*/{ // this 
-      runMain( mainClass, cwd +: args.drop(1).toVector, CbtDependency()(logger).classLoader )
+      runMain( mainClass, cwd +: args.drop(1).toVector, CbtDependency()(logger).classLoader(classLoaderCache) )
     }
     logger.stage1(s"[$now] Stage1 end")
     System.exit(exitCode)

@@ -30,7 +30,7 @@ object TrappedExitCode{
     }
 }
 
-case class Context( cwd: File, args: Seq[String], logger: Logger )
+case class Context( cwd: File, args: Seq[String], logger: Logger, classLoaderCache: ClassLoaderCache )
 
 class BaseLib{
   def realpath(name: File) = new File(Paths.get(name.getAbsolutePath).normalize.toString)
@@ -130,6 +130,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     files: Seq[File],
     compileTarget: File,
     classpath: ClassPath,
+    classLoaderCache: ClassLoaderCache,
     extraArgs: Seq[String] = Seq()
   )( zincVersion: String, scalaVersion: String ): Unit = {
 
@@ -176,7 +177,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
             "-cp", cp,
             "-d", compileTarget.toString
           ) ++ extraArgs.map("-S"++_) ++ files.map(_.toString),
-          zinc.classLoader
+          zinc.classLoader(classLoaderCache)
         )
       }
 

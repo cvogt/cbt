@@ -87,7 +87,7 @@ abstract class Dependency{
   }
 
   private object classLoaderCache extends Cache[URLClassLoader]
-  def classLoader: URLClassLoader = classLoaderCache{
+  def classLoader( classLoaderCache: ClassLoaderCache  ): URLClassLoader = {
     if( concurrencyEnabled ){
       // trigger concurrent building / downloading dependencies
       exportClasspathConcurrently
@@ -112,7 +112,10 @@ abstract class Dependency{
     if(cacheDependencyClassLoader){    
       new URLClassLoader(
         buildClassPath,
-        ClassLoaderCache.get( cachedClassPath )
+        classLoaderCache.permanent.get(
+          cachedClassPath.string,
+          cbt.URLClassLoader( classpath, ClassLoader.getSystemClassLoader )
+        )
       )
     } else {
       new URLClassLoader(
