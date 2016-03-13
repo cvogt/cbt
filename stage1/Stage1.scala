@@ -8,12 +8,6 @@ import scala.collection.JavaConverters._
 
 import paths._
 
-object CheckAlive{
-  def main(args: Array[String]): Unit = {
-    System.exit(33)
-  }
-}
-
 class Init(args: Array[String]) {
   /**
    * Raw parameters including their `-D` flag.
