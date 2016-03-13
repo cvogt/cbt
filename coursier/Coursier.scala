@@ -1,7 +1,7 @@
 /*
 package cbt
 object Coursier{
-  implicit class CoursierDependencyResolution(d: MavenDependency){
+  implicit class CoursierDependencyResolution(d: JavaDependency){
     import d._
     def resolveCoursier = {
       import coursier._
@@ -12,7 +12,7 @@ object Coursier{
 
       val start = Resolution(
         Set(
-          MavenDependency(
+          JavaDependency(
             Module(groupId, artifactId), version
           )
         )
@@ -23,7 +23,7 @@ object Coursier{
 
       val resolution = start.process.run(fetch).run
 
-      val errors: Seq[(MavenDependency, Seq[String])] = resolution.errors
+      val errors: Seq[(JavaDependency, Seq[String])] = resolution.errors
 
       if(errors.nonEmpty) throw new Exception(errors.toString)
 
@@ -40,7 +40,7 @@ object Coursier{
         case Right(file) => file
       })
 
-      resolution.dependencies.map( d => cbt.MavenDependency(d.module.organization,d.module.name, d.version)).to[collection.immutable.Seq]
+      resolution.dependencies.map( d => cbt.JavaDependency(d.module.organization,d.module.name, d.version)).to[collection.immutable.Seq]
     }
   }
 }

@@ -1,4 +1,5 @@
 package cbt
 object constants{
-  def scalaVersion = Option(System.getenv("SCALA_VERSION")).get
+  val scalaVersion = Option(System.getenv("SCALA_VERSION")).get
+  val scalaMajorVersion = scalaVersion.split("\\.").take(2).mkString(".")
 }

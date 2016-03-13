@@ -28,7 +28,7 @@ case class BuildDependency(context: Context) extends TriggerLoop{
   final val updated = build.updated
 }
 /*
-case class DependencyOr(first: BuildDependency, second: MavenDependency) extends ProjectProxy with BuildDependencyBase{
+case class DependencyOr(first: BuildDependency, second: JavaDependency) extends ProjectProxy with BuildDependencyBase{
   val isFirst = new File(first.context.cwd).exists
   def triggerLoopFiles = if(isFirst) first.triggerLoopFiles else Seq()
   protected val delegate = if(isFirst) first else second
