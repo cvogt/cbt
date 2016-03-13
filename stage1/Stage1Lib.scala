@@ -14,7 +14,7 @@ import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 import scala.collection.immutable.Seq
 
 // CLI interop
-case class ExitCode(code: Int)
+case class ExitCode(integer: Int)
 object ExitCode{
   val Success = ExitCode(0)
   val Failure = ExitCode(1)
@@ -110,6 +110,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         .loadClass(cls)
         .getMethod( "main", scala.reflect.classTag[Array[String]].runtimeClass )
         .invoke( null, args.toArray.asInstanceOf[AnyRef] )
+      ExitCode.Success
     }
   }
 
@@ -187,7 +188,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         files.foreach(_.setLastModified(now))
 
         // Tell the caller that things went wrong.
-        System.exit(code.code)
+        System.exit(code.integer)
       }
     }
   }
@@ -219,11 +220,10 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
-  def trapExitCode( code: => Unit ): ExitCode = {
+  def trapExitCode( code: => ExitCode ): ExitCode = {
     try{
       System.setSecurityManager( trapSecurityManager )
       code
-      ExitCode.Success
     } catch {
       case TrappedExitCode(exitCode) =>
         exitCode

@@ -97,7 +97,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         "-d",  apiTarget.toString
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
-      trapExitCode{
         redirectOutToErr{
           runMain(
             "scala.tools.nsc.ScalaDoc",
@@ -106,7 +105,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           )
         }
       }
-    }
     val docJar = jarTarget ++ ("/"++artifactId++"-"++version++"-javadoc.jar")
     lib.jarFile(docJar, Vector(apiTarget))
     docJar
