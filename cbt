@@ -192,12 +192,8 @@ stage1 () {
 	fi
 
 	log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." $*
-	if [ "$1" = "admin" ] || [ "$2" = "admin" ]; then
-		mainClass=cbt.AdminStage1
-	else
-		mainClass=cbt.Stage1
-	fi
-
+	mainClass=cbt.Stage1
+	
 	CP=$STAGE1$TARGET:$SCALA_CLASSPATH
 	if [ $use_nailgun -eq 1 ]
 	then

@@ -31,22 +31,14 @@ class Init(args: Array[String]) {
   val logger = new Logger(props.get("log"))
 }
 
-object Stage1 extends Stage1Base{
-  def mainClass = ("cbt.Stage2")
-}
-
-object AdminStage1 extends Stage1Base{
-  def mainClass = ("cbt.AdminStage2")
-}
-
-abstract class Stage1Base{
-  def mainClass: String
+object Stage1{
 
   protected def newerThan( a: File, b: File ) ={
     a.lastModified > b.lastModified
   }
 
   def main(args: Array[String]): Unit = {
+    val mainClass = if(args contains "admin") "cbt.AdminStage2" else "cbt.Stage2"
     val init = new Init(args)
     val lib = new Stage1Lib(init.logger)
     import lib._
