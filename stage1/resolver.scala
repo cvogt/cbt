@@ -92,9 +92,11 @@ abstract class Dependency{
       // trigger concurrent building / downloading dependencies
       exportClasspathConcurrently
     }
-    val transitiveClassPath = transitiveDependencies.map{
+    val transitiveClassPath = {
+      (this +: transitiveDependencies).map{
       case d if d.canBeCached => Left(d)
       case d => Right(d)
+    }
     }
     val buildClassPath = ClassPath.flatten(
       transitiveClassPath.flatMap(
@@ -109,12 +111,12 @@ abstract class Dependency{
 
     if(cacheDependencyClassLoader){    
       new URLClassLoader(
-        exportedClasspath ++ buildClassPath,
+        buildClassPath,
         ClassLoaderCache.get( cachedClassPath )
       )
     } else {
       new URLClassLoader(
-        exportedClasspath ++ buildClassPath ++ cachedClassPath, ClassLoader.getSystemClassLoader
+        buildClassPath ++ cachedClassPath, ClassLoader.getSystemClassLoader
       )
     }
   }
