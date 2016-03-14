@@ -8,7 +8,7 @@ class BuildBuild(context: Context) extends Build(context){
   val managedBuild = {
     val managedContext = context.copy( cwd = managedBuildDirectory )
     val cl = new cbt.URLClassLoader(
-      classpath,
+      exportedClasspath,
       classOf[BuildBuild].getClassLoader // FIXME: this looks wrong. Should be ClassLoader.getSystemClassLoader but that crashes
     )
     lib.create( lib.buildClassName )( managedContext )( cl ).asInstanceOf[Build]

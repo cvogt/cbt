@@ -10,13 +10,18 @@ case class URLClassLoader(classPath: ClassPath, parent: ClassLoader)
     parent
   ){
   override def toString = (
-    scala.Console.BLUE ++ "cbt.URLClassLoader" ++ scala.Console.RESET
-      ++ "(\n  " ++ getURLs.map(_.toString).sorted.mkString(",\n  ")
+    scala.Console.BLUE
+      ++ super.toString
+      ++ scala.Console.RESET
+      ++ "(\n"
+      ++ (
+        getURLs.map(_.toString).sorted.mkString(",\n")
       ++ (
         if(getParent() != ClassLoader.getSystemClassLoader())
-          ",\n" ++ getParent().toString.split("\n").map("  "++_).mkString("\n")
+            ",\n" ++ getParent().toString
         else ""
       )
+      ).split("\n").map("  "++_).mkString("\n")
       ++ "\n)"
   )
 }

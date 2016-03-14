@@ -46,7 +46,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   /** Create instance of the given class via reflection */
   def create(cls: String)(args: Any*)(classLoader: ClassLoader): Any = {
-    logger.composition( logger.showInvocation("Stage1Lib.create", (classLoader,cls,args)) )
+    logger.composition( logger.showInvocation("Stage1Lib.create", (cls,args,classLoader)) )
     import scala.reflect.runtime.universe._
     val m = runtimeMirror(classLoader)
     val sym = m.classSymbol(classLoader.loadClass(cls))

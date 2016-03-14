@@ -4,15 +4,15 @@ import java.net._
 import java.util.concurrent.ConcurrentHashMap
 
 class ClassLoaderCache(logger: Logger){
-  val permanent = new KeyLockedLazyCache(
+  val persistent = new KeyLockedLazyCache(
     NailgunLauncher.classLoaderCache.asInstanceOf[ConcurrentHashMap[String,AnyRef]],
     NailgunLauncher.classLoaderCache.asInstanceOf[ConcurrentHashMap[AnyRef,ClassLoader]],
-    logger
+    Some(logger)
   )
   val transient = new KeyLockedLazyCache(
     new ConcurrentHashMap[String,AnyRef],
     new ConcurrentHashMap[AnyRef,ClassLoader],
-    logger
+    Some(logger)
   )
 }
 
@@ -25,21 +25,23 @@ simultaneously without a deadlock.
 final private[cbt] class KeyLockedLazyCache[Key <: AnyRef,Value <: AnyRef](
   keys: ConcurrentHashMap[Key,AnyRef],
   builds: ConcurrentHashMap[AnyRef,Value],
-  logger: Logger
+  logger: Option[Logger]
 ){
   def get( key: Key, value: => Value ): Value = {
-    val keyObject = keys.synchronized{    
+    val keyObject = keys.synchronized{
       if( ! (keys containsKey key) ){
-        logger.resolver("CACHE MISS: " ++ key.toString)
-        keys.put( key, new LockableKey )
+        val keyObject = new LockableKey
+        logger.foreach(_.resolver("CACHE MISS: " ++ key.toString))
+        keys.put( key, keyObject )
+        keyObject
       } else {
-        logger.resolver("CACHE HIT: " ++ key.toString)
+        val keyObject = keys get key
+        logger.foreach(_.resolver("CACHE HIT: " ++ keyObject.toString ++ " -> " ++ key.toString))
+        keyObject
       }
-      keys get key
     }
     import collection.JavaConversions._
-    logger.resolver("CACHE: \n" ++ keys.mkString("\n"))
-    def k = ClassPath(new java.io.File("c")).asInstanceOf[Key]
+    //logger.resolver("CACHE: \n" ++ keys.mkString("\n"))
     // synchronizing on key only, so asking for a particular key does
     // not block the whole cache, but just that cache entry
     key.synchronized{

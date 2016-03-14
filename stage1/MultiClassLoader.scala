@@ -19,6 +19,16 @@ class MultiClassLoader(parents: Seq[ClassLoader]) extends ClassLoader {
     }.find(_.isDefined).flatten
     c.getOrElse( ClassLoader.getSystemClassLoader.loadClass(name) )
   }
-  override def toString = "MultiClassLoader(" ++ parents.mkString(",") ++ ")"
+  override def toString = (
+    scala.Console.BLUE
+      ++ super.toString
+      ++ scala.Console.RESET
+      ++ "("
+      ++ (
+        if(parents.nonEmpty)(
+          "\n" ++ parents.map(_.toString).sorted.mkString(",\n").split("\n").map("  "++_).mkString("\n") ++ "\n"
+        ) else ""
+      ) ++")"
+  )
 }
 */

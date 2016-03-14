@@ -112,7 +112,7 @@ abstract class Dependency{
     if(cacheDependencyClassLoader){    
       new URLClassLoader(
         buildClassPath,
-        classLoaderCache.permanent.get(
+        classLoaderCache.persistent.get(
           cachedClassPath.string,
           cbt.URLClassLoader( classpath, ClassLoader.getSystemClassLoader )
         )
@@ -133,8 +133,9 @@ abstract class Dependency{
     new Tree(this, (dependencies diff parents).map(_.resolveRecursive(this :: parents)))
   }
 
-  def transitiveDependencies: Seq[Dependency] = {
-    val deps = dependencies.flatMap(_.resolveRecursive().linearize)
+  private object transitiveDependenciesCache extends Cache[Seq[Dependency]]
+  def transitiveDependencies: Seq[Dependency] = transitiveDependenciesCache{
+    val deps = (dependencies ++ dependencies.flatMap(_.transitiveDependencies)).distinct
     val hasInfo = deps.collect{ case d:ArtifactInfo => d }
     val noInfo  = deps.filter{
       case _:ArtifactInfo => false
