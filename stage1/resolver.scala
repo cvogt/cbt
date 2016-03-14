@@ -114,7 +114,7 @@ abstract class Dependency{
         buildClassPath,
         classLoaderCache.persistent.get(
           cachedClassPath.string,
-          cbt.URLClassLoader( classpath, ClassLoader.getSystemClassLoader )
+          cbt.URLClassLoader( cachedClassPath, ClassLoader.getSystemClassLoader )
         )
       )
     } else {
