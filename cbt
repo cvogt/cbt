@@ -158,7 +158,7 @@ stage1 () {
 	if [ $changed -eq 1 ]; then
 		rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
-		javac -Xlint:deprecation -d $NAILGUN$TARGET `ls $NAILGUN*.java`
+		javac -Xlint:deprecation -Xlint:unchecked -d $NAILGUN$TARGET `ls $NAILGUN*.java`
 		compiles=$?
 		if [ $compiles -ne 0 ]; then
 			rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # triggers recompilation next time.
@@ -199,14 +199,14 @@ stage1 () {
 	then
 		log "Running JVM directly" $*
 		# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
-		java -cp $NAILGUN$TARGET cbt.NailgunLauncher $mainClass $CP "$CWD" $*
+		java -cp $NAILGUN$TARGET cbt.NailgunLauncher "$CWD" $*
 	else
 		log "Running via nailgun." $*
 		for i in 0 1 2 3 4 5 6 7 8 9; do
 			log "Adding classpath." $*
 			$NG ng-cp $NAILGUN$TARGET >> $nailgun_out 2>> $nailgun_err
 			log "Checking if nailgun is up yet." $*
-			$NG cbt.NailgunLauncher cbt.CheckAlive $CP "$CWD" $* >> $nailgun_out 2>> $nailgun_err
+			$NG cbt.NailgunLauncher check-alive >> $nailgun_out 2>> $nailgun_err
 			alive=$?
 			if [ $alive -eq 131 ] || [ $alive -eq 33 ]; then
 			# the 33 is not working right now
@@ -215,14 +215,14 @@ stage1 () {
 				break
 			else
 				log "Nope. Sleeping for 0.5 seconds" $*
-				if [ "$i" -gt "1" ]; then
-					echo "Waiting for nailgun to start... (For problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log)" 1>&2
-				fi
+				#if [ "$i" -gt 1 ]; then
+				#	echo "Waiting for nailgun to start... (In case of problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log)" 1>&2
+				#fi
 			fi
-			sleep 0.5
+			sleep 0.3
 		done
 		log "Running $mainClass via Nailgun." $*
-		$NG cbt.NailgunLauncher $mainClass $CP "$CWD" $*
+		$NG cbt.NailgunLauncher "$CWD" $*
 	fi
 	exitCode=$?
 	log "Done running $mainClass." $*

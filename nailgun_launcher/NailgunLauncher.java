@@ -21,8 +21,8 @@ public class NailgunLauncher{
    * Persistent cache for caching classloaders for the JVM life time. Can be used as needed by user
    * code to improve startup time.
    */
-  public static ConcurrentHashMap classLoaderCacheKeys = new ConcurrentHashMap();
-  public static ConcurrentHashMap classLoaderCacheValues = new ConcurrentHashMap();
+  public static ConcurrentHashMap<String, Object> classLoaderCacheKeys = new ConcurrentHashMap<String,Object>();
+  public static ConcurrentHashMap<Object, ClassLoader> classLoaderCacheValues = new ConcurrentHashMap<Object,ClassLoader>();
 
   public static SecurityManager defaultSecurityManager = System.getSecurityManager();
 
@@ -31,29 +31,63 @@ public class NailgunLauncher{
                                                 IllegalAccessException,
                                                 InvocationTargetException,
                                                 MalformedURLException {
-    if (args.length < 3) {
-      System.out.println("usage: <main class> <class path> <... args>");
-    } else {
-      // TODO: cache this classloader, but invalidate on changes
-      String[] cp = args[1].split(File.pathSeparator);
+    String CBT_HOME = System.getenv("CBT_HOME");
+    String SCALA_VERSION = System.getenv("SCALA_VERSION");
+    String NAILGUN = System.getenv("NAILGUN");
+    String STAGE1 = System.getenv("STAGE1");
+    String TARGET = System.getenv("TARGET");
+    assert(CBT_HOME != null);
+    assert(SCALA_VERSION != null);
+    assert(NAILGUN != null);
+    assert(STAGE1 != null);
+    assert(TARGET != null);
 
-      URL[] urls = new URL[cp.length];
-      for(int i = 0; i < cp.length; i++){
-        urls[i] = new URL("file:"+cp[i]);
-      }
+    String library = CBT_HOME+"/bootstrap_scala/cache/"+SCALA_VERSION+"/scala-library-"+SCALA_VERSION+".jar";
+    if(!classLoaderCacheKeys.containsKey(library)){
+      Object libraryKey = new Object();
+      classLoaderCacheKeys.put(library,libraryKey);
+      ClassLoader libraryClassLoader = new URLClassLoader( new URL[]{ new URL("file:"+library) } );
+      classLoaderCacheValues.put(libraryKey, libraryClassLoader);
 
-      String[] newArgs = new String[args.length-2];
-      for(int i = 0; i < args.length-2; i++){
-        newArgs[i] = args[i+2];
-      }
+      String xml = CBT_HOME+"/bootstrap_scala/cache/"+SCALA_VERSION+"/scala-xml_2.11-1.0.5.jar";
+      Object xmlKey = new Object();
+      classLoaderCacheKeys.put(xml,xmlKey);
+      ClassLoader xmlClassLoader = new URLClassLoader(
+        new URL[]{ new URL("file:"+xml) },
+        libraryClassLoader
+      );
+      classLoaderCacheValues.put(xmlKey, xmlClassLoader);
 
-      new URLClassLoader( urls ){
-        public String toString(){
-          return super.toString() + "(\n  " + Arrays.toString(urls) + "\n)";
-        }
-      }.loadClass(args[0])
-        .getMethod("main", String[].class)
-        .invoke( null/* _cls.newInstance()*/, (Object) newArgs );
+      Object nailgunKey = new Object();
+      classLoaderCacheKeys.put(NAILGUN+TARGET,nailgunKey);
+      ClassLoader nailgunClassLoader = new URLClassLoader(
+        new URL[]{ new URL("file:"+NAILGUN+TARGET) },
+        xmlClassLoader
+      );
+      classLoaderCacheValues.put(nailgunKey, nailgunClassLoader);
     }
+
+    if(args[0].equals("check-alive")){
+      System.exit(33);
+      return;
+    }
+
+    new URLClassLoader(
+      new URL[]{ new URL("file:"+STAGE1+TARGET) }, 
+      classLoaderCacheValues.get(
+        classLoaderCacheKeys.get( NAILGUN+TARGET )
+      )
+    )
+      .loadClass("cbt.Stage1")
+      .getMethod("main", String[].class)
+      .invoke( null/* _cls.newInstance()*/, (Object) args );
   }
 }
+
+/*
+protected class MyURLClassLoader extends URLClassLoader{
+  public String toString(){
+    return super.toString() + "(\n  " + Arrays.toString(urls) + "\n)";
+  }
+}
+*/
