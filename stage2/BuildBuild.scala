@@ -11,7 +11,11 @@ class BuildBuild(context: Context) extends Build(context){
       exportedClasspath,
       classOf[BuildBuild].getClassLoader // FIXME: this looks wrong. Should be ClassLoader.getSystemClassLoader but that crashes
     )
-    lib.create( lib.buildClassName )( managedContext )( cl ).asInstanceOf[Build]
+    cl
+      .loadClass(lib.buildClassName)
+      .getConstructor(classOf[Context])
+      .newInstance(managedContext)
+      .asInstanceOf[Build]
   }
   override def triggerLoopFiles = super.triggerLoopFiles ++ managedBuild.triggerLoopFiles
   override def finalBuild = managedBuild.finalBuild

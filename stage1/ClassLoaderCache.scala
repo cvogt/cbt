@@ -2,11 +2,12 @@ package cbt
 
 import java.net._
 import java.util.concurrent.ConcurrentHashMap
+import collection.JavaConversions._
 
 class ClassLoaderCache(logger: Logger){
   val persistent = new KeyLockedLazyCache(
-    NailgunLauncher.classLoaderCache.asInstanceOf[ConcurrentHashMap[String,AnyRef]],
-    NailgunLauncher.classLoaderCache.asInstanceOf[ConcurrentHashMap[AnyRef,ClassLoader]],
+    NailgunLauncher.classLoaderCacheKeys.asInstanceOf[ConcurrentHashMap[String,AnyRef]],
+    NailgunLauncher.classLoaderCacheValues.asInstanceOf[ConcurrentHashMap[AnyRef,ClassLoader]],
     Some(logger)
   )
   val transient = new KeyLockedLazyCache(
@@ -14,4 +15,5 @@ class ClassLoaderCache(logger: Logger){
     new ConcurrentHashMap[AnyRef,ClassLoader],
     Some(logger)
   )
+  override def toString = s"""ClassLoaderCache("""+ persistent.keys.keySet.toVector.map(_.toString).sorted.map(" "++_).mkString("\n","\n","\n") +""")"""
 }

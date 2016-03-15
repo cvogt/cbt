@@ -36,7 +36,6 @@ abstract class Dependency{
   def jars: Seq[File] = exportedJars ++ dependencyJars
 
   def canBeCached = false
-  def cacheDependencyClassLoader = true
 
   //private type BuildCache = KeyLockedLazyCache[Dependency, Future[ClassPath]]
   def exportClasspathConcurrently: ClassPath = {
@@ -86,42 +85,64 @@ abstract class Dependency{
     )
   }
 
-  private object classLoaderCache extends Cache[URLClassLoader]
-  def classLoader( classLoaderCache: ClassLoaderCache  ): URLClassLoader = {
+  def actual(current: Dependency, latest: Map[(String,String),Dependency]) = current match {
+    case d: ArtifactInfo => latest((d.groupId,d.artifactId))
+    case d => d
+  }
+  private def dependencyClassLoader( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+    if( dependencies.isEmpty ){
+      ClassLoader.getSystemClassLoader
+    } else if( dependencies.size == 1 ){
+      dependencies.head.classLoaderRecursion( latest, cache )
+    } else if( dependencies.forall(_.canBeCached) ){
+      assert(transitiveDependencies.forall(_.canBeCached))
+      cache.persistent.get(
+        dependencyClasspath.string,
+        new MultiClassLoader(
+          dependencies.map( _.classLoaderRecursion(latest, cache) )
+        )
+      )
+    } else {
+      val (cachable, nonCachable) = dependencies.partition(_.canBeCached)
+      new URLClassLoader(
+        ClassPath.flatten( nonCachable.map(actual(_,latest)).map(_.exportedClasspath) ),
+        cache.persistent.get(
+          ClassPath.flatten( cachable.map(actual(_,latest)).map(_.exportedClasspath) ).string,
+          new MultiClassLoader(
+            cachable.map( _.classLoaderRecursion(latest, cache) )
+          )
+        )
+      )
+      new MultiClassLoader(
+        dependencies.map( _.classLoaderRecursion(latest, cache) )
+      )
+    }
+  }
+  protected def classLoaderRecursion( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+    if( canBeCached ){
+      val a = actual( this, latest )
+      cache.persistent.get(
+        a.classpath.string,
+        cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
+      )
+    } else {
+      cbt.URLClassLoader( exportedClasspath, dependencyClassLoader(latest, cache) )
+    }
+  }
+  private object classLoaderCache extends Cache[ClassLoader]
+  def classLoader( cache: ClassLoaderCache  ): ClassLoader = classLoaderCache{
     if( concurrencyEnabled ){
       // trigger concurrent building / downloading dependencies
       exportClasspathConcurrently
     }
-    val transitiveClassPath = {
-      (this +: transitiveDependencies).map{
-      case d if d.canBeCached => Left(d)
-      case d => Right(d)
-    }
-    }
-    val buildClassPath = ClassPath.flatten(
-      transitiveClassPath.flatMap(
-        _.right.toOption.map(_.exportedClasspath)
-      )
+    classLoaderRecursion(
+      (this +: transitiveDependencies).collect{
+        case d: ArtifactInfo => d 
+      }.groupBy(
+        d => (d.groupId,d.artifactId)
+      ).mapValues(_.head),
+      cache
     )
-    val cachedClassPath = ClassPath.flatten(
-      transitiveClassPath.flatMap(
-        _.left.toOption
-      ).par.map(_.exportedClasspath).seq.sortBy(_.string)
-    )
-
-    if(cacheDependencyClassLoader){    
-      new URLClassLoader(
-        buildClassPath,
-        classLoaderCache.persistent.get(
-          cachedClassPath.string,
-          cbt.URLClassLoader( cachedClassPath, ClassLoader.getSystemClassLoader )
-        )
-      )
-    } else {
-      new URLClassLoader(
-        buildClassPath ++ cachedClassPath, ClassLoader.getSystemClassLoader
-      )
-    }
   }
   def classpath           : ClassPath = exportedClasspath ++ dependencyClasspath
   def dependencyJars      : Seq[File] = transitiveDependencies.flatMap(_.jars)
@@ -182,15 +203,27 @@ case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implici
 }
 
 case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
-  def exportedClasspath = ClassPath( Seq(nailgunTarget, stage1Target) )
-  def exportedJars = Seq[File]()  
-  def dependencies = ScalaDependencies(constants.scalaVersion).dependencies
   def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
+  override def canBeCached = false
+  private object classLoaderRecursionCache extends Cache[ClassLoader]
+  /*
+  override def classLoaderRecursion(latest: Map[(String,String),Dependency], cache: ClassLoaderCache) = classLoaderRecursionCache{
+    println(System.currentTimeMillis)
+    val cl = getClass.getClassLoader
+    println(System.currentTimeMillis)
+    cl
+    ClassLoader.getSystemClassLoader
+  }
+  */
+  override def exportedClasspath = ClassPath(Seq(nailgunTarget, stage1Target) )
+  override def exportedJars = ???//Seq[File]()  
+  override def dependencies = ScalaDependencies(constants.scalaVersion).dependencies
   def targetClasspath = exportedClasspath
 }
 case class CbtDependency()(implicit val logger: Logger) extends Dependency{
-  def exportedClasspath = ClassPath( Seq( stage2Target ) )
-  def exportedJars = Seq[File]()  
+  override def canBeCached = false
+  override def exportedClasspath = ClassPath( Seq( stage2Target ) )
+  override def exportedJars = Seq[File]()  
   override def dependencies = Seq(
     Stage1Dependency(),
     JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
