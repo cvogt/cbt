@@ -1,14 +1,13 @@
 package cbt
 
 import java.net._
+import scala.util.Try
 
-case class URLClassLoader(classPath: ClassPath, parent: ClassLoader)
+case class URLClassLoader( classPath: ClassPath, parent: ClassLoader )( implicit val logger: Logger )
   extends java.net.URLClassLoader(
-    classPath.strings.map(
-      path => new URL("file:"++path)
-    ).toArray,
+    classPath.strings.map( p => new URL("file:" ++ p) ).toArray,
     parent
-  ){
+  ) with CachingClassLoader{
   override def toString = (
     scala.Console.BLUE
       ++ super.toString
@@ -16,12 +15,32 @@ case class URLClassLoader(classPath: ClassPath, parent: ClassLoader)
       ++ "(\n"
       ++ (
         getURLs.map(_.toString).sorted.mkString(",\n")
-      ++ (
-        if(getParent() != ClassLoader.getSystemClassLoader())
+        ++ (
+          if(getParent() != ClassLoader.getSystemClassLoader())
             ",\n" ++ getParent().toString
-        else ""
-      )
+          else ""
+        )
       ).split("\n").map("  "++_).mkString("\n")
       ++ "\n)"
   )
 }
+
+/*
+trait ClassLoaderLogging extends ClassLoader{
+  def logger: Logger
+  val prefix = s"[${getClass.getSimpleName}] "
+  val postfix = " in \name" ++ this.toString
+  override def loadClass(name: String, resolve: Boolean): Class[_] = {
+    //logger.resolver(prefix ++ s"loadClass($name, $resolve)" ++ postfix )
+    super.loadClass(name, resolve)
+  }
+  override def loadClass(name: String): Class[_] = {
+    //logger.resolver(prefix ++ s"loadClass($name)" ++ postfix )
+    super.loadClass(name)
+  }
+  override def findClass(name: String): Class[_] = {
+    //logger.resolver(prefix ++ s"findClass($name)" ++ postfix )
+    super.findClass(name)
+  }
+}
+*/
