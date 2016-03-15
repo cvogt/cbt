@@ -257,7 +257,8 @@ case class JavaDependency(
     }.toOption // FIXME: .toOption is a temporary solution to ignore if libs don't have one (not sure that's even possible)
   }
 
-  def jar = {
+  private object jarCache extends Cache[File]
+  def jar = jarCache{
     lib.download( jarUrl, jarFile, jarSha1 )
     jarFile
   }
