@@ -13,8 +13,6 @@ import scala.collection.immutable.Seq
 import scala.reflect.runtime.{universe => ru}
 import scala.util._
 
-import ammonite.ops.{cwd => _,_}
-
 // pom model
 case class Developer(id: String, name: String, timezone: String, url: URL)
 case class License(name: String, url: URL)
@@ -90,7 +88,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     compileArgs: Seq[String],
     classLoaderCache: ClassLoaderCache
   ): File = {
-    mkdir(Path(apiTarget))
+    apiTarget.mkdirs
     if(sourceFiles.nonEmpty){
       val args = Seq(
         // FIXME: can we use compiler dependency here?
@@ -320,8 +318,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           </dependencies>
       </project>
     val path = jarTarget.toString ++ ( "/" ++ artifactId ++ "-" ++ version ++ ".pom" )
-    write.over(Path(path), "<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString)
-    new File(path)
+    val file = new File(path)
+    Files.write(file.toPath, ("<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString).getBytes)
+    file
   }
 
   def concurrently[T,R]( concurrencyEnabled: Boolean )( items: Seq[T] )( projection: T => R ): Seq[R] = {
@@ -363,7 +362,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")
-    val userPassword = read(Path(sonatypeLogin)).trim
+    val userPassword = new String(readAllBytes(sonatypeLogin.toPath)).trim
     val encoding = new sun.misc.BASE64Encoder().encode(userPassword.getBytes)
     httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
     httpCon.setRequestProperty("Content-Type", "application/binary")

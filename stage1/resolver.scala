@@ -229,9 +229,6 @@ case class CbtDependency()(implicit val logger: Logger) extends Dependency{
     JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
     JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
     lib.ScalaDependency(
-      "com.lihaoyi","ammonite-ops","0.5.5", scalaVersion = constants.scalaMajorVersion
-    ),
-    lib.ScalaDependency(
       "org.scala-lang.modules","scala-xml","1.0.5", scalaVersion = constants.scalaMajorVersion
     )
   )

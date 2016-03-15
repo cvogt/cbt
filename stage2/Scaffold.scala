@@ -1,13 +1,12 @@
 package cbt
 import java.io._
+import java.nio.file._
 import java.net._
-import ammonite.ops.{cwd => _,_}
-
 trait Scaffold{
   def logger: Logger
 
   private def createFile( projectDirectory: File, fileName: String, code: String ){
-    write( Path( projectDirectory.string ++ "/" ++ fileName ), code )
+    Files.write( ( projectDirectory ++ ("/" ++ fileName) ).toPath, code.getBytes, StandardOpenOption.CREATE_NEW )
     import scala.Console._
     println( GREEN ++ "Created " ++ fileName ++ RESET )
   }

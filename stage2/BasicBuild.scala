@@ -13,8 +13,6 @@ import scala.collection.immutable.Seq
 import scala.reflect.runtime.{universe => ru}
 import scala.util._
 
-import ammonite.ops.{cwd => _,_}
-
 class BasicBuild( context: Context ) extends Build( context )
 class Build(val context: Context) extends Dependency with TriggerLoop{
   // library available to builds
