@@ -12,6 +12,13 @@ class AdminTasks(lib: Lib, args: Array[String], cwd: File){
       }
     )
   }
+  def dependencyTree = {
+    args(1).split(",").toVector.map{
+      d =>
+        val v = d.split(":")
+        new JavaDependency(v(0),v(1),v(2))(lib.logger).dependencyTree
+    }.mkString("\n\n")
+  }
   def amm = ammonite
   def ammonite = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
