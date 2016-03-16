@@ -23,7 +23,7 @@ class MultiClassLoader(parents: Seq[ClassLoader])(implicit val logger: Logger) e
       ++ "("
       ++ (
         if(parents.nonEmpty)(
-          "\n" ++ parents.map(_.toString).sorted.mkString(",\n").split("\n").map("  "++_).mkString("\n") ++ "\n"
+          "\n" ++ parents.map(_.toString).mkString(",\n").split("\n").map("  "++_).mkString("\n") ++ "\n"
         ) else ""
       ) ++")"
   )

@@ -110,7 +110,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     trapExitCode{
       classLoader
         .loadClass(cls)
-        .getMethod( "main", scala.reflect.classTag[Array[String]].runtimeClass )
+        .getMethod( "main", classOf[Array[String]] )
         .invoke( null, args.toArray.asInstanceOf[AnyRef] )
       ExitCode.Success
     }

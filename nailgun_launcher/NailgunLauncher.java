@@ -46,13 +46,13 @@ public class NailgunLauncher{
     if(!classLoaderCacheKeys.containsKey(library)){
       Object libraryKey = new Object();
       classLoaderCacheKeys.put(library,libraryKey);
-      ClassLoader libraryClassLoader = new URLClassLoader( new URL[]{ new URL("file:"+library) } );
+      ClassLoader libraryClassLoader = new CbtURLClassLoader( new URL[]{ new URL("file:"+library) } );
       classLoaderCacheValues.put(libraryKey, libraryClassLoader);
 
       String xml = CBT_HOME+"/bootstrap_scala/cache/"+SCALA_VERSION+"/scala-xml_2.11-1.0.5.jar";
       Object xmlKey = new Object();
       classLoaderCacheKeys.put(xml,xmlKey);
-      ClassLoader xmlClassLoader = new URLClassLoader(
+      ClassLoader xmlClassLoader = new CbtURLClassLoader(
         new URL[]{ new URL("file:"+xml) },
         libraryClassLoader
       );
@@ -60,7 +60,7 @@ public class NailgunLauncher{
 
       Object nailgunKey = new Object();
       classLoaderCacheKeys.put(NAILGUN+TARGET,nailgunKey);
-      ClassLoader nailgunClassLoader = new URLClassLoader(
+      ClassLoader nailgunClassLoader = new CbtURLClassLoader(
         new URL[]{ new URL("file:"+NAILGUN+TARGET) },
         xmlClassLoader
       );
@@ -85,10 +85,21 @@ public class NailgunLauncher{
   }
 }
 
-/*
-protected class MyURLClassLoader extends URLClassLoader{
+class CbtURLClassLoader extends URLClassLoader{
   public String toString(){
-    return super.toString() + "(\n  " + Arrays.toString(urls) + "\n)";
+    return (
+      super.toString()
+      + "(\n  "
+      + Arrays.toString(getURLs())
+      + ",\n  "
+      + String.join("\n  ",getParent().toString().split("\n"))
+      + "\n)"
+    );
+  }
+  public CbtURLClassLoader(URL[] urls, ClassLoader parent){
+    super(urls, parent);
+  }
+  public CbtURLClassLoader(URL[] urls){
+    super(urls);
   }
 }
-*/

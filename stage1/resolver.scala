@@ -205,8 +205,8 @@ case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implici
 case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
   def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
   override def canBeCached = false
-  private object classLoaderRecursionCache extends Cache[ClassLoader]
   /*
+  private object classLoaderRecursionCache extends Cache[ClassLoader]
   override def classLoaderRecursion(latest: Map[(String,String),Dependency], cache: ClassLoaderCache) = classLoaderRecursionCache{
     println(System.currentTimeMillis)
     val cl = getClass.getClassLoader
