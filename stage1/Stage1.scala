@@ -37,7 +37,7 @@ object Stage1{
     a.lastModified > b.lastModified
   }
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String], classLoader: ClassLoader): Unit = {
     val mainClass = if(args contains "admin") "cbt.AdminStage2" else "cbt.Stage2"
     val init = new Init(args)
     val lib = new Stage1Lib(init.logger)
@@ -53,18 +53,39 @@ object Stage1{
     
     val classLoaderCache = new ClassLoaderCache(logger)
 
+    val deps = ClassPath.flatten(
+      Seq(
+        JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+        JavaDependency("org.scala-lang","scala-reflect",constants.scalaVersion),
+        ScalaDependency(
+          "org.scala-lang.modules", "scala-xml", "1.0.5", scalaVersion=constants.scalaMajorVersion
+        ),
+        JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
+      ).map(_.classpath)
+    )
+
     logger.stage1("before conditionally running zinc to recompile CBT")
     if( src.exists(newerThan(_, changeIndicator)) ) {
-      val stage1Classpath = CbtDependency()(logger).dependencyClasspath
-      logger.stage1("cbt.lib has changed. Recompiling with cp: " ++ stage1Classpath.string)
-      zinc( true, src, stage2Target, stage1Classpath, classLoaderCache, Seq("-deprecation") )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
+      logger.stage1("cbt.lib has changed. Recompiling.")
+      zinc( true, src, stage2Target, nailgunTarget +: stage1Target +: deps, classLoaderCache, Seq("-deprecation") )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
     }
     logger.stage1(s"[$now] calling CbtDependency.classLoader")
 
+    val cp = stage2Target
+    val cl = classLoaderCache.transient.get(
+      (stage2Target +: deps).string,
+      cbt.URLClassLoader(
+        ClassPath(Seq(stage2Target)),
+        classLoaderCache.persistent.get(
+          deps.string,
+          cbt.URLClassLoader( deps, classLoader )
+        )
+      )
+    )
 
     logger.stage1(s"[$now] Run Stage2")
     val ExitCode(exitCode) = /*trapExitCode*/{ // this 
-      runMain( mainClass, cwd +: args.drop(1).toVector, CbtDependency()(logger).classLoader(classLoaderCache) )
+      runMain( mainClass, cwd +: args.drop(1).toVector, cl )
     }
     logger.stage1(s"[$now] Stage1 end")
     System.exit(exitCode)

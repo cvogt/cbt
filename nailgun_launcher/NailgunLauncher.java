@@ -72,15 +72,16 @@ public class NailgunLauncher{
       return;
     }
 
-    new URLClassLoader(
+    ClassLoader cl = new URLClassLoader(
       new URL[]{ new URL("file:"+STAGE1+TARGET) }, 
       classLoaderCacheValues.get(
         classLoaderCacheKeys.get( NAILGUN+TARGET )
       )
-    )
-      .loadClass("cbt.Stage1")
-      .getMethod("main", String[].class)
-      .invoke( null/* _cls.newInstance()*/, (Object) args );
+    );
+
+    cl.loadClass("cbt.Stage1")
+      .getMethod("main", String[].class, ClassLoader.class)
+      .invoke( null/* _cls.newInstance()*/, (Object) args, cl);
   }
 }
 
