@@ -78,12 +78,9 @@ log "Find out real path. Build realpath if needed." $*
 
 export CBT_HOME=$(dirname $($_DIR/realpath/realpath.sh $0))
 
-export SCALA_VERSION="2.11.8"
 export NAILGUN=$CBT_HOME/nailgun_launcher/
-export STAGE1=$CBT_HOME/stage1/
 export TARGET=target/scala-2.11/classes/
 mkdir -p $NAILGUN$TARGET
-mkdir -p $STAGE1$TARGET
 
 nailgun_out=$NAILGUN/target/nailgun.stdout.log
 nailgun_err=$NAILGUN/target/nailgun.strerr.log
@@ -135,18 +132,6 @@ if [ $use_nailgun -eq 0 ] && [ ! $server_up -eq 0 ]; then
 	ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
 fi
 
-log "Downloading Scala jars if necessary..." $*
-export SCALA_CLASSPATH=`$CBT_HOME/bootstrap_scala/bootstrap_scala $SCALA_VERSION`
-if [ ! $? -eq 0 ]; then echo "Problem with bootstrap_scala" 1>&2; exit 1; fi
-
-SCALAC="java -Xmx256M -Xms32M\
-	-Xbootclasspath/a:$SCALA_CLASSPATH\
-	-Dscala.usejavacp=true\
-	-Denv.emacs=\
-	scala.tools.nsc.Main\
-	-deprecation\
-	-feature"
-
 stage1 () {	
 	log "Checking for changes in cbt/nailgun_launcher" $*
 	NAILGUN_INDICATOR=$NAILGUN$TARGET/cbt/NailgunLauncher.class
@@ -172,29 +157,8 @@ stage1 () {
 		fi
 	fi
 
-	log "Checking for changes in cbt/stage1" $*
-	STAGE1_INDICATOR=$STAGE1$TARGET/cbt/Stage1.class
-	changed2=0
-	for file in `ls $STAGE1*.scala`; do
-		if [ $file -nt $STAGE1_INDICATOR ]; then changed2=1; fi
-	done
-	compiles2=0
-
-	if [ $changed2 -eq 1 ]; then
-		rm $STAGE1$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
-		echo "Compiling cbt/stage1" 1>&2
-		$SCALAC -cp $NAILGUN$TARGET -d $STAGE1$TARGET `ls $STAGE1/*.scala`
-		compiles2=$?
-		if [ $compiles2 -ne 0 ]; then
-			rm $STAGE1$TARGET/cbt/*.class 2>/dev/null # triggers recompilation next time.
-			break
-		fi
-	fi
-
 	log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." $*
-	mainClass=cbt.Stage1
 	
-	CP=$STAGE1$TARGET:$SCALA_CLASSPATH
 	if [ $use_nailgun -eq 1 ]
 	then
 		log "Running JVM directly" $*
@@ -221,11 +185,11 @@ stage1 () {
 			fi
 			sleep 0.3
 		done
-		log "Running $mainClass via Nailgun." $*
+		log "Running CBT via Nailgun." $*
 		$NG cbt.NailgunLauncher "$CWD" $*
 	fi
 	exitCode=$?
-	log "Done running $mainClass." $*
+	log "Done running CBT." $*
 }
 
 while true; do
@@ -236,7 +200,7 @@ while true; do
 	echo "======= Restarting CBT =======" 1>&2
 done
 
-if [ $compiles -ne 0 ] || [ $compiles2 -ne 0 ]; then
+if [ $compiles -ne 0 ]; then
 	exitCode=1
 fi
 
