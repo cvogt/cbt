@@ -188,6 +188,7 @@ case class CbtDependency()(implicit val logger: Logger) extends Dependency{
   override def dependencies = Seq(
     Stage1Dependency(),
     JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+    JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
     lib.ScalaDependency(
       "com.lihaoyi","ammonite-ops","0.5.5", scalaVersion = constants.scalaMajorVersion
     ),
@@ -319,7 +320,7 @@ case class JavaDependency(
       //println("found: "++v.text)
       v.text match {
         case Substitution(path) => Option(properties(path))
-          //println("lookup "++path ++ ": "++(pomXml\path).text)
+          //println("lookup "++path ++ ": "++(pomXml\path).text)          
         case value => Option(value)
       }
     }

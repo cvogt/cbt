@@ -69,7 +69,7 @@ abstract class Stage1Base{
     if( src.exists(newerThan(_, changeIndicator)) ) {
       val stage1Classpath = CbtDependency()(logger).dependencyClasspath
       logger.stage1("cbt.lib has changed. Recompiling with cp: " ++ stage1Classpath.string)
-      zinc( true, src, stage2Target, stage1Classpath )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
+      zinc( true, src, stage2Target, stage1Classpath, Seq("-deprecation") )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
     }
     logger.stage1(s"[$now] calling CbtDependency.classLoader")
 
