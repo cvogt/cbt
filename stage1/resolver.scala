@@ -273,32 +273,56 @@ case class JavaDependency(
         )(logger)
     }
   }
+
+  lazy val properties: Map[String, String] = (
+    pomParents.flatMap(_.properties) ++ {
+      val props = (pomXml \ "properties").flatMap(_.child).map{
+        tag => tag.label -> tag.text
+      }
+      logger.pom(s"Found properties in $pom: $props")
+      props
+    }
+  ).toMap
+
+  lazy val dependencyVersions: Map[(String,String), String] =
+    pomParents.flatMap(
+      p =>
+      p.dependencyVersions
+      ++ 
+      (p.pomXml \ "dependencyManagement" \ "dependencies" \ "dependency").map{
+        xml =>
+          val groupId = p.lookup(xml,_ \ "groupId").get
+          val artifactId = p.lookup(xml,_ \ "artifactId").get
+          val version = p.lookup(xml,_ \ "version").get
+          (groupId, artifactId) -> version
+      }
+    ).toMap
+
   def dependencies: Seq[JavaDependency] = {
     if(classifier == Classifier.sources) Seq()
     else (pomXml \ "dependencies" \ "dependency").collect{
       case xml if (xml \ "scope").text == "" && (xml \ "optional").text != "true" =>
+        val groupId = lookup(xml,_ \ "groupId").get
+        val artifactId = lookup(xml,_ \ "artifactId").get
         JavaDependency(
-          lookup(xml,_ \ "groupId").get,
-          lookup(xml,_ \ "artifactId").get,
-          lookup(xml,_ \ "version").get,
+          groupId,
+          artifactId,
+          lookup(xml,_ \ "version").getOrElse( dependencyVersions(groupId, artifactId) ),
           Classifier( Some( (xml \ "classifier").text ).filterNot(_ == "").filterNot(_ == null) )
         )(logger)
     }.toVector
   }
   def lookup( xml: Node, accessor: Node => NodeSeq ): Option[String] = {
     //println("lookup in "++pomUrl)
-    val Substitution = "\\$\\{([a-z0-9\\.]++)\\}".r
+    val Substitution = "\\$\\{([^\\}]+)\\}".r
     accessor(xml).headOption.flatMap{v =>
       //println("found: "++v.text)
       v.text match {
-        case Substitution(path) =>
+        case Substitution(path) => Option(properties(path))
           //println("lookup "++path ++ ": "++(pomXml\path).text)
-          lookup(pomXml, _ \ "properties" \ path)
         case value => Option(value)
       }
-    }.orElse(
-      pomParents.map(p => p.lookup(p.pomXml, accessor)).flatten.headOption
-    )
+    }
   }
 }
 object JavaDependency{
