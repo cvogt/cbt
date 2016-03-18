@@ -29,6 +29,7 @@ case class Logger(enabledLoggers: Set[String]) {
   final def resolver(msg: => String) = logGuarded(names.resolver, msg)
   final def lib(msg: => String) = logGuarded(names.lib, msg)
   final def test(msg: => String) = logGuarded(names.test, msg)
+  final def git(msg: => String) = logGuarded(names.git, msg)
   final def pom(msg: => String) = logGuarded(names.pom, msg)
 
   private object names{
@@ -41,6 +42,7 @@ case class Logger(enabledLoggers: Set[String]) {
     val lib = "lib"
     val test = "test"
     val pom = "pom"
+    val git = "git"
   }
 
   private def logGuarded(name: String, msg: => String) = {
