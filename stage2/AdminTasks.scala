@@ -1,6 +1,7 @@
 package cbt
 import scala.collection.immutable.Seq
-class AdminTasks(lib: Lib, args: Array[String]){
+import java.io._
+class AdminTasks(lib: Lib, args: Array[String], cwd: File){
   implicit val logger: Logger = lib.logger
   def resolve = {
     ClassPath.flatten(
@@ -30,4 +31,5 @@ class AdminTasks(lib: Lib, args: Array[String]){
       "scala.tools.nsc.MainGenericRunner", Seq("-cp", scalac.classpath.string), scalac.classLoader
     )
   }
+  def scaffoldBasicBuild: Unit = lib.scaffoldBasicBuild( cwd )
 }
