@@ -27,11 +27,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   final def projectDirectory: File = lib.realpath(context.cwd)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   final def usage: Unit = new lib.ReflectBuild(this).usage
-/*
-  def scaffold: Unit = lib.generateBasicBuildFile(
-    projectDirectory, scalaVersion, groupId, artifactId, version
-  )
-*/
+
   // ========== meta data ==========
 
   def scalaVersion: String = constants.scalaVersion

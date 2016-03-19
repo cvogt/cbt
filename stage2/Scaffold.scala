@@ -5,13 +5,15 @@ import ammonite.ops.{cwd => _,_}
 
 trait Scaffold{
   def logger: Logger
-  
-  def generateBasicBuildFile(
-    projectDirectory: File,
-    scalaVersion: String,
-    groupId: String,
-    artifactId: String,
-    version: String
+
+  private def createFile( projectDirectory: File, fileName: String, code: String ){
+    write( Path( projectDirectory.string ++ "/" ++ fileName ), code )
+    import scala.Console._
+    println( GREEN ++ "Created " ++ fileName ++ RESET )
+  }
+
+  def scaffoldBasicBuild(
+    projectDirectory: File
   ): Unit = { 
   /**
   TODO:
@@ -20,25 +22,17 @@ trait Scaffold{
      - maybe not generate all of this, e.g. offer different variants
   */
 
-    val generatedFiles = Seq(
-      "build/build.scala" -> s"""import cbt._
+    createFile(projectDirectory, "build/build.scala", s"""import cbt._
 import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-class Build(context: Context) extends BasicBuild(context) with BuildShared{
-  override def artifactId: String = "$artifactId"
-  override def groupId = "$groupId"
-
+class Build(context: Context) extends BasicBuild(context){
   override def dependencies = super.dependencies ++ Seq(  // don't forget super.dependencies here
     // "org.cvogt" %% "scala-extensions" % "0.4.1"
   )
-
-  // required for .pom file
-  override def name = artifactId
-  override def description       : String = lib.requiredForPom("description")
 }
-""",
+"""/*,
 
       "build/build/build.scala" -> s"""import cbt._
 import java.net.URL
@@ -46,8 +40,6 @@ import java.io.File
 import scala.collection.immutable.Seq
 
 class Build(context: Context) extends BuildBuild(context){
-  override def scalaVersion: String = "2.11.8"
-  
   override def dependencies = super.dependencies ++ Seq(
     BuildDependency( projectDirectory.parent ++ "/build-shared")
     // , "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
@@ -126,23 +118,9 @@ trait BuildShared extends BasicBuild{
   override def scmConnection: String = lib.requiredForPom("scmConnection")
   override def pomExtra: Seq[scala.xml.Node] = Seq() 
 }
-"""
+"""*/
     )
 
-    generatedFiles.map{
-      case ( fileName, code ) =>
-        scala.util.Try{
-          write( Path( projectDirectory.string ++ "/" ++ fileName ), code )
-          import scala.Console._
-          println( GREEN ++ "Created " ++ fileName ++ RESET )
-        }
-    }.foreach(
-      _.recover{
-        case e: java.nio.file.FileAlreadyExistsException =>
-          e.printStackTrace
-      }.get
-    )
-    return ()
   }
 
 }
