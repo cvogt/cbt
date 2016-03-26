@@ -20,14 +20,14 @@ object ExitCode{
   val Failure = ExitCode(1)
 }
 
-class TrappedExitCode(private val exitCode: Int) extends Exception
-object TrappedExitCode{
-  def unapply(e: Throwable): Option[ExitCode] =
+object CatchTrappedExitCode{
+  def unapply(e: Throwable): Option[ExitCode] = {
     Option(e) flatMap {
       case i: InvocationTargetException => unapply(i.getTargetException)
       case e: TrappedExitCode => Some( ExitCode(e.exitCode) )
       case _ => None
     }
+  }
 }
 
 case class Context( cwd: File, args: Seq[String], logger: Logger, classLoaderCache: ClassLoaderCache )
@@ -205,30 +205,12 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
-  private val trapSecurityManager = new SecurityManager {
-    override def checkPermission( permission: Permission ) = {
-      /*
-      NOTE: is it actually ok, to just make these empty?
-      Calling .super leads to ClassNotFound exteption for a lambda.
-      Calling to the previous SecurityManager leads to a stack overflow
-      */
-    }
-    override def checkPermission( permission: Permission, context: Any ) = {
-      /* Does this methods need to be overidden? */
-    }
-    override def checkExit( status: Int ) = {
-      super.checkExit(status)
-      logger.lib(s"checkExit($status)")
-      throw new TrappedExitCode(status)
-    }
-  }
-
   def trapExitCode( code: => ExitCode ): ExitCode = {
     try{
-      System.setSecurityManager( trapSecurityManager )
+      System.setSecurityManager( new TrapSecurityManager )
       code
     } catch {
-      case TrappedExitCode(exitCode) =>
+      case CatchTrappedExitCode(exitCode) =>
         exitCode
     } finally {
       System.setSecurityManager(NailgunLauncher.defaultSecurityManager)

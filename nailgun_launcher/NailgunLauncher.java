@@ -4,6 +4,7 @@ import java.lang.reflect.*;
 import java.net.*;
 import java.nio.*;
 import java.nio.file.*;
+import static java.io.File.pathSeparator;
 import java.security.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +16,16 @@ import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
  * dependencies outside the JDK.
  */
 public class NailgunLauncher{
+  public static String SCALA_VERSION = "2.11.8";
+  public static String SCALA_XML_VERSION = "1.0.5";
+  public static String ZINC_VERSION = "0.3.9";
+
+  public static String CBT_HOME = System.getenv("CBT_HOME");
+  public static String NAILGUN = System.getenv("NAILGUN");
+  public static String TARGET = System.getenv("TARGET");
+  public static String STAGE1 = CBT_HOME + "/stage1/";
+  public static String MAVEN_CACHE = CBT_HOME + "/cache/maven";
+  public static String MAVEN_URL = "https://repo1.maven.org/maven2";
 
   /**
    * Persistent cache for caching classloaders for the JVM life time. Can be used as needed by user
@@ -25,18 +36,8 @@ public class NailgunLauncher{
 
   public static SecurityManager defaultSecurityManager = System.getSecurityManager();
 
-  public static String CBT_HOME = System.getenv("CBT_HOME");
-  public static String NAILGUN = System.getenv("NAILGUN");
-  public static String STAGE1 = CBT_HOME + "/stage1/";
-  public static String TARGET = System.getenv("TARGET");
-
-  public static String SCALA_VERSION = "2.11.8";
-
-  public static void _assert(Boolean condition, Object msg){
-    if(!condition){
-      throw new AssertionError("Assertion failed: "+msg);
-    }
-  }
+  public static long lastSuccessfullCompile = 0;
+  static ClassLoader stage1classLoader = null;
 
   public static void main(String[] args) throws ClassNotFoundException,
                                                 NoSuchMethodException,
@@ -45,123 +46,134 @@ public class NailgunLauncher{
                                                 MalformedURLException,
                                                 IOException,
                                                 NoSuchAlgorithmException {
+    long now = System.currentTimeMillis();
+    //System.err.println("ClassLoader: "+stage1classLoader);
+    //System.err.println("lastSuccessfullCompile: "+lastSuccessfullCompile);
+    //System.err.println("now: "+now);
+
     _assert(CBT_HOME != null, CBT_HOME);
     _assert(NAILGUN != null, NAILGUN);
     _assert(TARGET != null, TARGET);
     _assert(STAGE1 != null, STAGE1);
-
-    File f2 = new File(STAGE1);
-    _assert(f2.listFiles() != null, f2);
-    long lastCompiled = new File(STAGE1 + TARGET + "/cbt/Stage1.class").lastModified();
-    for( File file: f2.listFiles() ){
-      if( file.isFile() && file.toString().endsWith(".scala")
-          && file.lastModified() > lastCompiled ){
-
-        EarlyDependency[] dependencies = new EarlyDependency[]{
-          EarlyDependency.scala("library", "DDD5A8BCED249BEDD86FB4578A39B9FB71480573"),
-          EarlyDependency.scala("compiler","FE1285C9F7B58954C5EF6D80B59063569C065E9A"),
-          EarlyDependency.scala("reflect", "B74530DEEBA742AB4F3134DE0C2DA0EDC49CA361"),
-          new EarlyDependency("org/scala-lang/modules/scala-xml_2.11/1.0.5", "scala-xml_2.11-1.0.5", "77ac9be4033768cf03cc04fbd1fc5e5711de2459")
-        };
-
-        ArrayList<String> scalaClassPath = new ArrayList<String>();
-
-        for (EarlyDependency d: dependencies) {
-          download( d.url, d.path, d.hash );
-          scalaClassPath.add( d.path.toString() );
-        }
-
-        File stage1ClassFiles = new File(STAGE1 + TARGET + "/cbt/");
-        if( stage1ClassFiles.exists() ){
-          for( File f: stage1ClassFiles.listFiles() ){
-          if( f.toString().endsWith(".class") ){
-            f.delete();
-          }
-        }
-        }
-
-        new File(STAGE1 + TARGET).mkdirs();
-
-        String s = File.pathSeparator;
-        ArrayList<String> scalacArgsList = new ArrayList<String>(
-          Arrays.asList(
-            new String[]{
-              "-deprecation", "-feature",
-              "-cp", String.join( s, scalaClassPath.toArray(new String[scalaClassPath.size()])) + s + NAILGUN+TARGET,
-              "-d", STAGE1+TARGET
-            }
-          )
-        );
-
-        for( File f: new File(STAGE1).listFiles() ){
-          if( f.isFile() && f.toString().endsWith(".scala") ){
-            scalacArgsList.add( f.toString() );
-          }
-        }
-
-        ArrayList<URL> urls = new ArrayList<URL>();
-        for( String c: scalaClassPath ){
-          urls.add(new URL("file:"+c));
-        }
-        ClassLoader cl = new CbtURLClassLoader( (URL[]) urls.toArray(new URL[urls.size()]) );
-        cl.loadClass("scala.tools.nsc.Main")
-          .getMethod("main", String[].class)
-          .invoke( null/* _cls.newInstance()*/, (Object) scalacArgsList.toArray(new String[scalacArgsList.size()]));
-        break;
-      }
-    }
-
-    String library = CBT_HOME+"/cache/maven/org/scala-lang/scala-library/"+SCALA_VERSION+"/scala-library-"+SCALA_VERSION+".jar";
-    if(!classLoaderCacheKeys.containsKey(library)){
-      Object libraryKey = new Object();
-      classLoaderCacheKeys.put(library,libraryKey);
-      ClassLoader libraryClassLoader = new CbtURLClassLoader( new URL[]{ new URL("file:"+library) } );
-      classLoaderCacheValues.put(libraryKey, libraryClassLoader);
-
-      String xml = CBT_HOME+"/cache/maven/org/scala-lang/modules/scala-xml_2.11/1.0.5/scala-xml_2.11-1.0.5.jar";
-      Object xmlKey = new Object();
-      classLoaderCacheKeys.put(xml,xmlKey);
-      ClassLoader xmlClassLoader = new CbtURLClassLoader(
-        new URL[]{ new URL("file:"+xml) },
-        libraryClassLoader
-      );
-      classLoaderCacheValues.put(xmlKey, xmlClassLoader);
-
-      Object nailgunKey = new Object();
-      classLoaderCacheKeys.put(NAILGUN+TARGET,nailgunKey);
-      ClassLoader nailgunClassLoader = new CbtURLClassLoader(
-        new URL[]{ new URL("file:"+NAILGUN+TARGET) },
-        xmlClassLoader
-      );
-      classLoaderCacheValues.put(nailgunKey, nailgunClassLoader);
-    }
 
     if(args[0].equals("check-alive")){
       System.exit(33);
       return;
     }
 
-    ClassLoader cl = new CbtURLClassLoader(
-      new URL[]{ new URL("file:"+STAGE1+TARGET) }, 
-      classLoaderCacheValues.get(
-        classLoaderCacheKeys.get( NAILGUN+TARGET )
+    List<File> stage1SourceFiles = new ArrayList<File>();
+    for( File f: new File(STAGE1).listFiles() ){
+      if( f.isFile() && f.toString().endsWith(".scala") ){
+        stage1SourceFiles.add(f);
+      }
+    }
+
+    Boolean stage1SourcesChanged = false;
+    for( File file: stage1SourceFiles ){
+      if( file.lastModified() > lastSuccessfullCompile ){
+        stage1SourcesChanged = true;
+        //System.err.println("File change: "+file.lastModified());
+        break;
+      }
+    }
+
+    if(stage1SourcesChanged || stage1classLoader == null){
+      EarlyDependencies earlyDeps = new EarlyDependencies();
+      int exitCode = zinc(earlyDeps, stage1SourceFiles);
+      if( exitCode == 0 ){
+        lastSuccessfullCompile = now;
+      } else {
+        System.exit( exitCode );
+      }
+
+      ClassLoader nailgunClassLoader;
+      if( classLoaderCacheKeys.containsKey( NAILGUN+TARGET ) ){
+        nailgunClassLoader = cacheGet( NAILGUN+TARGET );
+      } else {
+        nailgunClassLoader = cachePut( classLoader(NAILGUN+TARGET, earlyDeps.stage1), NAILGUN+TARGET ); // FIXME: key is wrong here, should be full CP
+      }
+
+      stage1classLoader = classLoader(STAGE1+TARGET, nailgunClassLoader);
+    }
+
+    try{
+      stage1classLoader
+        .loadClass("cbt.Stage1")
+        .getMethod("main", String[].class, ClassLoader.class)
+        .invoke( null, (Object) args, stage1classLoader);
+    }catch(Exception e){
+      System.err.println(stage1classLoader);
+      throw e;
+    }
+  }
+
+  public static void _assert(Boolean condition, Object msg){
+    if(!condition){
+      throw new AssertionError("Assertion failed: "+msg);
+    }
+  }
+
+  public static void runMain(String cls, String[] args, ClassLoader cl) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
+    cl.loadClass(cls)
+      .getMethod("main", String[].class)
+      .invoke( null, (Object) args);
+  }
+
+  static int zinc( EarlyDependencies earlyDeps, List<File> sourceFiles ) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
+    String cp = NAILGUN+TARGET + pathSeparator + earlyDeps.scalaXml_1_0_5_File + pathSeparator + earlyDeps.scalaLibrary_2_11_8_File;
+    List<String> zincArgs = new ArrayList<String>(
+      Arrays.asList(
+        new String[]{ 
+          "-scala-compiler", earlyDeps.scalaCompiler_2_11_8_File,
+          "-scala-library", earlyDeps.scalaLibrary_2_11_8_File,
+          "-scala-extra", earlyDeps.scalaReflect_2_11_8_File,
+          "-sbt-interface", earlyDeps.sbtInterface_0_13_9_File,
+          "-compiler-interface", earlyDeps.compilerInterface_0_13_9_File,
+          "-cp", cp,
+          "-d", STAGE1+TARGET
+        }
       )
     );
 
-    try{    
-      cl.loadClass("cbt.Stage1")
-        .getMethod("main", String[].class, ClassLoader.class)
-        .invoke( null/* _cls.newInstance()*/, (Object) args, cl);
-    }catch(ClassNotFoundException e){
-      System.err.println(cl);
-      throw e;
-    }catch(NoClassDefFoundError e){
-      System.err.println(cl);
-      throw e;
-    }catch(InvocationTargetException e){
-      System.err.println(cl);
-      throw e;
+    for( File f: sourceFiles ){
+      zincArgs.add(f.toString());
     }
+
+    try{
+      System.setSecurityManager( new TrapSecurityManager() );
+      PrintStream oldOut = System.out;
+      System.setOut(System.err);
+      runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc );
+      System.setOut(oldOut);
+      return 0;//throw new RuntimeException("zinc should have thrown an exit code");
+    }catch( TrappedExitCode trapped ){
+      return trapped.exitCode;
+    } finally {
+      System.setSecurityManager(NailgunLauncher.defaultSecurityManager);
+    }
+  }
+
+  static ClassLoader classLoader( String file ) throws MalformedURLException{
+    return new CbtURLClassLoader(
+      new URL[]{ new URL("file:"+file) }
+    );
+  }
+  static ClassLoader classLoader( String file, ClassLoader parent ) throws MalformedURLException{
+    return new CbtURLClassLoader(
+      new URL[]{ new URL("file:"+file) }, parent
+    );
+  }
+  static ClassLoader cacheGet( String key ){
+    return classLoaderCacheValues.get(
+      classLoaderCacheKeys.get( key )
+    );
+  }
+  static ClassLoader cachePut( ClassLoader classLoader, String... jars ){
+    String key = String.join( pathSeparator, jars );
+    Object keyObject = new Object();
+    classLoaderCacheKeys.put( key, keyObject );
+    classLoaderCacheValues.put( keyObject, classLoader );
+    return classLoader;
   }
 
   public static void download(URL urlString, Path target, String sha1) throws IOException, NoSuchAlgorithmException {
@@ -189,5 +201,3 @@ public class NailgunLauncher{
     return (new HexBinaryAdapter()).marshal(sha1.digest());
   }
 }
-
-

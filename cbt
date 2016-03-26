@@ -141,7 +141,7 @@ stage1 () {
 	done
 	compiles=0
 	if [ $changed -eq 1 ]; then
-		rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
+		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
 		javac -Xlint:deprecation -Xlint:unchecked -d $NAILGUN$TARGET `ls $NAILGUN*.java`
 		compiles=$?

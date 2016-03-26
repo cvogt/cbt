@@ -154,16 +154,20 @@ abstract class Dependency{
     new Tree(this, (dependencies diff parents).map(_.resolveRecursive(this :: parents)))
   }
 
+  def linearize(deps: Seq[Dependency]): Seq[Dependency] =
+    if(deps.isEmpty) deps else ( deps ++ linearize(deps.flatMap(_.dependencies)) )
+  
   private object transitiveDependenciesCache extends Cache[Seq[Dependency]]
+  /** return dependencies in order of linearized dependence. this is a bit tricky. */
   def transitiveDependencies: Seq[Dependency] = transitiveDependenciesCache{
-    val deps = (dependencies ++ dependencies.flatMap(_.transitiveDependencies)).distinct
+    val deps = linearize(dependencies)
     val hasInfo = deps.collect{ case d:ArtifactInfo => d }
     val noInfo  = deps.filter{
       case _:ArtifactInfo => false
       case _ => true
     }
-    noInfo ++ JavaDependency.removeOutdated( hasInfo )
-  }.sortBy(_.targetClasspath.string)
+    noInfo ++ JavaDependency.updateOutdated( hasInfo ).reverse.distinct
+  }
 
   def show: String = this.getClass.getSimpleName
   // ========== debug ==========
@@ -172,8 +176,8 @@ abstract class Dependency{
     ( " " * indent )
     ++ (if(updated) lib.red(show) else show)
     ++ dependencies.map(
-      _.dependencyTreeRecursion(indent + 1)
-    ).map( "\n" ++ _.toString ).mkString("")
+      "\n" ++ _.dependencyTreeRecursion(indent + 1)
+    ).mkString
   )
 }
 
@@ -200,6 +204,15 @@ case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implici
   def exportedClasspath = ClassPath(Seq(path))
   def exportedJars = Seq[File](path)
   def targetClasspath = exportedClasspath
+}
+
+/** Allows to easily assemble a bunch of dependencies */
+case class Dependencies( _dependencies: Dependency* )(implicit val logger: Logger) extends Dependency{
+  override def dependencies = _dependencies.to
+  def updated = dependencies.exists(_.updated)
+  def exportedClasspath = ClassPath(Seq())
+  def exportedJars = Seq()
+  def targetClasspath = ClassPath(Seq())
 }
 
 case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
@@ -262,7 +275,7 @@ case class JavaDependency(
   private def jarFile: File = baseFile ++ ".jar"
   //private def coursierJarFile = userHome++"/.coursier/cache/v1/https/repo1.maven.org/maven2"++basePath++".jar"
   private def pomUrl: URL = baseUrl ++ ".pom"
-  private def jarUrl: URL = baseUrl ++ ".jar"    
+  private[cbt] def jarUrl: URL = baseUrl ++ ".jar"    
 
   def exportedJars = Seq( jar )
   def exportedClasspath = ClassPath( exportedJars )
@@ -271,31 +284,27 @@ case class JavaDependency(
   
   def jarSha1 = {
     val file = jarFile ++ ".sha1"
-    scala.util.Try{
-      lib.download( jarUrl ++ ".sha1"  , file, None )
-      // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
-      Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
-    }.toOption // FIXME: .toOption is a temporary solution to ignore if libs don't have one (not sure that's even possible)
+    lib.download( jarUrl ++ ".sha1"  , file, None )
+    // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
+    Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
   }
 
   def pomSha1 = {
     val file = pomFile++".sha1"
-    scala.util.Try{ 
-      lib.download( pomUrl++".sha1" , file, None )
-      // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
-      Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
-    }.toOption // FIXME: .toOption is a temporary solution to ignore if libs don't have one (not sure that's even possible)
+    lib.download( pomUrl++".sha1" , file, None )
+    // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
+    Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
   }
 
   private object jarCache extends Cache[File]
   def jar = jarCache{
-    lib.download( jarUrl, jarFile, jarSha1 )
+    lib.download( jarUrl, jarFile, Some(jarSha1) )
     jarFile
   }
   def pomXml = XML.loadFile(pom.toString)
 
   def pom = {
-    lib.download( pomUrl, pomFile, pomSha1 )
+    lib.download( pomUrl, pomFile, Some(pomSha1) )
     pomFile
   }
 
@@ -381,7 +390,7 @@ object JavaDependency{
     case e: NumberFormatException => Right(str)
   }
   /* this obviously should be overridable somehow */
-  def removeOutdated(
+  def updateOutdated(
     deps: Seq[ArtifactInfo],
     versionLessThan: (String, String) => Boolean = semanticVersionLessThan
   )(implicit logger: Logger): Seq[ArtifactInfo] = {
@@ -391,11 +400,11 @@ object JavaDependency{
         _.sortBy( _.version )( Ordering.fromLessThan(versionLessThan) )
          .last
       )
-    deps.flatMap{
+    deps.map{
       d => 
-        val l = latest.get((d.groupId,d.artifactId))
+        val l = latest((d.groupId,d.artifactId))
         if(d != l) logger.resolver("outdated: "++d.show)
         l
-    }.distinct
+    }
   }
 }

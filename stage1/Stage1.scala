@@ -53,32 +53,29 @@ object Stage1{
     
     val classLoaderCache = new ClassLoaderCache(logger)
 
-    val deps = ClassPath.flatten(
-      Seq(
-        JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
-        JavaDependency("org.scala-lang","scala-reflect",constants.scalaVersion),
-        ScalaDependency(
-          "org.scala-lang.modules", "scala-xml", "1.0.5", scalaVersion=constants.scalaMajorVersion
-        ),
-        JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
-      ).map(_.classpath)
+    val deps = Dependencies(
+      JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+      JavaDependency("org.scala-lang","scala-reflect",constants.scalaVersion),
+      JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
     )
+
+    val scalaXml = JavaDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
 
     logger.stage1("before conditionally running zinc to recompile CBT")
     if( src.exists(newerThan(_, changeIndicator)) ) {
       logger.stage1("cbt.lib has changed. Recompiling.")
-      zinc( true, src, stage2Target, nailgunTarget +: stage1Target +: deps, classLoaderCache, Seq("-deprecation") )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
+      zinc( true, src, stage2Target, nailgunTarget +: stage1Target +: Dependencies(deps, scalaXml).classpath, classLoaderCache, Seq("-deprecation") )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
     }
     logger.stage1(s"[$now] calling CbtDependency.classLoader")
 
     val cp = stage2Target
     val cl = classLoaderCache.transient.get(
-      (stage2Target +: deps).string,
+      (stage2Target +: deps.classpath).string,
       cbt.URLClassLoader(
         ClassPath(Seq(stage2Target)),
         classLoaderCache.persistent.get(
-          deps.string,
-          cbt.URLClassLoader( deps, classLoader )
+          deps.classpath.string,
+          cbt.URLClassLoader( deps.classpath, classLoader )
         )
       )
     )

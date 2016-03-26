@@ -13,6 +13,10 @@ class CbtURLClassLoader extends URLClassLoader{
       + "\n)"
     );
   }
+  public Class loadClass(String name) throws ClassNotFoundException{
+    //System.out.println("loadClass("+name+") on \n"+this);
+    return super.loadClass(name);
+  }
   void assertExist(URL[] urls){
     for(URL url: urls){
       if(!new File(url.getPath()).exists()){
