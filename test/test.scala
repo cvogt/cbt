@@ -41,7 +41,7 @@ object Main{
     }
     case class Result(exit0: Boolean, out: String, err: String)
     def assertSuccess(res: Result, msg: => String)(implicit logger: Logger) = {
-      assert(res.exit0, msg + res.toString)
+      assert(res.exit0, msg ++ res.toString)
     }
 
     // tests
@@ -49,14 +49,14 @@ object Main{
       val usageString = "Methods provided by CBT"
       val res = runCbt(path, Seq())
       logger.test(res.toString)
-      val debugToken = "usage " + path +" "
+      val debugToken = "usage " ++ path ++ " "
       assertSuccess(res,debugToken)
-      assert(res.out == "", debugToken+ res.toString)
-      assert(res.err contains usageString, debugToken+res.toString)
+      assert(res.out == "", debugToken ++ res.toString)
+      assert(res.err contains usageString, debugToken ++ res.toString)
     }
     def compile(path: String)(implicit logger: Logger) = {
       val res = runCbt(path, Seq("compile"))
-      val debugToken = "compile " + path +" "
+      val debugToken = "compile " ++ path ++ " "
       assertSuccess(res,debugToken)
       // assert(res.err == "", res.err) // FIXME: enable this
     }

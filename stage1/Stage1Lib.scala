@@ -42,22 +42,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def scalaMajorVersion(scalaMinorVersion: String) = scalaMinorVersion.split("\\.").take(2).mkString(".")
 
-  // ========== reflection ==========
-
-  /** Create instance of the given class via reflection */
-  /*
-  def create(cls: String)(args: Any*)(classLoader: ClassLoader): Any = {
-    logger.composition( logger.showInvocation("Stage1Lib.create", (cls,args,classLoader)) )
-    import scala.reflect.runtime.universe._
-    val m = runtimeMirror(classLoader)
-    val sym = m.classSymbol(classLoader.loadClass(cls))
-    val cm = m.reflectClass( sym.asClass )
-    val tpe = sym.toType
-    val ctorm = cm.reflectConstructor( tpe.decl(termNames.CONSTRUCTOR).asMethod )
-    ctorm(args:_*)
-  }
-  */
-
   // ========== file system / net ==========
 
   def array2hex(padTo: Int, array: Array[Byte]): String = {

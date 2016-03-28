@@ -55,7 +55,6 @@ object Stage1{
 
     val deps = Dependencies(
       JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
-      JavaDependency("org.scala-lang","scala-reflect",constants.scalaVersion),
       JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
     )
 

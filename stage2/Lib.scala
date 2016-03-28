@@ -8,9 +8,9 @@ import java.nio.file.{Path =>_,_}
 import java.nio.file.Files.readAllBytes
 import java.security.MessageDigest
 import java.util.jar._
+import java.lang.reflect.Method
 
 import scala.collection.immutable.Seq
-import scala.reflect.runtime.{universe => ru}
 import scala.util._
 
 // pom model
@@ -125,60 +125,63 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   // task reflection helpers
-  import ru._
-  private lazy val anyRefMembers: Set[String] = ru.typeOf[AnyRef].members.toSet.map(taskName)
-  def taskNames(tpe: Type): Seq[String] = tpe.members.toVector.flatMap(lib.toTask).map(taskName).sorted
-  private def taskName(method: Symbol): String = method.name.decodedName.toString
-  def toTask(symbol: Symbol): Option[MethodSymbol] = {
-    Option(symbol)
-      .filter(_.isPublic)
-      .filter(_.isMethod)
-      .map(_.asMethod)
-      .filter(_.paramLists.flatten.size == 0)
-      .filterNot(taskName(_) contains "$")
-      .filterNot(t => anyRefMembers contains taskName(t))
-  }
+  def tasks(cls:Class[_]): Map[String, Method] =
+    Stream
+      .iterate(cls.asInstanceOf[Class[Any]])(_.getSuperclass)
+      .takeWhile(_ != null)
+      .toVector
+      .dropRight(1) // drop Object
+      .reverse
+      .flatMap(
+        c =>
+          c
+          .getDeclaredMethods
+          .filterNot( _.getName contains "$" )
+          .filter{ m =>
+            java.lang.reflect.Modifier.isPublic(m.getModifiers)
+          }
+          .filter( _.getParameterCount == 0 )
+          .map(m => NameTransformer.decode(m.getName) -> m)
+      ).toMap
 
-  class ReflectBuild(val build: Build) extends ReflectObject(build){
-    def usage: String = {
-      val baseTasks = lib.taskNames(ru.typeOf[Build])
-      val thisTasks = lib.taskNames(subclassType) diff baseTasks
+  def taskNames(cls: Class[_]): Seq[String] = tasks(cls).keys.toVector.sorted
+
+  def usage(buildClass: Class[_], context: Context): String = {
+    val baseTasks = lib.taskNames(classOf[Build])
+    val thisTasks = lib.taskNames(buildClass) diff baseTasks
+    (
       (
-        (
-          if( thisTasks.nonEmpty ){
-            s"""Methods provided by Build ${build.context.cwd}
+        if( thisTasks.nonEmpty ){
+          s"""Methods provided by Build ${context}
 
   ${thisTasks.mkString("  ")}
 
 """
-          } else ""
-        ) ++ s"""Methods provided by CBT (but possibly overwritten)
+        } else ""
+      ) ++ s"""Methods provided by CBT (but possibly overwritten)
 
   ${baseTasks.mkString("  ")}"""
       ) ++ "\n"
-    }
   }
 
+  class ReflectBuild[T:scala.reflect.ClassTag](build: Build) extends ReflectObject(build){
+    def usage = lib.usage(build.getClass, build.context)
+  }
   abstract class ReflectObject[T:scala.reflect.ClassTag](obj: T){
-    lazy val mirror = ru.runtimeMirror(obj.getClass.getClassLoader)
-    lazy val subclassType = mirror.classSymbol(obj.getClass).toType
     def usage: String
     def callNullary( taskName: Option[String] ): Unit = {
-      taskName
-        .map{ n => subclassType.member(ru.TermName(n).encodedName) }
-        .filter(_ != ru.NoSymbol)
-        .flatMap(toTask _)
-        .map{ methodSymbol =>
-          val result = mirror.reflect(obj).reflectMethod(methodSymbol)()
-
+      val ts = tasks(obj.getClass)
+      taskName.map( NameTransformer.encode ).flatMap(ts.get).map{ method =>
+        val result: Option[Any] = Option(method.invoke(obj)) // null in case of Unit
+        result.map{
+          value =>
           // Try to render console representation. Probably not the best way to do this.
-          scala.util.Try( result.getClass.getDeclaredMethod("toConsole") ) match {
-            case scala.util.Success(m) =>
-              println(m.invoke(result))
+          scala.util.Try( value.getClass.getDeclaredMethod("toConsole") ) match {
+            case scala.util.Success(toConsole) =>
+              println(toConsole.invoke(value))
 
-            case scala.util.Failure(e) if e.getMessage contains "toConsole" =>
-              result match {
-                case () => ""
+            case scala.util.Failure(e) if Option(e.getMessage).getOrElse("") contains "toConsole" =>
+              value match {
                 case ExitCode(code) => System.exit(code)
                 case other => println( other.toString ) // no method .toConsole, using to String
               }
@@ -186,16 +189,17 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             case scala.util.Failure(e) =>
               throw e
           }
-        }.getOrElse{
-          taskName.foreach{ n =>
-            System.err.println(s"Method not found: $n")
-            System.err.println("")
-          }
-          System.err.println(usage)
-          taskName.foreach{ _ =>
-            ExitCode.Failure
-          }
+        }.getOrElse("")
+      }.getOrElse{
+        taskName.foreach{ n =>
+          System.err.println(s"Method not found: $n")
+          System.err.println("")
         }
+        System.err.println(usage)
+        taskName.foreach{ _ =>
+          ExitCode.Failure
+        }
+      }
     }
   }
 

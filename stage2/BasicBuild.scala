@@ -2,7 +2,6 @@ package cbt
 import cbt.paths._
 
 import java.io._
-import java.lang.reflect.InvocationTargetException
 import java.net._
 import java.nio.file.{Path =>_,_}
 import java.nio.file.Files.readAllBytes
@@ -10,7 +9,6 @@ import java.security.MessageDigest
 import java.util.jar._
 
 import scala.collection.immutable.Seq
-import scala.reflect.runtime.{universe => ru}
 import scala.util._
 
 class BasicBuild( context: Context ) extends Build( context )
@@ -25,7 +23,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   def enableConcurrency = false
   final def projectDirectory: File = lib.realpath(context.cwd)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
-  final def usage: Unit = new lib.ReflectBuild(this).usage
+  final def usage: String = lib.usage(this.getClass, context)
 
   // ========== meta data ==========
 

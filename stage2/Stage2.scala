@@ -47,8 +47,9 @@ object Stage2{
             scala.util.control.Breaks.break
 
           case file if triggerFiles.exists(file.toString startsWith _.toString) =>
-            val reflectBuild = new lib.ReflectBuild( lib.loadDynamic(context) )
-            logger.loop(s"Re-running $task for " ++ reflectBuild.build.projectDirectory.toString)
+            val build = lib.loadDynamic(context)
+            val reflectBuild = new lib.ReflectBuild( build )
+            logger.loop(s"Re-running $task for " ++ build.projectDirectory.toString)
             reflectBuild.callNullary(task)
         }
       } else {
