@@ -25,7 +25,7 @@ class AdminTasks(lib: Lib, args: Array[String], cwd: File){
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val scalac = new ScalaCompilerDependency( version )
     val d = JavaDependency(
-      "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.6")
+      "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.7")
     )
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
     lib.runMain(
