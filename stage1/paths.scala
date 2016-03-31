@@ -11,6 +11,7 @@ object paths{
   private val target = Option(System.getenv("TARGET")).get.stripSuffix("/")
   val stage1Target: File = stage1 ++ ("/" ++ target)
   val stage2Target: File = stage2 ++ ("/" ++ target)
+  val stage2StatusFile: File = stage2Target ++ ".last-success"
   val nailgunTarget: File = nailgun ++ ("/" ++ target)
   val sonatypeLogin: File = cbtHome ++ "/sonatype.login"
 }

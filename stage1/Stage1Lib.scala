@@ -6,6 +6,7 @@ import java.io._
 import java.lang.reflect.InvocationTargetException
 import java.net._
 import java.nio.file._
+import java.nio.file.attribute.FileTime
 import javax.tools._
 import java.security._
 import java.util._
@@ -111,14 +112,22 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
-  def zinc(
+  def needsUpdate( sourceFiles: Seq[File], statusFile: File ) = {
+    val lastCompile = statusFile.lastModified
+    sourceFiles.filter(_.lastModified > lastCompile).nonEmpty
+  }
+
+  def compile(
     needsRecompile: Boolean,
     files: Seq[File],
     compileTarget: File,
+    statusFile: File,
     classpath: ClassPath,
+    scalacOptions: Seq[String] = Seq(),
     classLoaderCache: ClassLoaderCache,
-    extraArgs: Seq[String] = Seq()
-  )( zincVersion: String, scalaVersion: String ): Unit = {
+    zincVersion: String,
+    scalaVersion: String
+  ): File = {
 
     val cp = classpath.string
     if(classpath.files.isEmpty)
@@ -126,9 +135,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
     if(files.isEmpty)
       throw new Exception("Trying to compile no files. ClassPath: " ++ cp)
-
-    // only run zinc if files changed, for performance reasons
-    // FIXME: this is broken, need invalidate on changes in dependencies as well
     if( needsRecompile ){
       val zinc = JavaDependency("com.typesafe.zinc","zinc", zincVersion)
       val zincDeps = zinc.transitiveDependencies
@@ -151,6 +157,8 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       val scalaReflect = JavaDependency("org.scala-lang","scala-reflect",scalaVersion).jar
       val scalaCompiler = JavaDependency("org.scala-lang","scala-compiler",scalaVersion).jar
 
+      val start = System.currentTimeMillis
+
       val code = redirectOutToErr{
         lib.runMain(
           "com.typesafe.zinc.Main",
@@ -162,22 +170,21 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
             "-scala-extra", scalaReflect.toString,
             "-cp", cp,
             "-d", compileTarget.toString
-          ) ++ extraArgs.map("-S"++_) ++ files.map(_.toString),
+          ) ++ scalacOptions.map("-S"++_) ++ files.map(_.toString),
           zinc.classLoader(classLoaderCache)
         )
       }
 
-      if(code != ExitCode.Success){
-        // Ensure we trigger recompilation next time. This is currently required because we
-        // don't record the time of the last successful build elsewhere. But hopefully that will
-        // change soon.
-        val now = System.currentTimeMillis()
-        files.foreach(_.setLastModified(now))
-
-        // Tell the caller that things went wrong.
-        System.exit(code.integer)
+      if(code == ExitCode.Success){
+        // write version and when last compilation started so we can trigger
+        // recompile if cbt version changed or newer source files are seen
+        Files.write(statusFile.toPath, "".getBytes)//cbtVersion.getBytes)
+        Files.setLastModifiedTime(statusFile.toPath, FileTime.fromMillis(start) )
+      } else {
+        System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
       }
     }
+    compileTarget
   }
   def redirectOutToErr[T](code: => T): T = {
     val oldOut = System.out

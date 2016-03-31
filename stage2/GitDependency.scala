@@ -45,5 +45,5 @@ case class GitDependency(
   def exportedClasspath = ClassPath(Seq())
   def exportedJars = Seq()
   private[cbt] def targetClasspath = exportedClasspath
-  def updated: Boolean = false
+  def needsUpdate: Boolean = false
 }

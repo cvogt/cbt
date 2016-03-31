@@ -68,17 +68,21 @@ object Stage1{
 
     val classLoaderCache = new ClassLoaderCache(logger)
 
-    val stage2SourcesChanged = sourceFiles.exists(newerThan(_, changeIndicator))
-    logger.stage1("before conditionally running zinc to recompile CBT")
-    if( stage2SourcesChanged ) {
-      val scalaXml = JavaDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
-      logger.stage1("cbt.lib has changed. Recompiling.")
-      zinc( true, sourceFiles, stage2Target, nailgunTarget +: stage1Target +: Dependencies(deps, scalaXml).classpath, classLoaderCache, Seq("-deprecation") )( zincVersion = "0.3.9", scalaVersion = constants.scalaVersion )
-    }
+    val stage2SourcesChanged = lib.needsUpdate(sourceFiles, stage2StatusFile)
+    logger.stage1("Compiling stage2 if necessary")
+    val scalaXml = JavaDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
+    compile(
+      stage2SourcesChanged,
+      sourceFiles, stage2Target, stage2StatusFile,
+      nailgunTarget +: stage1Target +: Dependencies(deps, scalaXml).classpath,
+      Seq("-deprecation"), classLoaderCache,
+      zincVersion = "0.3.9", scalaVersion = constants.scalaVersion
+    )
+
     logger.stage1(s"[$now] calling CbtDependency.classLoader")
 
-    val cl = classLoaderCache.transient.get(
-      (stage2Target +: deps.classpath).string,
+    val cl = /*classLoaderCache.transient.get(
+      (stage2Target +: deps.classpath).string,*/
       cbt.URLClassLoader(
         ClassPath(Seq(stage2Target)),
         classLoaderCache.persistent.get(
@@ -86,7 +90,7 @@ object Stage1{
           cbt.URLClassLoader( deps.classpath, classLoader )
         )
       )
-    )
+    //)
 
     logger.stage1(s"[$now] Run Stage2")
     val exitCode = (

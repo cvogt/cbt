@@ -48,6 +48,12 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   def apiTarget: File = scalaTarget ++ "/api"
   /** directory where the class files should be put (in package directories) */
   def compileTarget: File = scalaTarget ++ "/classes"
+  /**
+  File which cbt uses to determine if it needs to trigger an incremental re-compile.
+  Last modified date is the time when the last successful compilation started.
+  Contents is the cbt version git hash.
+  */
+  def compileStatusFile: File = compileTarget ++ ".last-success"
 
   /** Source directories and files. Defaults to .scala and .java files in src/ and top-level. */
   def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
@@ -118,33 +124,20 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   /** scalac options used for zinc and scaladoc */
   def scalacOptions: Seq[String] = Seq( "-feature", "-deprecation", "-unchecked" )
 
-  val updated: Boolean = {
-    val existingClassFiles = lib.listFilesRecursive(compileTarget)
-    val sourcesChanged = existingClassFiles.nonEmpty && {
-      val oldestClassFile = existingClassFiles.sortBy(_.lastModified).head
-      val oldestClassFileAge = oldestClassFile.lastModified
-      val changedSourceFiles = sourceFiles.filter(_.lastModified > oldestClassFileAge)
-      if(changedSourceFiles.nonEmpty){
-        /*
-        println(changedSourceFiles)
-        println(changedSourceFiles.map(_.lastModified))
-        println(changedSourceFiles.map(_.lastModified > oldestClassFileAge))
-        println(oldestClassFile)
-        println(oldestClassFileAge)
-        println("-"*80)
-        */
-      }
-      changedSourceFiles.nonEmpty
-    }
-    sourcesChanged || transitiveDependencies.map(_.updated).fold(false)(_ || _)
+  private object needsUpdateCache extends Cache[Boolean]
+  def needsUpdate: Boolean = {
+    needsUpdateCache(
+      lib.needsUpdate( sourceFiles, compileStatusFile )
+      || transitiveDependencies.exists(_.needsUpdate)
+    )
   }
 
   private object compileCache extends Cache[File]
   def compile: File = compileCache{
     lib.compile(
-      updated,
-      sourceFiles, compileTarget, dependencyClasspath, scalacOptions,
-      zincVersion = zincVersion, scalaVersion = scalaVersion, context.classLoaderCache
+      needsUpdate,
+      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath, scalacOptions,
+      context.classLoaderCache, zincVersion = zincVersion, scalaVersion = scalaVersion
     )
   }
 

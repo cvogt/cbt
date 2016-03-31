@@ -53,18 +53,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-  def compile(
-    updated: Boolean,
-    sourceFiles: Seq[File], compileTarget: File, dependenyClasspath: ClassPath,
-    compileArgs: Seq[String], zincVersion: String, scalaVersion: String, classLoaderCache: ClassLoaderCache
-  ): File = {
-    if(sourceFiles.nonEmpty)
-      lib.zinc(
-        updated, sourceFiles, compileTarget, dependenyClasspath, classLoaderCache, compileArgs
-      )( zincVersion = zincVersion, scalaVersion = scalaVersion )
-    compileTarget
-  }
-
   def srcJar(sources: Seq[File], artifactId: String, version: String, jarTarget: File): File = {
     val file = jarTarget ++ ("/"++artifactId++"-"++version++"-sources.jar")
     lib.jarFile(file, sources)
@@ -96,14 +84,14 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         "-d",  apiTarget.toString
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
-        redirectOutToErr{
-          runMain(
-            "scala.tools.nsc.ScalaDoc",
-            args,
-            ScalaDependencies(scalaVersion)(logger).classLoader(classLoaderCache)
-          )
-        }
+      redirectOutToErr{
+        runMain(
+          "scala.tools.nsc.ScalaDoc",
+          args,
+          ScalaDependencies(scalaVersion)(logger).classLoader(classLoaderCache)
+        )
       }
+    }
     val docJar = jarTarget ++ ("/"++artifactId++"-"++version++"-javadoc.jar")
     lib.jarFile(docJar, Vector(apiTarget))
     docJar

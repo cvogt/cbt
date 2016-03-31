@@ -25,7 +25,7 @@ case class BuildDependency(context: Context) extends TriggerLoop{
   def exportedJars = Seq()
   def dependencies = Seq(build)
   def triggerLoopFiles = root.triggerLoopFiles
-  final val updated = build.updated
+  override final val needsUpdate = build.needsUpdate
   def targetClasspath = ClassPath(Seq())
 }
 /*

@@ -28,7 +28,7 @@ abstract class Dependency{
   implicit def logger: Logger
   protected def lib = new Stage1Lib(logger)
 
-  def updated: Boolean
+  def needsUpdate: Boolean
   //def cacheClassLoader: Boolean = false
   private[cbt] def targetClasspath: ClassPath
   def exportedClasspath: ClassPath
@@ -174,7 +174,7 @@ abstract class Dependency{
   def dependencyTree: String = dependencyTreeRecursion()
   private def dependencyTreeRecursion(indent: Int = 0): String = (
     ( " " * indent )
-    ++ (if(updated) lib.red(show) else show)
+    ++ (if(needsUpdate) lib.red(show) else show)
     ++ dependencies.map(
       "\n" ++ _.dependencyTreeRecursion(indent + 1)
     ).mkString
@@ -187,7 +187,7 @@ class ScalaLibraryDependency (version: String)(implicit logger: Logger) extends 
 class ScalaReflectDependency (version: String)(implicit logger: Logger) extends JavaDependency("org.scala-lang","scala-reflect",version)
 
 case class ScalaDependencies(version: String)(implicit val logger: Logger) extends Dependency{ sd =>
-  final val updated = false
+  override final val needsUpdate = false
   override def canBeCached = true
   def targetClasspath = ClassPath(Seq())
   def exportedClasspath = ClassPath(Seq())
@@ -200,23 +200,23 @@ case class ScalaDependencies(version: String)(implicit val logger: Logger) exten
 }
 
 case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implicit val logger: Logger) extends Dependency{
-  def updated = false
   def exportedClasspath = ClassPath(Seq(path))
   def exportedJars = Seq[File](path)
+  override def needsUpdate = false
   def targetClasspath = exportedClasspath
 }
 
 /** Allows to easily assemble a bunch of dependencies */
 case class Dependencies( _dependencies: Dependency* )(implicit val logger: Logger) extends Dependency{
   override def dependencies = _dependencies.to
-  def updated = dependencies.exists(_.updated)
+  def needsUpdate = dependencies.exists(_.needsUpdate)
   def exportedClasspath = ClassPath(Seq())
   def exportedJars = Seq()
   def targetClasspath = ClassPath(Seq())
 }
 
 case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
-  def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
+  def needsUpdate = false // FIXME: think this through, might allow simplifications and/or optimizations
   override def canBeCached = false
   /*
   private object classLoaderRecursionCache extends Cache[ClassLoader]
@@ -245,7 +245,7 @@ case class CbtDependency()(implicit val logger: Logger) extends Dependency{
       "org.scala-lang.modules","scala-xml","1.0.5", scalaVersion = constants.scalaMajorVersion
     )
   )
-  def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
+  def needsUpdate = false // FIXME: think this through, might allow simplifications and/or optimizations
   def targetClasspath = exportedClasspath
 }
 
@@ -260,7 +260,7 @@ case class JavaDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
 )(implicit val logger: Logger) extends ArtifactInfo{
 
-  def updated = false
+  override def needsUpdate = false
   override def canBeCached = true
 
   private val groupPath = groupId.split("\\.").mkString("/")
