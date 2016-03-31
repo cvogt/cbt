@@ -30,11 +30,18 @@ final private[cbt] class KeyLockedLazyCache[Key <: AnyRef,Value <: AnyRef](
     //logger.resolver("CACHE: \n" ++ keys.mkString("\n"))
     // synchronizing on key only, so asking for a particular key does
     // not block the whole cache, but just that cache entry
-    key.synchronized{
+    lockableKey.synchronized{
       if( ! (values containsKey lockableKey) ){
         values.put( lockableKey, value )
       }
       values get lockableKey      
+    }
+  }
+  def update( key: Key, value: Value ): Value = {
+    val lockableKey = keys get key
+    lockableKey.synchronized{
+      values.put( lockableKey, value )
+      value
     }
   }
   def remove( key: Key ) = keys.synchronized{    
