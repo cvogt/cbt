@@ -20,6 +20,8 @@ class Init(args: Array[String]) {
   **/
   val propsRaw: Seq[String] = args.toVector.filter(_.startsWith("-D"))
 
+  val pathSep = if (System.getProperty("os.name").contains("Windows")) "\\" else "/"
+
   /**
    * All arguments that weren't `-D` property declarations.
   **/
@@ -63,7 +65,7 @@ abstract class Stage1Base{
     val cwd = args(0)
 
     val src = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
-    val changeIndicator = stage2Target ++ "/cbt/Build.class"
+    val changeIndicator = stage2Target ++ s"${pathSep}cbt${pathSep}Build.class"
 
     logger.stage1("before conditionally running zinc to recompile CBT")
     if( src.exists(newerThan(_, changeIndicator)) ) {
