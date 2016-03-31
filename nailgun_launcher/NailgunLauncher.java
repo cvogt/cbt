@@ -97,10 +97,12 @@ public class NailgunLauncher{
     }
 
     try{
-      stage1classLoader
-        .loadClass("cbt.Stage1")
-        .getMethod("main", String[].class, ClassLoader.class)
-        .invoke( null, (Object) args, stage1classLoader);
+      Integer exitCode =
+        (Integer) stage1classLoader
+          .loadClass("cbt.Stage1")
+          .getMethod("run", String[].class, ClassLoader.class, Boolean.class)
+          .invoke( null, (Object) args, stage1classLoader, stage1SourcesChanged);
+      System.exit(exitCode);
     }catch(Exception e){
       System.err.println(stage1classLoader);
       throw e;

@@ -2,7 +2,7 @@ package cbt
 import scala.collection.immutable.Seq
 import java.io.{Console=>_,_}
 import java.nio.file._
-class AdminTasks(lib: Lib, args: Array[String], cwd: File){
+class AdminTasks(lib: Lib, args: Seq[String], cwd: File){
   implicit val logger: Logger = lib.logger
   def resolve = {
     ClassPath.flatten(

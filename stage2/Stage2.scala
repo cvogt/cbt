@@ -8,26 +8,24 @@ import scala.collection.immutable.Seq
 
 import cbt.paths._
 
+object Stage2 extends Stage2Base{
+  def run( args: Stage2Args ): Unit = {
+    import args.logger
 
-object Stage2{
-  def main(args: Array[String]): Unit = {
-    val init = new Init(args)
-    import init._
+    val lib = new Lib(args.logger)
 
-    val lib = new Lib(init.logger)
-
-    init.logger.stage2(s"[$now] Stage2 start")
-    val loop = argsV.lift(1) == Some("loop")
-    val direct = argsV.lift(1) == Some("direct")
+    logger.stage2(s"[$now] Stage2 start")
+    val loop = args.args.lift(0) == Some("loop")
+    val direct = args.args.lift(0) == Some("direct")
 
     val taskIndex = if (loop || direct) {
-      2
-    } else {
       1
+    } else {
+      0
     }
-    val task = argsV.lift( taskIndex )
+    val task = args.args.lift( taskIndex )
 
-    val context = Context( new File(argsV(0)), argsV.drop( taskIndex + 1 ), logger, new ClassLoaderCache(logger) )
+    val context = Context( args.cwd, args.args.drop( taskIndex ), logger, /*args.cbtHasChanged,*/ new ClassLoaderCache(logger) )
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
@@ -56,6 +54,6 @@ object Stage2{
         new lib.ReflectBuild(build).callNullary(task)
       }
 
-    init.logger.stage2(s"[$now] Stage2 end")
+    logger.stage2(s"[$now] Stage2 end")
   }
 }
