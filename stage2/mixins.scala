@@ -20,16 +20,13 @@ trait ScalaTest extends Build with Test{
     "org.scalatest" %% "scalatest" % scalaTestVersion
   ) ++ super.dependencies
 
-  // workaround probable ScalaTest bug throwing away the outer classloader. Not caching doesn't nest them.
-  override def cacheDependencyClassLoader = false
-
   override def run: ExitCode = {
     val discoveryPath = compile.toString++"/"
     context.logger.lib("discoveryPath: " ++ discoveryPath)
     lib.runMain(
       "org.scalatest.tools.Runner",
       Seq("-R", discoveryPath, "-oF") ++ context.args.drop(1),
-      classLoader
+      classLoader(context.classLoaderCache)
     )
   }
 }

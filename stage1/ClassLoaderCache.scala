@@ -1,25 +1,19 @@
 package cbt
 
 import java.net._
+import java.util.concurrent.ConcurrentHashMap
+import collection.JavaConversions._
 
-private[cbt] object ClassLoaderCache{
-  private val cache = NailgunLauncher.classLoaderCache
-  def get( classpath: ClassPath )(implicit logger: Logger): ClassLoader
-    = cache.synchronized{
-    val lib = new Stage1Lib(logger)
-    val key = classpath.strings.sorted.mkString(":")
-    if( cache.containsKey(key) ){
-      logger.resolver("CACHE HIT: "++key)
-      cache.get(key)
-    } else {
-      logger.resolver("CACHE MISS: "++key)
-      val cl = new cbt.URLClassLoader( classpath, ClassLoader.getSystemClassLoader )
-      cache.put( key, cl )
-      cl
-    }
-  }
-  def remove( classpath: ClassPath ) = {
-    val key = classpath.strings.sorted.mkString(":")
-    cache.remove( key )
-  }
+class ClassLoaderCache(logger: Logger){
+  val persistent = new KeyLockedLazyCache(
+    NailgunLauncher.classLoaderCacheKeys.asInstanceOf[ConcurrentHashMap[String,AnyRef]],
+    NailgunLauncher.classLoaderCacheValues.asInstanceOf[ConcurrentHashMap[AnyRef,ClassLoader]],
+    Some(logger)
+  )
+  val transient = new KeyLockedLazyCache(
+    new ConcurrentHashMap[String,AnyRef],
+    new ConcurrentHashMap[AnyRef,ClassLoader],
+    Some(logger)
+  )
+  override def toString = s"""ClassLoaderCache("""+ persistent.keys.keySet.toVector.map(_.toString).sorted.map(" "++_).mkString("\n","\n","\n") +""")"""
 }

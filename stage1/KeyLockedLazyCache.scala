@@ -1,33 +1,54 @@
-/*
 package cbt
-import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.Future
 
+import java.util.concurrent.ConcurrentHashMap
+
+private[cbt] class LockableKey
 /**
 A cache that lazily computes values if needed during lookup.
 Locking occurs on the key, so separate keys can be looked up
 simultaneously without a deadlock.
 */
-final private[cbt] class KeyLockedLazyCache[Key <: AnyRef,Value]{
-  private val keys = new ConcurrentHashMap[Key,LockableKey]()
-  private val builds = new ConcurrentHashMap[LockableKey,Value]()
-
-  private class LockableKey
+final private[cbt] class KeyLockedLazyCache[Key <: AnyRef,Value <: AnyRef](
+  val keys: ConcurrentHashMap[Key,AnyRef],
+  val values: ConcurrentHashMap[AnyRef,Value],
+  logger: Option[Logger]
+){
   def get( key: Key, value: => Value ): Value = {
-    val keyObject = keys.synchronized{    
+    val lockableKey = keys.synchronized{
       if( ! (keys containsKey key) ){
-        keys.put( key, new LockableKey )
+        val lockableKey = new LockableKey
+        //logger.foreach(_.resolver("CACHE MISS: " ++ key.toString))
+        keys.put( key, lockableKey )
+        lockableKey
+      } else {
+        val lockableKey = keys get key
+        //logger.foreach(_.resolver("CACHE HIT: " ++ lockableKey.toString ++ " -> " ++ key.toString))
+        lockableKey
       }
-      keys get key
     }
+    import collection.JavaConversions._
+    //logger.resolver("CACHE: \n" ++ keys.mkString("\n"))
     // synchronizing on key only, so asking for a particular key does
     // not block the whole cache, but just that cache entry
-    key.synchronized{
-      if( ! (builds containsKey keyObject) ){
-        builds.put( keyObject, value )
+    lockableKey.synchronized{
+      if( ! (values containsKey lockableKey) ){
+        values.put( lockableKey, value )
       }
-      builds get keyObject      
+      values get lockableKey      
     }
   }
+  def update( key: Key, value: Value ): Value = {
+    val lockableKey = keys get key
+    lockableKey.synchronized{
+      values.put( lockableKey, value )
+      value
+    }
+  }
+  def remove( key: Key ) = keys.synchronized{    
+    assert(keys containsKey key)
+    val lockableKey = keys get key
+    keys.remove( key )
+    assert(values containsKey lockableKey)
+    values.remove( lockableKey )
+  }
 }
-*/
