@@ -262,12 +262,22 @@ object Classifier{
 case class JavaDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
 )(implicit val logger: Logger) extends ArtifactInfo{
-  assert(groupId != "", toString)
-  assert(artifactId != "", toString)
-  assert(version != "", toString)
-  assert(groupId != null, toString)
-  assert(artifactId != null, toString)
-  assert(version != null, toString)
+  assert(
+    Option(groupId).collect{
+      case JavaDependency.ValidIdentifier(_) =>
+    }.nonEmpty,
+    s"not a valid groupId: '$groupId'"
+  )
+  assert(
+    Option(artifactId).collect{
+      case JavaDependency.ValidIdentifier(_) =>
+    }.nonEmpty,
+    s"not a valid artifactId: '$artifactId'"
+  )
+  assert(
+    version != "" && version != null && !version.startsWith(" ") && !version.endsWith(" "),
+    s"not a valid version: '$version'"
+  )
 
   override def needsUpdate = false
   override def canBeCached = true
@@ -402,6 +412,7 @@ case class JavaDependency(
   }
 }
 object JavaDependency{
+  def ValidIdentifier = "^([A-Za-z0-9_\\-.]+)$".r // according to maven's DefaultModelValidator.java
   def semanticVersionLessThan(left: String, right: String) = {
     // FIXME: this ignores ends when different size
     val zipped = left.split("\\.|\\-").map(toInt) zip right.split("\\.|\\-").map(toInt)
