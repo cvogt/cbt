@@ -6,6 +6,7 @@ import java.io._
 import java.lang.reflect.InvocationTargetException
 import java.net._
 import java.nio.file._
+import java.nio.file.attribute.FileTime
 import javax.tools._
 import java.security._
 import java.util._
@@ -14,23 +15,23 @@ import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 import scala.collection.immutable.Seq
 
 // CLI interop
-case class ExitCode(code: Int)
+case class ExitCode(integer: Int)
 object ExitCode{
   val Success = ExitCode(0)
   val Failure = ExitCode(1)
 }
 
-class TrappedExitCode(private val exitCode: Int) extends Exception
-object TrappedExitCode{
-  def unapply(e: Throwable): Option[ExitCode] =
+object CatchTrappedExitCode{
+  def unapply(e: Throwable): Option[ExitCode] = {
     Option(e) flatMap {
       case i: InvocationTargetException => unapply(i.getTargetException)
       case e: TrappedExitCode => Some( ExitCode(e.exitCode) )
       case _ => None
     }
+  }
 }
 
-case class Context( cwd: File, args: Seq[String], logger: Logger )
+case class Context( cwd: File, args: Seq[String], logger: Logger, classLoaderCache: ClassLoaderCache )
 
 class BaseLib{
   def realpath(name: File) = new File(Paths.get(name.getAbsolutePath).normalize.toString)
@@ -41,20 +42,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   implicit val implicitLogger: Logger = logger
 
   def scalaMajorVersion(scalaMinorVersion: String) = scalaMinorVersion.split("\\.").take(2).mkString(".")
-
-  // ========== reflection ==========
-
-  /** Create instance of the given class via reflection */
-  def create(cls: String)(args: Any*)(classLoader: ClassLoader): Any = {
-    logger.composition( logger.showInvocation("Stage1Lib.create", (classLoader,cls,args)) )
-    import scala.reflect.runtime.universe._
-    val m = runtimeMirror(classLoader)
-    val sym = m.classSymbol(classLoader.loadClass(cls))
-    val cm = m.reflectClass( sym.asClass )
-    val tpe = sym.toType
-    val ctorm = cm.reflectConstructor( tpe.decl(termNames.CONSTRUCTOR).asMethod )
-    ctorm(args:_*)
-  }
 
   // ========== file system / net ==========
 
@@ -108,8 +95,9 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     trapExitCode{
       classLoader
         .loadClass(cls)
-        .getMethod( "main", scala.reflect.classTag[Array[String]].runtimeClass )
+        .getMethod( "main", classOf[Array[String]] )
         .invoke( null, args.toArray.asInstanceOf[AnyRef] )
+      ExitCode.Success
     }
   }
 
@@ -124,13 +112,22 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
-  def zinc(
+  def needsUpdate( sourceFiles: Seq[File], statusFile: File ) = {
+    val lastCompile = statusFile.lastModified
+    sourceFiles.filter(_.lastModified > lastCompile).nonEmpty
+  }
+
+  def compile(
     needsRecompile: Boolean,
     files: Seq[File],
     compileTarget: File,
+    statusFile: File,
     classpath: ClassPath,
-    extraArgs: Seq[String] = Seq()
-  )( zincVersion: String, scalaVersion: String ): Unit = {
+    scalacOptions: Seq[String] = Seq(),
+    classLoaderCache: ClassLoaderCache,
+    zincVersion: String,
+    scalaVersion: String
+  ): File = {
 
     val cp = classpath.string
     if(classpath.files.isEmpty)
@@ -138,9 +135,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
     if(files.isEmpty)
       throw new Exception("Trying to compile no files. ClassPath: " ++ cp)
-
-    // only run zinc if files changed, for performance reasons
-    // FIXME: this is broken, need invalidate on changes in dependencies as well
     if( needsRecompile ){
       val zinc = JavaDependency("com.typesafe.zinc","zinc", zincVersion)
       val zincDeps = zinc.transitiveDependencies
@@ -163,6 +157,8 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       val scalaReflect = JavaDependency("org.scala-lang","scala-reflect",scalaVersion).jar
       val scalaCompiler = JavaDependency("org.scala-lang","scala-compiler",scalaVersion).jar
 
+      val start = System.currentTimeMillis
+
       val code = redirectOutToErr{
         lib.runMain(
           "com.typesafe.zinc.Main",
@@ -174,22 +170,21 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
             "-scala-extra", scalaReflect.toString,
             "-cp", cp,
             "-d", compileTarget.toString
-          ) ++ extraArgs.map("-S"++_) ++ files.map(_.toString),
-          zinc.classLoader
+          ) ++ scalacOptions.map("-S"++_) ++ files.map(_.toString),
+          zinc.classLoader(classLoaderCache)
         )
       }
 
-      if(code != ExitCode.Success){
-        // Ensure we trigger recompilation next time. This is currently required because we
-        // don't record the time of the last successful build elsewhere. But hopefully that will
-        // change soon.
-        val now = System.currentTimeMillis()
-        files.foreach(_.setLastModified(now))
-
-        // Tell the caller that things went wrong.
-        System.exit(code.code)
+      if(code == ExitCode.Success){
+        // write version and when last compilation started so we can trigger
+        // recompile if cbt version changed or newer source files are seen
+        Files.write(statusFile.toPath, "".getBytes)//cbtVersion.getBytes)
+        Files.setLastModifiedTime(statusFile.toPath, FileTime.fromMillis(start) )
+      } else {
+        System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
       }
     }
+    compileTarget
   }
   def redirectOutToErr[T](code: => T): T = {
     val oldOut = System.out
@@ -201,31 +196,12 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
-  private val trapSecurityManager = new SecurityManager {
-    override def checkPermission( permission: Permission ) = {
-      /*
-      NOTE: is it actually ok, to just make these empty?
-      Calling .super leads to ClassNotFound exteption for a lambda.
-      Calling to the previous SecurityManager leads to a stack overflow
-      */
-    }
-    override def checkPermission( permission: Permission, context: Any ) = {
-      /* Does this methods need to be overidden? */
-    }
-    override def checkExit( status: Int ) = {
-      super.checkExit(status)
-      logger.lib(s"checkExit($status)")
-      throw new TrappedExitCode(status)
-    }
-  }
-
-  def trapExitCode( code: => Unit ): ExitCode = {
+  def trapExitCode( code: => ExitCode ): ExitCode = {
     try{
-      System.setSecurityManager( trapSecurityManager )
+      System.setSecurityManager( new TrapSecurityManager )
       code
-      ExitCode.Success
     } catch {
-      case TrappedExitCode(exitCode) =>
+      case CatchTrappedExitCode(exitCode) =>
         exitCode
     } finally {
       System.setSecurityManager(NailgunLauncher.defaultSecurityManager)

@@ -78,12 +78,9 @@ log "Find out real path. Build realpath if needed." $*
 
 export CBT_HOME=$(dirname $($_DIR/realpath/realpath.sh $0))
 
-export SCALA_VERSION="2.11.8"
 export NAILGUN=$CBT_HOME/nailgun_launcher/
-export STAGE1=$CBT_HOME/stage1/
 export TARGET=target/scala-2.11/classes/
 mkdir -p $NAILGUN$TARGET
-mkdir -p $STAGE1$TARGET
 
 nailgun_out=$NAILGUN/target/nailgun.stdout.log
 nailgun_err=$NAILGUN/target/nailgun.strerr.log
@@ -135,18 +132,6 @@ if [ $use_nailgun -eq 0 ] && [ ! $server_up -eq 0 ]; then
 	ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
 fi
 
-log "Downloading Scala jars if necessary..." $*
-export SCALA_CLASSPATH=`$CBT_HOME/bootstrap_scala/bootstrap_scala $SCALA_VERSION`
-if [ ! $? -eq 0 ]; then echo "Problem with bootstrap_scala" 1>&2; exit 1; fi
-
-SCALAC="java -Xmx256M -Xms32M\
-	-Xbootclasspath/a:$SCALA_CLASSPATH\
-	-Dscala.usejavacp=true\
-	-Denv.emacs=\
-	scala.tools.nsc.Main\
-	-deprecation\
-	-feature"
-
 stage1 () {	
 	log "Checking for changes in cbt/nailgun_launcher" $*
 	NAILGUN_INDICATOR=$NAILGUN$TARGET/cbt/NailgunLauncher.class
@@ -156,9 +141,9 @@ stage1 () {
 	done
 	compiles=0
 	if [ $changed -eq 1 ]; then
-		rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
+		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
-		javac -Xlint:deprecation -d $NAILGUN$TARGET `ls $NAILGUN*.java`
+		javac -Xlint:deprecation -Xlint:unchecked -d $NAILGUN$TARGET `ls $NAILGUN*.java`
 		compiles=$?
 		if [ $compiles -ne 0 ]; then
 			rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # triggers recompilation next time.
@@ -172,45 +157,20 @@ stage1 () {
 		fi
 	fi
 
-	log "Checking for changes in cbt/stage1" $*
-	STAGE1_INDICATOR=$STAGE1$TARGET/cbt/Stage1.class
-	changed2=0
-	for file in `ls $STAGE1*.scala`; do
-		if [ $file -nt $STAGE1_INDICATOR ]; then changed2=1; fi
-	done
-	compiles2=0
-
-	if [ $changed2 -eq 1 ]; then
-		rm $STAGE1$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
-		echo "Compiling cbt/stage1" 1>&2
-		$SCALAC -cp $NAILGUN$TARGET -d $STAGE1$TARGET `ls $STAGE1/*.scala`
-		compiles2=$?
-		if [ $compiles2 -ne 0 ]; then
-			rm $STAGE1$TARGET/cbt/*.class 2>/dev/null # triggers recompilation next time.
-			break
-		fi
-	fi
-
 	log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." $*
-	if [ "$1" = "admin" ] || [ "$2" = "admin" ]; then
-		mainClass=cbt.AdminStage1
-	else
-		mainClass=cbt.Stage1
-	fi
-
-	CP=$STAGE1$TARGET:$SCALA_CLASSPATH
+	
 	if [ $use_nailgun -eq 1 ]
 	then
 		log "Running JVM directly" $*
 		# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
-		java -cp $NAILGUN$TARGET cbt.NailgunLauncher $mainClass $CP "$CWD" $*
+		java -cp $NAILGUN$TARGET cbt.NailgunLauncher "$CWD" $*
 	else
 		log "Running via nailgun." $*
 		for i in 0 1 2 3 4 5 6 7 8 9; do
 			log "Adding classpath." $*
 			$NG ng-cp $NAILGUN$TARGET >> $nailgun_out 2>> $nailgun_err
 			log "Checking if nailgun is up yet." $*
-			$NG cbt.NailgunLauncher cbt.CheckAlive $CP "$CWD" $* >> $nailgun_out 2>> $nailgun_err
+			$NG cbt.NailgunLauncher check-alive >> $nailgun_out 2>> $nailgun_err
 			alive=$?
 			if [ $alive -eq 131 ] || [ $alive -eq 33 ]; then
 			# the 33 is not working right now
@@ -219,17 +179,17 @@ stage1 () {
 				break
 			else
 				log "Nope. Sleeping for 0.5 seconds" $*
-				if [ "$i" -gt "1" ]; then
-					echo "Waiting for nailgun to start... (For problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log)" 1>&2
-				fi
+				#if [ "$i" -gt 1 ]; then
+				#	echo "Waiting for nailgun to start... (In case of problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log)" 1>&2
+				#fi
 			fi
-			sleep 0.5
+			sleep 0.3
 		done
-		log "Running $mainClass via Nailgun." $*
-		$NG cbt.NailgunLauncher $mainClass $CP "$CWD" $*
+		log "Running CBT via Nailgun." $*
+		$NG cbt.NailgunLauncher "$CWD" $*
 	fi
 	exitCode=$?
-	log "Done running $mainClass." $*
+	log "Done running CBT." $*
 }
 
 while true; do
@@ -240,7 +200,7 @@ while true; do
 	echo "======= Restarting CBT =======" 1>&2
 done
 
-if [ $compiles -ne 0 ] || [ $compiles2 -ne 0 ]; then
+if [ $compiles -ne 0 ]; then
 	exitCode=1
 fi
 

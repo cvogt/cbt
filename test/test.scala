@@ -4,9 +4,9 @@ import scala.collection.immutable.Seq
 
 // micro framework
 object Main{
-  def main(args: Array[String]): Unit = {
-    val init = new Init(args)
-    implicit val logger: Logger = init.logger
+  def main(_args: Array[String]): Unit = {
+    val args = new Stage1ArgsParser(_args.toVector)
+    implicit val logger: Logger = new Logger(args.enabledLoggers)
     
     var successes = 0
     var failures = 0
@@ -24,9 +24,9 @@ object Main{
       }.get
     }
 
-    def runCbt(path: String, args: Seq[String])(implicit logger: Logger): Result = {
+    def runCbt(path: String, _args: Seq[String])(implicit logger: Logger): Result = {
       import java.io._
-      val allArgs: Seq[String] = ((cbtHome.string ++ "/cbt") +: "direct" +: (args ++ init.propsRaw))
+      val allArgs: Seq[String] = ((cbtHome.string ++ "/cbt") +: "direct" +: (_args ++ args.propsRaw))
       logger.test(allArgs.toString)
       val pb = new ProcessBuilder( allArgs :_* )
       pb.directory(cbtHome ++ ("/test/" ++ path))
@@ -41,7 +41,7 @@ object Main{
     }
     case class Result(exit0: Boolean, out: String, err: String)
     def assertSuccess(res: Result, msg: => String)(implicit logger: Logger) = {
-      assert(res.exit0, msg + res.toString)
+      assert(res.exit0, msg ++ res.toString)
     }
 
     // tests
@@ -49,19 +49,19 @@ object Main{
       val usageString = "Methods provided by CBT"
       val res = runCbt(path, Seq())
       logger.test(res.toString)
-      val debugToken = "usage " + path +" "
+      val debugToken = "usage " ++ path ++ " "
       assertSuccess(res,debugToken)
-      assert(res.out == "", debugToken+ res.toString)
-      assert(res.err contains usageString, debugToken+res.toString)
+      assert(res.out == "", debugToken ++ res.toString)
+      assert(res.err contains usageString, debugToken ++ res.toString)
     }
     def compile(path: String)(implicit logger: Logger) = {
       val res = runCbt(path, Seq("compile"))
-      val debugToken = "compile " + path +" "
+      val debugToken = "compile " ++ path ++ " "
       assertSuccess(res,debugToken)
       // assert(res.err == "", res.err) // FIXME: enable this
     }
 
-    logger.test( "Running tests " ++ args.toList.toString )
+    logger.test( "Running tests " ++ _args.toList.toString )
 
     usage("nothing")
     compile("nothing")
@@ -71,7 +71,7 @@ object Main{
     compile("simple")
     
     {
-      val noContext = Context(cbtHome ++ "/test/nothing", Seq(), logger)
+      val noContext = Context(cbtHome ++ "/test/nothing", Seq(), logger, new ClassLoaderCache(logger))
       val b = new Build(noContext){
         override def dependencies = Seq(
           JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),

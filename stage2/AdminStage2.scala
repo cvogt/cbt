@@ -1,13 +1,12 @@
 package cbt
 import java.io._
-object AdminStage2{
-  def main(_args: Array[String]) = {
-    val args = _args.drop(1).dropWhile(Seq("admin","direct") contains _)
-    val init = new Init(args)
-    val lib = new Lib(init.logger)
-    val adminTasks = new AdminTasks(lib, args, new File(_args(0)))
+object AdminStage2 extends Stage2Base{
+  def run( _args: Stage2Args ): Unit = {
+    val args = _args.args.dropWhile(Seq("admin","direct") contains _)
+    val lib = new Lib(_args.logger)
+    val adminTasks = new AdminTasks(lib, args, _args.cwd)
     new lib.ReflectObject(adminTasks){
-      def usage: String = "Available methods: " ++ lib.taskNames(subclassType).mkString("  ")
+      def usage: String = "Available methods: " ++ lib.taskNames(adminTasks.getClass).mkString("  ")
     }.callNullary(args.lift(0))
   }
 }

@@ -28,7 +28,7 @@ abstract class Dependency{
   implicit def logger: Logger
   protected def lib = new Stage1Lib(logger)
 
-  def updated: Boolean
+  def needsUpdate: Boolean
   //def cacheClassLoader: Boolean = false
   private[cbt] def targetClasspath: ClassPath
   def exportedClasspath: ClassPath
@@ -36,7 +36,6 @@ abstract class Dependency{
   def jars: Seq[File] = exportedJars ++ dependencyJars
 
   def canBeCached = false
-  def cacheDependencyClassLoader = true
 
   //private type BuildCache = KeyLockedLazyCache[Dependency, Future[ClassPath]]
   def exportClasspathConcurrently: ClassPath = {
@@ -86,37 +85,64 @@ abstract class Dependency{
     )
   }
 
-  private object classLoaderCache extends Cache[URLClassLoader]
-  def classLoader: URLClassLoader = classLoaderCache{
+  def actual(current: Dependency, latest: Map[(String,String),Dependency]) = current match {
+    case d: ArtifactInfo => latest((d.groupId,d.artifactId))
+    case d => d
+  }
+  private def dependencyClassLoader( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+    if( dependencies.isEmpty ){
+      ClassLoader.getSystemClassLoader
+    } else if( dependencies.size == 1 ){
+      dependencies.head.classLoaderRecursion( latest, cache )
+    } else if( dependencies.forall(_.canBeCached) ){
+      assert(transitiveDependencies.forall(_.canBeCached))
+      cache.persistent.get(
+        dependencyClasspath.string,
+        new MultiClassLoader(
+          dependencies.map( _.classLoaderRecursion(latest, cache) )
+        )
+      )
+    } else {
+      val (cachable, nonCachable) = dependencies.partition(_.canBeCached)
+      new URLClassLoader(
+        ClassPath.flatten( nonCachable.map(actual(_,latest)).map(_.exportedClasspath) ),
+        cache.persistent.get(
+          ClassPath.flatten( cachable.map(actual(_,latest)).map(_.exportedClasspath) ).string,
+          new MultiClassLoader(
+            cachable.map( _.classLoaderRecursion(latest, cache) )
+          )
+        )
+      )
+      new MultiClassLoader(
+        dependencies.map( _.classLoaderRecursion(latest, cache) )
+      )
+    }
+  }
+  protected def classLoaderRecursion( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+    if( canBeCached ){
+      val a = actual( this, latest )
+      cache.persistent.get(
+        a.classpath.string,
+        cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
+      )
+    } else {
+      cbt.URLClassLoader( exportedClasspath, dependencyClassLoader(latest, cache) )
+    }
+  }
+  private object classLoaderCache extends Cache[ClassLoader]
+  def classLoader( cache: ClassLoaderCache  ): ClassLoader = classLoaderCache{
     if( concurrencyEnabled ){
       // trigger concurrent building / downloading dependencies
       exportClasspathConcurrently
     }
-    val transitiveClassPath = transitiveDependencies.map{
-      case d if d.canBeCached => Left(d)
-      case d => Right(d)
-    }
-    val buildClassPath = ClassPath.flatten(
-      transitiveClassPath.flatMap(
-        _.right.toOption.map(_.exportedClasspath)
-      )
+    classLoaderRecursion(
+      (this +: transitiveDependencies).collect{
+        case d: ArtifactInfo => d 
+      }.groupBy(
+        d => (d.groupId,d.artifactId)
+      ).mapValues(_.head),
+      cache
     )
-    val cachedClassPath = ClassPath.flatten(
-      transitiveClassPath.flatMap(
-        _.left.toOption
-      ).par.map(_.exportedClasspath).seq.sortBy(_.string)
-    )
-
-    if(cacheDependencyClassLoader){    
-      new URLClassLoader(
-        exportedClasspath ++ buildClassPath,
-        ClassLoaderCache.get( cachedClassPath )
-      )
-    } else {
-      new URLClassLoader(
-        exportedClasspath ++ buildClassPath ++ cachedClassPath, ClassLoader.getSystemClassLoader
-      )
-    }
   }
   def classpath           : ClassPath = exportedClasspath ++ dependencyClasspath
   def dependencyJars      : Seq[File] = transitiveDependencies.flatMap(_.jars)
@@ -128,25 +154,30 @@ abstract class Dependency{
     new Tree(this, (dependencies diff parents).map(_.resolveRecursive(this :: parents)))
   }
 
-  def transitiveDependencies: Seq[Dependency] = {
-    val deps = dependencies.flatMap(_.resolveRecursive().linearize)
+  def linearize(deps: Seq[Dependency]): Seq[Dependency] =
+    if(deps.isEmpty) deps else ( deps ++ linearize(deps.flatMap(_.dependencies)) )
+  
+  private object transitiveDependenciesCache extends Cache[Seq[Dependency]]
+  /** return dependencies in order of linearized dependence. this is a bit tricky. */
+  def transitiveDependencies: Seq[Dependency] = transitiveDependenciesCache{
+    val deps = linearize(dependencies)
     val hasInfo = deps.collect{ case d:ArtifactInfo => d }
     val noInfo  = deps.filter{
       case _:ArtifactInfo => false
       case _ => true
     }
-    noInfo ++ JavaDependency.removeOutdated( hasInfo )
-  }.sortBy(_.targetClasspath.string)
+    noInfo ++ JavaDependency.updateOutdated( hasInfo ).reverse.distinct
+  }
 
   def show: String = this.getClass.getSimpleName
   // ========== debug ==========
   def dependencyTree: String = dependencyTreeRecursion()
   private def dependencyTreeRecursion(indent: Int = 0): String = (
     ( " " * indent )
-    ++ (if(updated) lib.red(show) else show)
+    ++ (if(needsUpdate) lib.red(show) else show)
     ++ dependencies.map(
-      _.dependencyTreeRecursion(indent + 1)
-    ).map( "\n" ++ _.toString ).mkString("")
+      "\n" ++ _.dependencyTreeRecursion(indent + 1)
+    ).mkString
   )
 }
 
@@ -156,7 +187,7 @@ class ScalaLibraryDependency (version: String)(implicit logger: Logger) extends 
 class ScalaReflectDependency (version: String)(implicit logger: Logger) extends JavaDependency("org.scala-lang","scala-reflect",version)
 
 case class ScalaDependencies(version: String)(implicit val logger: Logger) extends Dependency{ sd =>
-  final val updated = false
+  override final val needsUpdate = false
   override def canBeCached = true
   def targetClasspath = ClassPath(Seq())
   def exportedClasspath = ClassPath(Seq())
@@ -169,34 +200,52 @@ case class ScalaDependencies(version: String)(implicit val logger: Logger) exten
 }
 
 case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implicit val logger: Logger) extends Dependency{
-  def updated = false
   def exportedClasspath = ClassPath(Seq(path))
   def exportedJars = Seq[File](path)
+  override def needsUpdate = false
   def targetClasspath = exportedClasspath
 }
 
+/** Allows to easily assemble a bunch of dependencies */
+case class Dependencies( _dependencies: Dependency* )(implicit val logger: Logger) extends Dependency{
+  override def dependencies = _dependencies.to
+  def needsUpdate = dependencies.exists(_.needsUpdate)
+  def exportedClasspath = ClassPath(Seq())
+  def exportedJars = Seq()
+  def targetClasspath = ClassPath(Seq())
+}
+
 case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
-  def exportedClasspath = ClassPath( Seq(nailgunTarget, stage1Target) )
-  def exportedJars = Seq[File]()  
-  def dependencies = ScalaDependencies(constants.scalaVersion).dependencies
-  def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
+  def needsUpdate = false // FIXME: think this through, might allow simplifications and/or optimizations
+  override def canBeCached = false
+  /*
+  private object classLoaderRecursionCache extends Cache[ClassLoader]
+  override def classLoaderRecursion(latest: Map[(String,String),Dependency], cache: ClassLoaderCache) = classLoaderRecursionCache{
+    println(System.currentTimeMillis)
+    val cl = getClass.getClassLoader
+    println(System.currentTimeMillis)
+    cl
+    ClassLoader.getSystemClassLoader
+  }
+  */
+  override def exportedClasspath = ClassPath(Seq(nailgunTarget, stage1Target) )
+  override def exportedJars = ???//Seq[File]()  
+  override def dependencies = ScalaDependencies(constants.scalaVersion).dependencies
   def targetClasspath = exportedClasspath
 }
 case class CbtDependency()(implicit val logger: Logger) extends Dependency{
-  def exportedClasspath = ClassPath( Seq( stage2Target ) )
-  def exportedJars = Seq[File]()  
+  override def canBeCached = false
+  override def exportedClasspath = ClassPath( Seq( stage2Target ) )
+  override def exportedJars = Seq[File]()  
   override def dependencies = Seq(
     Stage1Dependency(),
     JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
     JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
     lib.ScalaDependency(
-      "com.lihaoyi","ammonite-ops","0.5.5", scalaVersion = constants.scalaMajorVersion
-    ),
-    lib.ScalaDependency(
       "org.scala-lang.modules","scala-xml","1.0.5", scalaVersion = constants.scalaMajorVersion
     )
   )
-  def updated = false // FIXME: think this through, might allow simplifications and/or optimizations
+  def needsUpdate = false // FIXME: think this through, might allow simplifications and/or optimizations
   def targetClasspath = exportedClasspath
 }
 
@@ -211,7 +260,7 @@ case class JavaDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
 )(implicit val logger: Logger) extends ArtifactInfo{
 
-  def updated = false
+  override def needsUpdate = false
   override def canBeCached = true
 
   private val groupPath = groupId.split("\\.").mkString("/")
@@ -226,7 +275,7 @@ case class JavaDependency(
   private def jarFile: File = baseFile ++ ".jar"
   //private def coursierJarFile = userHome++"/.coursier/cache/v1/https/repo1.maven.org/maven2"++basePath++".jar"
   private def pomUrl: URL = baseUrl ++ ".pom"
-  private def jarUrl: URL = baseUrl ++ ".jar"    
+  private[cbt] def jarUrl: URL = baseUrl ++ ".jar"    
 
   def exportedJars = Seq( jar )
   def exportedClasspath = ClassPath( exportedJars )
@@ -235,30 +284,27 @@ case class JavaDependency(
   
   def jarSha1 = {
     val file = jarFile ++ ".sha1"
-    scala.util.Try{
-      lib.download( jarUrl ++ ".sha1"  , file, None )
-      // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
-      Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
-    }.toOption // FIXME: .toOption is a temporary solution to ignore if libs don't have one (not sure that's even possible)
+    lib.download( jarUrl ++ ".sha1"  , file, None )
+    // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
+    Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
   }
 
   def pomSha1 = {
     val file = pomFile++".sha1"
-    scala.util.Try{ 
-      lib.download( pomUrl++".sha1" , file, None )
-      // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
-      Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
-    }.toOption // FIXME: .toOption is a temporary solution to ignore if libs don't have one (not sure that's even possible)
+    lib.download( pomUrl++".sha1" , file, None )
+    // split(" ") here so checksum file contents in this format work: df7f15de037a1ee4d57d2ed779739089f560338c  jna-3.2.2.pom
+    Files.readAllLines(Paths.get(file.string)).mkString("\n").split(" ").head.trim
   }
 
-  def jar = {
-    lib.download( jarUrl, jarFile, jarSha1 )
+  private object jarCache extends Cache[File]
+  def jar = jarCache{
+    lib.download( jarUrl, jarFile, Some(jarSha1) )
     jarFile
   }
   def pomXml = XML.loadFile(pom.toString)
 
   def pom = {
-    lib.download( pomUrl, pomFile, pomSha1 )
+    lib.download( pomUrl, pomFile, Some(pomSha1) )
     pomFile
   }
 
@@ -344,7 +390,7 @@ object JavaDependency{
     case e: NumberFormatException => Right(str)
   }
   /* this obviously should be overridable somehow */
-  def removeOutdated(
+  def updateOutdated(
     deps: Seq[ArtifactInfo],
     versionLessThan: (String, String) => Boolean = semanticVersionLessThan
   )(implicit logger: Logger): Seq[ArtifactInfo] = {
@@ -354,11 +400,11 @@ object JavaDependency{
         _.sortBy( _.version )( Ordering.fromLessThan(versionLessThan) )
          .last
       )
-    deps.flatMap{
+    deps.map{
       d => 
-        val l = latest.get((d.groupId,d.artifactId))
+        val l = latest((d.groupId,d.artifactId))
         if(d != l) logger.resolver("outdated: "++d.show)
         l
-    }.distinct
+    }
   }
 }
