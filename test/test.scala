@@ -10,6 +10,12 @@ object Main{
     
     var successes = 0
     var failures = 0
+    def assertException[T:scala.reflect.ClassTag](msg: String = "")(code: => Unit)(implicit logger: Logger) = {
+      try{ 
+        code
+        assert(false, msg)
+      }catch{ case _:AssertionError => }
+    }
     def assert(condition: Boolean, msg: String = "")(implicit logger: Logger) = {
       scala.util.Try{
         Predef.assert(condition, "["++msg++"]")
@@ -81,6 +87,24 @@ object Main{
       val cp = b.classpath
       assert(cp.strings.distinct == cp.strings, "duplicates in classpath: " ++ cp.string)
     }
+
+    // test that messed up artifacts crash with an assertion (which should tell the user what's up)
+    assertException[AssertionError](){
+      JavaDependency("com.jcraft", "jsch", " 0.1.53").classpath
+    }
+    assertException[AssertionError](){
+      JavaDependency("com.jcraft", null, "0.1.53").classpath
+    }
+    assertException[AssertionError](){
+      JavaDependency("com.jcraft", "", " 0.1.53").classpath
+    }
+    assertException[AssertionError](){
+      JavaDependency("com.jcraft%", "jsch", " 0.1.53").classpath
+    }
+    assertException[AssertionError](){
+      JavaDependency("", "jsch", " 0.1.53").classpath
+    }
+    
 
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
