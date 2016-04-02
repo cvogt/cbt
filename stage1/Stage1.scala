@@ -83,7 +83,7 @@ object Stage1{
 
     val cl = /*classLoaderCache.transient.get(
       (stage2Target +: deps.classpath).string,*/
-      cbt.URLClassLoader(
+      new cbt.URLClassLoader(
         ClassPath(Seq(stage2Target)),
         classLoaderCache.persistent.get(
           deps.classpath.string,

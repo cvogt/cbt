@@ -123,10 +123,10 @@ abstract class Dependency{
       val a = actual( this, latest )
       cache.persistent.get(
         a.classpath.string,
-        cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
+        new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
       )
     } else {
-      cbt.URLClassLoader( exportedClasspath, dependencyClassLoader(latest, cache) )
+      new cbt.URLClassLoader( exportedClasspath, dependencyClassLoader(latest, cache) )
     }
   }
   private object classLoaderCache extends Cache[ClassLoader]
