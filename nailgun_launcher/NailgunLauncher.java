@@ -179,8 +179,8 @@ public class NailgunLauncher{
       classLoaderCacheKeys.get( key )
     );
   }
-  static ClassLoader cachePut( ClassLoader classLoader, String... jars ){
-    String key = String.join( pathSeparator, jars );
+  public static ClassLoader cachePut( ClassLoader classLoader, String... jars ){
+    String key = join( pathSeparator, jars );
     Object keyObject = new Object();
     classLoaderCacheKeys.put( key, keyObject );
     classLoaderCacheValues.put( keyObject, classLoader );
@@ -210,5 +210,13 @@ public class NailgunLauncher{
     final MessageDigest sha1 = MessageDigest.getInstance("SHA1");
     sha1.update(bytes, 0, bytes.length);
     return (new HexBinaryAdapter()).marshal(sha1.digest());
+  }
+
+  public static String join(String separator, String[] parts){
+    String result = parts[0];
+    for(int i = 1; i < parts.length; i++){
+      result += separator + parts[i];
+    }
+    return result;
   }
 }

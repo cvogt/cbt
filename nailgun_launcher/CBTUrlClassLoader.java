@@ -9,7 +9,7 @@ class CbtURLClassLoader extends java.net.URLClassLoader{
       + "(\n  "
       + Arrays.toString(getURLs())
       + ",\n  "
-      + String.join("\n  ",getParent().toString().split("\n"))
+      + NailgunLauncher.join("\n  ",getParent().toString().split("\n"))
       + "\n)"
     );
   }
