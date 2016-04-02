@@ -40,6 +40,7 @@ class AdminTasks(lib: Lib, args: Seq[String], cwd: File){
     )
   }
   def scaffoldBasicBuild: Unit = lib.scaffoldBasicBuild( cwd )
+  def scaffoldBuildBuild: Unit = lib.scaffoldBuildBuild( cwd )
   def cbtEarlyDependencies = {
     val scalaVersion = args.lift(1).getOrElse(constants.scalaVersion)
     val scalaMajorVersion = scalaVersion.split("\\.").take(2).mkString(".")

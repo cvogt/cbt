@@ -16,13 +16,6 @@ trait Scaffold{
   def scaffoldBasicBuild(
     projectDirectory: File
   ): Unit = { 
-  /**
-  TODO:
-   - make behavior more user friendly:
-     - not generate half and then throw exception for one thing already existing
-     - maybe not generate all of this, e.g. offer different variants
-  */
-
     createFile(projectDirectory, "build/build.scala", s"""import cbt._
 import java.net.URL
 import java.io.File
@@ -33,7 +26,30 @@ class Build(context: Context) extends BasicBuild(context){
     // "org.cvogt" %% "scala-extensions" % "0.4.1"
   )
 }
-"""/*,
+"""
+    )
+
+  }
+
+  def scaffoldBuildBuild(
+    projectDirectory: File
+  ): Unit = { 
+    createFile(projectDirectory, "build/build/build.scala", s"""import cbt._
+import java.net.URL
+import java.io.File
+import scala.collection.immutable.Seq
+
+class Build(context: Context) extends BuildBuild(context){
+  override def dependencies = super.dependencies ++ Seq(
+    // , "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
+  )
+}
+"""
+    )
+
+  }
+
+/*,
 
       "build/build/build.scala" -> s"""import cbt._
 import java.net.URL
@@ -120,8 +136,5 @@ trait BuildShared extends BasicBuild{
   override def pomExtra: Seq[scala.xml.Node] = Seq() 
 }
 """*/
-    )
-
-  }
 
 }
