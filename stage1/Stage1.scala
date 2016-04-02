@@ -80,21 +80,13 @@ object Stage1{
     )
 
     logger.stage1(s"[$now] calling CbtDependency.classLoader")
-
-    val cl = /*classLoaderCache.transient.get(
-      (stage2Target +: deps.classpath).string,*/
-      new cbt.URLClassLoader(
-        ClassPath(Seq(stage2Target)),
-        classLoaderCache.persistent.get(
-          deps.classpath.string,
-          cbt.URLClassLoader( deps.classpath, classLoader )
-        )
-      )
-    //)
+    if(NailgunLauncher.stage2classLoader == null){
+      NailgunLauncher.stage2classLoader = CbtDependency().classLoader(classLoaderCache)
+    }
 
     logger.stage1(s"[$now] Run Stage2")
     val exitCode = (
-      cl.loadClass(
+      NailgunLauncher.stage2classLoader.loadClass(
         if(args.admin) "cbt.AdminStage2" else "cbt.Stage2"
       )
       .getMethod( "run", classOf[Stage2Args] )

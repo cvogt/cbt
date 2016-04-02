@@ -85,7 +85,7 @@ abstract class Dependency{
     )
   }
 
-  def actual(current: Dependency, latest: Map[(String,String),Dependency]) = current match {
+  private def actual(current: Dependency, latest: Map[(String,String),Dependency]) = current match {
     case d: ArtifactInfo => latest((d.groupId,d.artifactId))
     case d => d
   }
@@ -228,25 +228,28 @@ case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
     ClassLoader.getSystemClassLoader
   }
   */
-  override def exportedClasspath = ClassPath(Seq(nailgunTarget, stage1Target) )
+  override def targetClasspath = exportedClasspath
+  override def exportedClasspath = ClassPath( Seq(nailgunTarget, stage1Target) )
   override def exportedJars = ???//Seq[File]()  
-  override def dependencies = ScalaDependencies(constants.scalaVersion).dependencies
-  def targetClasspath = exportedClasspath
+  override def dependencies = Seq(
+    JavaDependency("org.scala-lang","scala-library",constants.scalaVersion),
+    JavaDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,"1.0.5")
+  )
+  // FIXME: implement sanity check to prevent using incompatible scala-library and xml version on cp
+  override def classLoaderRecursion( latest: Map[(String,String),Dependency], cache: ClassLoaderCache )
+    = getClass.getClassLoader
 }
 case class CbtDependency()(implicit val logger: Logger) extends Dependency{
+  def needsUpdate = false // FIXME: think this through, might allow simplifications and/or optimizations
   override def canBeCached = false
+  override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq( stage2Target ) )
-  override def exportedJars = Seq[File]()  
+  override def exportedJars = ???
   override def dependencies = Seq(
     Stage1Dependency(),
     JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
-    JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
-    lib.ScalaDependency(
-      "org.scala-lang.modules","scala-xml","1.0.5", scalaVersion = constants.scalaMajorVersion
-    )
+    JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
   )
-  def needsUpdate = false // FIXME: think this through, might allow simplifications and/or optimizations
-  def targetClasspath = exportedClasspath
 }
 
 case class Classifier(name: Option[String])

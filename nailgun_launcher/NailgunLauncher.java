@@ -38,6 +38,7 @@ public class NailgunLauncher{
 
   public static long lastSuccessfullCompile = 0;
   static ClassLoader stage1classLoader = null;
+  public static ClassLoader stage2classLoader = null;
 
   public static void main(String[] args) throws ClassNotFoundException,
                                                 NoSuchMethodException,
@@ -78,6 +79,7 @@ public class NailgunLauncher{
     }
 
     if(stage1SourcesChanged || stage1classLoader == null){
+      System.err.println("CBT stage1 changed. Re-compiling.");
       EarlyDependencies earlyDeps = new EarlyDependencies();
       int exitCode = zinc(earlyDeps, stage1SourceFiles);
       if( exitCode == 0 ){
@@ -94,6 +96,7 @@ public class NailgunLauncher{
       }
 
       stage1classLoader = classLoader(STAGE1+TARGET, nailgunClassLoader);
+      stage2classLoader = null;
     }
 
     try{
