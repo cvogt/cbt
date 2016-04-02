@@ -6,7 +6,9 @@ trait Scaffold{
   def logger: Logger
 
   private def createFile( projectDirectory: File, fileName: String, code: String ){
-    Files.write( ( projectDirectory ++ ("/" ++ fileName) ).toPath, code.getBytes, StandardOpenOption.CREATE_NEW )
+    val outputFile = projectDirectory ++ ("/" ++ fileName)
+    outputFile.getParentFile.mkdirs
+    Files.write( ( outputFile ).toPath, code.getBytes, StandardOpenOption.CREATE_NEW )
     import scala.Console._
     println( GREEN ++ "Created " ++ fileName ++ RESET )
   }
