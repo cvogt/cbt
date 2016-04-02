@@ -79,7 +79,6 @@ public class NailgunLauncher{
     }
 
     if(stage1SourcesChanged || stage1classLoader == null){
-      System.err.println("CBT stage1 changed. Re-compiling.");
       EarlyDependencies earlyDeps = new EarlyDependencies();
       int exitCode = zinc(earlyDeps, stage1SourceFiles);
       if( exitCode == 0 ){
@@ -118,10 +117,22 @@ public class NailgunLauncher{
     }
   }
 
-  public static void runMain(String cls, String[] args, ClassLoader cl) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
-    cl.loadClass(cls)
-      .getMethod("main", String[].class)
-      .invoke( null, (Object) args);
+  public static int runMain(String cls, String[] args, ClassLoader cl) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
+    try{
+      System.setSecurityManager( new TrapSecurityManager() );
+      cl.loadClass(cls)
+        .getMethod("main", String[].class)
+        .invoke( null, (Object) args);
+      return 0;
+    }catch( InvocationTargetException exception ){
+      Throwable cause = exception.getCause();
+      if(cause instanceof TrappedExitCode){
+        return ((TrappedExitCode) cause).exitCode;
+      }
+      throw exception;
+    } finally {
+      System.setSecurityManager(NailgunLauncher.defaultSecurityManager);
+    }
   }
 
   static int zinc( EarlyDependencies earlyDeps, List<File> sourceFiles ) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
@@ -144,17 +155,12 @@ public class NailgunLauncher{
       zincArgs.add(f.toString());
     }
 
+    PrintStream oldOut = System.out;
     try{
-      System.setSecurityManager( new TrapSecurityManager() );
-      PrintStream oldOut = System.out;
       System.setOut(System.err);
-      runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc );
-      System.setOut(oldOut);
-      return 0;//throw new RuntimeException("zinc should have thrown an exit code");
-    }catch( TrappedExitCode trapped ){
-      return trapped.exitCode;
+      return runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc );
     } finally {
-      System.setSecurityManager(NailgunLauncher.defaultSecurityManager);
+      System.setOut(oldOut);
     }
   }
 
