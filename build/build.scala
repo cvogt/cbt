@@ -3,6 +3,8 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
+// import tut.TutMain
+
 class Build(context: Context) extends BasicBuild(context){
   // FIXME: somehow consolidate this with cbt's own boot-strapping from source.
   override def dependencies = super.dependencies :+ MavenRepository.central.resolve(
@@ -14,4 +16,9 @@ class Build(context: Context) extends BasicBuild(context){
   override def sources = Seq(
     "nailgun_launcher", "stage1", "stage2"
   ).map(d => projectDirectory ++ ("/" + d))
+
+  private object tutCache extends Cache[Unit]
+  def tut = {
+    println("Hello tut")
+  }
 }
