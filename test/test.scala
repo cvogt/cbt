@@ -77,7 +77,7 @@ object Main{
     compile("simple")
     
     {
-      val noContext = Context(cbtHome ++ "/test/nothing", Seq(), logger, new ClassLoaderCache(logger))
+      val noContext = Context(cbtHome ++ "/test/nothing", Seq(), logger, false, new ClassLoaderCache(logger))
       val b = new Build(noContext){
         override def dependencies = Seq(
           JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),

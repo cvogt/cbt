@@ -69,16 +69,16 @@ public class NailgunLauncher{
       }
     }
 
-    Boolean stage1SourcesChanged = false;
+    Boolean changed = lastSuccessfullCompile == 0;
     for( File file: stage1SourceFiles ){
       if( file.lastModified() > lastSuccessfullCompile ){
-        stage1SourcesChanged = true;
+        changed = true;
         //System.err.println("File change: "+file.lastModified());
         break;
       }
     }
 
-    if(stage1SourcesChanged || stage1classLoader == null){
+    if(changed){
       EarlyDependencies earlyDeps = new EarlyDependencies();
       int exitCode = zinc(earlyDeps, stage1SourceFiles);
       if( exitCode == 0 ){
@@ -103,7 +103,7 @@ public class NailgunLauncher{
         (Integer) stage1classLoader
           .loadClass("cbt.Stage1")
           .getMethod("run", String[].class, ClassLoader.class, Boolean.class)
-          .invoke( null, (Object) args, stage1classLoader, stage1SourcesChanged);
+          .invoke( null, (Object) args, stage1classLoader, changed);
       System.exit(exitCode);
     }catch(Exception e){
       System.err.println(stage1classLoader);

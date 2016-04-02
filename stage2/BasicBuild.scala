@@ -16,6 +16,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   // library available to builds
   implicit final val logger: Logger = context.logger
   implicit final val classLoaderCache: ClassLoaderCache = context.classLoaderCache
+  implicit final val _context = context
   override final protected val lib: Lib = new Lib(logger)
 
   // ========== general stuff ==========
@@ -125,12 +126,11 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   def scalacOptions: Seq[String] = Seq( "-feature", "-deprecation", "-unchecked" )
 
   private object needsUpdateCache extends Cache[Boolean]
-  def needsUpdate: Boolean = {
-    needsUpdateCache(
-      lib.needsUpdate( sourceFiles, compileStatusFile )
+  def needsUpdate: Boolean = needsUpdateCache(
+    context.cbtHasChanged
+    || lib.needsUpdate( sourceFiles, compileStatusFile )
       || transitiveDependencies.exists(_.needsUpdate)
     )
-  }
 
   private object compileCache extends Cache[Option[File]]
   def compile: Option[File] = compileCache{

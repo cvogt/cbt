@@ -145,7 +145,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     (
       (
         if( thisTasks.nonEmpty ){
-          s"""Methods provided by Build ${context}
+          s"""Methods provided by Build ${context.cwd}
 
   ${thisTasks.mkString("  ")}
 

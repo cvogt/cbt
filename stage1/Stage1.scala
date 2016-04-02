@@ -50,7 +50,7 @@ object Stage1{
     a.lastModified > b.lastModified
   }
 
-  def run(_args: Array[String], classLoader: ClassLoader, stage1SourcesChanged: java.lang.Boolean): Int = {
+  def run(_args: Array[String], classLoader: ClassLoader, _cbtChanged: java.lang.Boolean): Int = {
     val args = Stage1ArgsParser(_args.toVector)
     val logger = new Logger(args.enabledLoggers)
     logger.stage1(s"Stage1 start")
@@ -68,11 +68,11 @@ object Stage1{
 
     val classLoaderCache = new ClassLoaderCache(logger)
 
-    val stage2SourcesChanged = lib.needsUpdate(sourceFiles, stage2StatusFile)
+    val cbtHasChanged = _cbtChanged || lib.needsUpdate(sourceFiles, stage2StatusFile)
     logger.stage1("Compiling stage2 if necessary")
     val scalaXml = JavaDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
     compile(
-      stage2SourcesChanged,
+      cbtHasChanged,
       sourceFiles, stage2Target, stage2StatusFile,
       nailgunTarget +: stage1Target +: Dependencies(deps, scalaXml).classpath,
       Seq("-deprecation"), classLoaderCache,
@@ -80,7 +80,7 @@ object Stage1{
     )
 
     logger.stage1(s"[$now] calling CbtDependency.classLoader")
-    if(NailgunLauncher.stage2classLoader == null){
+    if(cbtHasChanged){
       NailgunLauncher.stage2classLoader = CbtDependency().classLoader(classLoaderCache)
     }
 
@@ -96,7 +96,7 @@ object Stage1{
           new File( args.args(0) ),
           args.args.drop(1).toVector,
           // launcher changes cause entire nailgun restart, so no need for them here
-          cbtHasChanged = stage1SourcesChanged || stage2SourcesChanged,
+          cbtHasChanged = cbtHasChanged,
           logger
         )
       ) match {
