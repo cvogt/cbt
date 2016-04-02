@@ -53,6 +53,49 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
+  def run( mainClass: Option[String], classLoader: ClassLoader ) : ExitCode = {
+    mainClass.map( runMain( _, Seq(), classLoader ) ).getOrElse( ExitCode.Failure )
+  }
+  
+  def mainClasses(compileTarget : File, classLoader : ClassLoader): Seq[String] = {
+    val targetLength = compileTarget.toString.length + 1 // compile target and slash
+
+    def className(file : File) : String = {
+      val pathSep = if (System.getProperty("os.name").contains("Windows")) "\\" else "/"
+      file.toString.dropRight(".class".length).drop(targetLength).replace(pathSep, ".")
+    }
+
+    /* for packaged applications */
+    def retrieveFiles(file : File) : Array[File] = {
+      return file.listFiles.map(currFile => {
+          if (currFile.isDirectory) retrieveFiles(currFile) 
+          else Array(currFile)
+        }
+      ).flatten
+    } 
+    
+    def classesWithMain(target : File, classLoader : ClassLoader) : List[File]  = { 
+      def hasMainClass(file : File) : Boolean = {
+        
+        val name = className(file)
+        val inspectClass = classLoader.loadClass(name)
+        inspectClass.getDeclaredMethods().map(_.getName).contains("main")
+      }
+
+      // FIXME: Check if argument list has exactly one element of type Array[String]
+      def isInnerClass(file : File) : Boolean = file.toString.contains("$")
+      val files = retrieveFiles(target)
+
+      val classFiles = files.filter(file => file.toString.endsWith(".class") && !isInnerClass(file)).toList
+
+      classFiles.filter(hasMainClass(_))
+    }
+    
+    val hasMain = classesWithMain(compileTarget, classLoader)
+
+    hasMain.map(className(_))
+  }
+
   def srcJar(sources: Seq[File], artifactId: String, version: String, jarTarget: File): File = {
     val file = jarTarget ++ ("/"++artifactId++"-"++version++"-sources.jar")
     lib.jarFile(file, sources)
