@@ -116,7 +116,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
   override def dependencyJars      : Seq[File] = localJars ++ super.dependencyJars
 
-  def exportedClasspath   : ClassPath = ClassPath(Seq(compile))
+  def exportedClasspath   : ClassPath = ClassPath(compile.toSeq:_*)
   def targetClasspath = ClassPath(Seq(compileTarget))
   def exportedJars: Seq[File] = Seq()
   // ========== compile, run, test ==========
@@ -132,8 +132,8 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     )
   }
 
-  private object compileCache extends Cache[File]
-  def compile: File = compileCache{
+  private object compileCache extends Cache[Option[File]]
+  def compile: Option[File] = compileCache{
     lib.compile(
       needsUpdate,
       sourceFiles, compileTarget, compileStatusFile, dependencyClasspath, scalacOptions,

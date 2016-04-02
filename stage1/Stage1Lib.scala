@@ -127,64 +127,66 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     classLoaderCache: ClassLoaderCache,
     zincVersion: String,
     scalaVersion: String
-  ): File = {
+  ): Option[File] = {
 
     val cp = classpath.string
     if(classpath.files.isEmpty)
       throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
 
-    if(files.isEmpty)
-      throw new Exception("Trying to compile no files. ClassPath: " ++ cp)
-    if( needsRecompile ){
-      val zinc = JavaDependency("com.typesafe.zinc","zinc", zincVersion)
-      val zincDeps = zinc.transitiveDependencies
-      
-      val sbtInterface =
-        zincDeps
-          .collect{ case d @ JavaDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none ) => d }
-          .headOption
-          .getOrElse( throw new Exception(s"cannot find sbt-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
-          .jar
+    if( files.isEmpty ){
+      None
+    }else{
+      if( needsRecompile ){
+        val zinc = JavaDependency("com.typesafe.zinc","zinc", zincVersion)
+        val zincDeps = zinc.transitiveDependencies
+        
+        val sbtInterface =
+          zincDeps
+            .collect{ case d @ JavaDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none ) => d }
+            .headOption
+            .getOrElse( throw new Exception(s"cannot find sbt-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
+            .jar
 
-      val compilerInterface =
-        zincDeps
-          .collect{ case d @ JavaDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources ) => d }
-          .headOption
-          .getOrElse( throw new Exception(s"cannot find compiler-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
-          .jar
+        val compilerInterface =
+          zincDeps
+            .collect{ case d @ JavaDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources ) => d }
+            .headOption
+            .getOrElse( throw new Exception(s"cannot find compiler-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
+            .jar
 
-      val scalaLibrary = JavaDependency("org.scala-lang","scala-library",scalaVersion).jar
-      val scalaReflect = JavaDependency("org.scala-lang","scala-reflect",scalaVersion).jar
-      val scalaCompiler = JavaDependency("org.scala-lang","scala-compiler",scalaVersion).jar
+        val scalaLibrary = JavaDependency("org.scala-lang","scala-library",scalaVersion).jar
+        val scalaReflect = JavaDependency("org.scala-lang","scala-reflect",scalaVersion).jar
+        val scalaCompiler = JavaDependency("org.scala-lang","scala-compiler",scalaVersion).jar
 
-      val start = System.currentTimeMillis
+        val start = System.currentTimeMillis
 
-      val code = redirectOutToErr{
-        lib.runMain(
-          "com.typesafe.zinc.Main",
-          Seq(
-            "-scala-compiler", scalaCompiler.toString,
-            "-scala-library", scalaLibrary.toString,
-            "-sbt-interface", sbtInterface.toString,
-            "-compiler-interface", compilerInterface.toString,
-            "-scala-extra", scalaReflect.toString,
-            "-cp", cp,
-            "-d", compileTarget.toString
-          ) ++ scalacOptions.map("-S"++_) ++ files.map(_.toString),
-          zinc.classLoader(classLoaderCache)
-        )
+        val code = redirectOutToErr{
+          lib.runMain(
+            "com.typesafe.zinc.Main",
+            Seq(
+              "-scala-compiler", scalaCompiler.toString,
+              "-scala-library", scalaLibrary.toString,
+              "-sbt-interface", sbtInterface.toString,
+              "-compiler-interface", compilerInterface.toString,
+              "-scala-extra", scalaReflect.toString,
+              "-cp", cp,
+              "-d", compileTarget.toString
+            ) ++ scalacOptions.map("-S"++_) ++ files.map(_.toString),
+            zinc.classLoader(classLoaderCache)
+          )
+        }
+
+        if(code == ExitCode.Success){
+          // write version and when last compilation started so we can trigger
+          // recompile if cbt version changed or newer source files are seen
+          Files.write(statusFile.toPath, "".getBytes)//cbtVersion.getBytes)
+          Files.setLastModifiedTime(statusFile.toPath, FileTime.fromMillis(start) )
+        } else {
+          System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
+        }
       }
-
-      if(code == ExitCode.Success){
-        // write version and when last compilation started so we can trigger
-        // recompile if cbt version changed or newer source files are seen
-        Files.write(statusFile.toPath, "".getBytes)//cbtVersion.getBytes)
-        Files.setLastModifiedTime(statusFile.toPath, FileTime.fromMillis(start) )
-      } else {
-        System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
-      }
+      Some( compileTarget )
     }
-    compileTarget
   }
   def redirectOutToErr[T](code: => T): T = {
     val oldOut = System.out
