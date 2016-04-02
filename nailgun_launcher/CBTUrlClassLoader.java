@@ -2,7 +2,7 @@ package cbt;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-class CbtURLClassLoader extends URLClassLoader{
+class CbtURLClassLoader extends java.net.URLClassLoader{
   public String toString(){
     return (
       super.toString()
