@@ -259,6 +259,12 @@ object Classifier{
 case class JavaDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
 )(implicit val logger: Logger) extends ArtifactInfo{
+  assert(groupId != "", toString)
+  assert(artifactId != "", toString)
+  assert(version != "", toString)
+  assert(groupId != null, toString)
+  assert(artifactId != null, toString)
+  assert(version != null, toString)
 
   override def needsUpdate = false
   override def canBeCached = true
@@ -310,7 +316,7 @@ case class JavaDependency(
 
   // ========== pom traversal ==========
 
-  lazy val pomParents: Seq[JavaDependency] = {
+  lazy val transitivePom: Seq[JavaDependency] = {
     (pomXml \ "parent").collect{
       case parent =>
         JavaDependency(
@@ -318,12 +324,12 @@ case class JavaDependency(
           (parent \ "artifactId").text,
           (parent \ "version").text
         )(logger)
-    }
+    }.flatMap(_.transitivePom) :+ this
   }
 
   lazy val properties: Map[String, String] = (
-    pomParents.flatMap(_.properties) ++ {
-      val props = (pomXml \ "properties").flatMap(_.child).map{
+    transitivePom.flatMap{ d =>
+      val props = (d.pomXml \ "properties").flatMap(_.child).map{
         tag => tag.label -> tag.text
       }
       logger.pom(s"Found properties in $pom: $props")
@@ -331,17 +337,15 @@ case class JavaDependency(
     }
   ).toMap
 
-  lazy val dependencyVersions: Map[(String,String), String] =
-    pomParents.flatMap(
+  lazy val dependencyVersions: Map[String, (String,String)] =
+    transitivePom.flatMap(
       p =>
-      p.dependencyVersions
-      ++ 
       (p.pomXml \ "dependencyManagement" \ "dependencies" \ "dependency").map{
         xml =>
           val groupId = p.lookup(xml,_ \ "groupId").get
           val artifactId = p.lookup(xml,_ \ "artifactId").get
           val version = p.lookup(xml,_ \ "version").get
-          (groupId, artifactId) -> version
+          artifactId -> (groupId, version)
       }
     ).toMap
 
@@ -349,14 +353,27 @@ case class JavaDependency(
     if(classifier == Classifier.sources) Seq()
     else (pomXml \ "dependencies" \ "dependency").collect{
       case xml if (xml \ "scope").text == "" && (xml \ "optional").text != "true" =>
-        val groupId = lookup(xml,_ \ "groupId").get
         val artifactId = lookup(xml,_ \ "artifactId").get
+        val groupId =
+          lookup(xml,_ \ "groupId").getOrElse(
+            dependencyVersions
+              .get(artifactId).map(_._1)
+              .getOrElse(
+                throw new Exception(s"$artifactId not found in \n$dependencyVersions")
+              )
+          )
+        val version =
+          lookup(xml,_ \ "version").getOrElse(
+            dependencyVersions
+              .get(artifactId).map(_._2)
+              .getOrElse(
+                throw new Exception(s"$artifactId not found in \n$dependencyVersions")
+              )
+          )
         JavaDependency(
-          groupId,
-          artifactId,
-          lookup(xml,_ \ "version").getOrElse( dependencyVersions(groupId, artifactId) ),
+          groupId, artifactId, version,
           Classifier( Some( (xml \ "classifier").text ).filterNot(_ == "").filterNot(_ == null) )
-        )(logger)
+        )
     }.toVector
   }
   def lookup( xml: Node, accessor: Node => NodeSeq ): Option[String] = {
@@ -365,7 +382,16 @@ case class JavaDependency(
     accessor(xml).headOption.flatMap{v =>
       //println("found: "++v.text)
       v.text match {
-        case Substitution(path) => Option(properties(path))
+        case Substitution(path) => Option(
+          properties.get(path).orElse(
+            transitivePom.reverse.flatMap{ d =>
+              Some(path.split("\\.").toList).collect{
+                case "project" :: path =>
+                  path.foldLeft(d.pomXml:NodeSeq){ case (xml,tag) => xml \ tag }.text
+              }.filter(_ != "")
+            }.headOption
+          )
+          .getOrElse( throw new Exception(s"Can't find $path in \n$properties.\n\npomParents: $transitivePom\n\n pomXml:\n$pomXml" )))
           //println("lookup "++path ++ ": "++(pomXml\path).text)          
         case value => Option(value)
       }

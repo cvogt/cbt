@@ -6,7 +6,9 @@ class Build(context: cbt.Context) extends BasicBuild(context){
     ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
     JavaDependency("joda-time", "joda-time", "2.9.2"),
     GitDependency("https://github.com/xdotai/diff.git", "2e275642041006ff39efde22da7742c2e9a0f63f"),
-    // the below tests pom inheritance with dependencyManagement and variable substitution
-    JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
+    // the below tests pom inheritance with dependencyManagement and variable substitution for pom properties
+    JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
+    // the below tests pom inheritance with variable substitution for pom xml tag contents
+    JavaDependency("com.spotify", "missinglink-core", "0.1.1")
   ) ++ super.dependencies
 }
