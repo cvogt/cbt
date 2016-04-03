@@ -105,6 +105,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.net.*;
 import java.security.*;
+import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
 
 class EarlyDependencies{
