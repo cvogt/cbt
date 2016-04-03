@@ -10,6 +10,7 @@ case class GitDependency(
 )(implicit val logger: Logger, classLoaderCache: ClassLoaderCache, context: Context ) extends Dependency{
   override def lib = new Lib(logger)
 
+  override def canBeCached = true
   // TODO: add support for authentication via ssh and/or https
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
 

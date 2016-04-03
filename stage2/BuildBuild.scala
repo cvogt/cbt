@@ -5,7 +5,7 @@ import scala.collection.immutable.Seq
 class BuildBuild(context: Context) extends Build(context){
   override def dependencies = Seq( CbtDependency()(context.logger) ) ++ super.dependencies
   def managedBuildDirectory: File = lib.realpath( projectDirectory.parent )
-  val managedBuild = {
+  val managedBuild = try{
     val managedContext = context.copy( cwd = managedBuildDirectory )
     val cl = new cbt.URLClassLoader(
       exportedClasspath,
@@ -16,6 +16,9 @@ class BuildBuild(context: Context) extends Build(context){
       .getConstructor(classOf[Context])
       .newInstance(managedContext)
       .asInstanceOf[Build]
+  } catch {
+    case e: Exception =>
+      throw new Exception("during build: "+context.cwd, e)
   }
   override def triggerLoopFiles = super.triggerLoopFiles ++ managedBuild.triggerLoopFiles
   override def finalBuild = managedBuild.finalBuild

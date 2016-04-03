@@ -12,7 +12,7 @@ import scala.collection.immutable.Seq
 import scala.util._
 
 class BasicBuild( context: Context ) extends Build( context )
-class Build(val context: Context) extends Dependency with TriggerLoop{
+class Build(val context: Context) extends Dependency with TriggerLoop with SbtDependencyDsl{
   // library available to builds
   implicit final val logger: Logger = context.logger
   implicit final val classLoaderCache: ClassLoaderCache = context.classLoaderCache
@@ -21,6 +21,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
 
   // ========== general stuff ==========
 
+  override def canBeCached = false
   def enableConcurrency = false
   final def projectDirectory: File = lib.realpath(context.cwd)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
@@ -33,7 +34,9 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   def zincVersion = "0.3.9"
 
   def dependencies: Seq[Dependency] = Seq(
-    "org.scala-lang" % "scala-library" % scalaVersion
+    MavenRepository.central.resolve(
+      "org.scala-lang" % "scala-library" % scalaVersion
+    )
   )
 
   // ========== paths ==========
@@ -85,22 +88,6 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     scalaVersion: String = scalaMajorVersion
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
-  /** SBT-like dependency builder DSL for syntax compatibility */
-  class DependencyBuilder2( groupId: String, artifactId: String, scalaVersion: Option[String] ){
-    def %(version: String) = scalaVersion.map(
-      v => ScalaDependency(groupId, artifactId, version, scalaVersion = v)
-    ).getOrElse(
-      JavaDependency(groupId, artifactId, version)
-    )
-  }
-  implicit class DependencyBuilder(groupId: String){
-    def %%(artifactId: String) = new DependencyBuilder2( groupId, artifactId, Some(scalaMajorVersion) )
-    def  %(artifactId: String) = new DependencyBuilder2( groupId, artifactId, None )
-  }
-  implicit class DependencyBuilder3(d: JavaDependency){
-    def  %(classifier: String) = d.copy(classifier = Classifier(Some(classifier)))
-  }
-
   final def BuildDependency(path: File) = cbt.BuildDependency(
     context.copy( cwd = path, args = Seq() )
   )
@@ -129,8 +116,8 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   def needsUpdate: Boolean = needsUpdateCache(
     context.cbtHasChanged
     || lib.needsUpdate( sourceFiles, compileStatusFile )
-      || transitiveDependencies.exists(_.needsUpdate)
-    )
+    || transitiveDependencies.exists(_.needsUpdate)
+  )
 
   private object compileCache extends Cache[Option[File]]
   def compile: Option[File] = compileCache{

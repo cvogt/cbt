@@ -57,24 +57,15 @@ object Stage1{
 
     val lib = new Stage1Lib(logger)
     import lib._
-
-    val sourceFiles = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
-    val changeIndicator = stage2Target ++ "/cbt/Build.class"
-
-    val deps = Dependencies(
-      JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
-      JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
-    )
-
     val classLoaderCache = new ClassLoaderCache(logger)
 
+    val sourceFiles = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
     val cbtHasChanged = _cbtChanged || lib.needsUpdate(sourceFiles, stage2StatusFile)
     logger.stage1("Compiling stage2 if necessary")
-    val scalaXml = JavaDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
     compile(
       cbtHasChanged,
       sourceFiles, stage2Target, stage2StatusFile,
-      nailgunTarget +: stage1Target +: Dependencies(deps, scalaXml).classpath,
+      CbtDependency().dependencyClasspath,
       Seq("-deprecation"), classLoaderCache,
       zincVersion = "0.3.9", scalaVersion = constants.scalaVersion
     )

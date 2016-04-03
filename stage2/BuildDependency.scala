@@ -21,6 +21,7 @@ case class BuildDependency(context: Context) extends TriggerLoop{
   final override lazy val lib: Lib = new Lib(logger)
   private val root = lib.loadRoot( context.copy(args=Seq()) )
   lazy val build = root.finalBuild
+  override def canBeCached = build.canBeCached
   def exportedClasspath = ClassPath(Seq())
   def exportedJars = Seq()
   def dependencies = Seq(build)
