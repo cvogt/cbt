@@ -42,7 +42,7 @@ if ERRORLEVEL 1 (
 where ng-server > nul 2>&1
 
 if ERRORLEVEL 1 (
-    ECHO You need to install Nailgun to make CBT slightly faster.
+    ECHO You need to install Nailgun Server to make CBT slightly faster.
 ) ELSE ( SET nailgun_installed=1 )
 
 IF %nailgun_installed%==0 ECHO Note: nailgun not found. It makes CBT faster! > nul 2>&1
@@ -58,8 +58,7 @@ if ERRORLEVEL 1 (
 SET NAILGUN_PORT=4444
 SET NG=ng --nailgun-port %NAILGUN_PORT%
 
-CHDIR > %CBT_HOME%temp.txt 2>&1
-SET /p CWD=<%CBT_HOME%temp.txt
+for /f "delims=" %%i in ('chdir') do SET CWD=%%i
 
 SET CBT_HOME=%~dp0
 
@@ -104,9 +103,11 @@ IF "%2%"=="direct"		  SET res=1
 
 IF %res%==1 SET use_nailgun=0
 
-IF %use_nailgun%==1 IF NOT %server_up%==1 (
+REM  IF NOT %server_up%==1
+REM >> %nailgun_out 2>> %nailgun_err
+IF %use_nailgun%==1 (
 	REM try to start nailgun-server, just in case it's not up
-	ng-server 127.0.0.1:%NAILGUN_PORT >> %nailgun_out 2>> %nailgun_err
+	START ng-server 127.0.0.1:%NAILGUN_PORT%	
 )
 
 :RUN
@@ -126,7 +127,6 @@ SET changed=0
 FOR %%i IN (%NAILGUN%*.java) DO (
 	FOR /F %%z IN ('DIR /B /O:D %%i%% %NAILGUN_INDICATOR% 2^> nul') DO SET NEWEST=%%z
  	if "%NEWEST:~-4%"=="java" ( SET changed=1 )
-
 )
 
 IF %changed%==1 (
@@ -164,7 +164,12 @@ IF %changed%==1 (
 IF %use_nailgun%==0 java -cp %NAILGUN%%TARGET% cbt.NailgunLauncher %CWD% %*
 IF %use_nailgun%==0 GOTO :ENDIF
 
-REM FOR %%i in ("0 1 2 3 4 5 6 7 8 9") do (
+SET /A counter=0
+:BEGINFOR
+REM ECHO %counter%
+IF /I "%counter%" EQU "10" GOTO :ENDFOR
+%NG% ng-cp %NAILGUN%%TARGET%
+%NG% cbt.NailgunLauncher check-alive
 %NG% ng-cp %NAILGUN%%TARGET% >> %nailgun_out% 2>> %nailgun_err%
 %NG% cbt.NailgunLauncher check-alive >> %nailgun_out% 2>> %nailgun_err%
 
@@ -173,18 +178,19 @@ IF %errorlevel%==131 SET isAlive=1
 IF %errorlevel%==33  SET isAlive=1
 
 
-IF %isAlive%==1 (
-	GOTO :EOF
-) ELSE (
-	IF %%i GTR 1 echo Waiting for nailgun to start... (For problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log) 1>&2
-)
-
-SLEEP 0.3
-
+REM IF ERRORLEVEL 1 (
+	REM ECHO Waiting for nailgun
+REM ) ELSE (
+	REM GOTO :ENDFOR 
 REM )
-%NG% cbt.NailgunLauncher "%CWD%" %*
+
+SLEEP 2
+SET /A counter=%counter% + 1
+REM GOTO :BEGINFOR
+:ENDFOR
+%NG% cbt.NailgunLauncher %CWD% %*
 ENDLOCAL
 :ENDIF
 :ENDPROGRAM
 ENDLOCAL
-DEL %CBT_HOME%temp.txt > NUL 1>&2
+REM DEL %CBT_HOME%temp.txt > NUL 1>&2

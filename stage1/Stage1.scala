@@ -68,10 +68,6 @@ object Stage1{
       JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
     )
 
-<<<<<<< HEAD
-    val src = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
-    val changeIndicator = stage2Target ++ s"${pathSep}cbt${pathSep}Build.class"
-=======
     val classLoaderCache = new ClassLoaderCache(logger)
 
     val stage2SourcesChanged = lib.needsUpdate(sourceFiles, stage2StatusFile)
@@ -84,7 +80,6 @@ object Stage1{
       Seq("-deprecation"), classLoaderCache,
       zincVersion = "0.3.9", scalaVersion = constants.scalaVersion
     )
->>>>>>> upstream/chris
 
     logger.stage1(s"[$now] calling CbtDependency.classLoader")
 

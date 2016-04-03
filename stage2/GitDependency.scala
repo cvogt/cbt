@@ -13,6 +13,7 @@ case class GitDependency(
   // TODO: add support for authentication via ssh and/or https
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
 
+  // if ssh then 
   private val GitUrl = "(git|https)://([^/]+)/(.+)".r
   private val GitUrl( _, domain, path ) = url
   
