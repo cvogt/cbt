@@ -17,6 +17,8 @@ class BuildBuild(context: Context) extends Build(context){
       .newInstance(managedContext)
       .asInstanceOf[Build]
   } catch {
+    case e: ClassNotFoundException if e.getMessage == lib.buildClassName => 
+      throw new Exception("You need to remove the directory or define a class Build in: "+context.cwd)
     case e: Exception =>
       throw new Exception("during build: "+context.cwd, e)
   }
