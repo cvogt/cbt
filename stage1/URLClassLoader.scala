@@ -3,7 +3,7 @@ package cbt
 import java.net._
 import scala.util.Try
 
-case class URLClassLoader( classPath: ClassPath, parent: ClassLoader )( implicit val logger: Logger )
+class URLClassLoader( classPath: ClassPath, parent: ClassLoader )( implicit val logger: Logger )
   extends java.net.URLClassLoader(
     classPath.strings.map( p => new URL("file:" ++ p) ).toArray,
     parent

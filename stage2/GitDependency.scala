@@ -7,9 +7,10 @@ import org.eclipse.jgit.lib.Ref
 
 case class GitDependency(
   url: String, ref: String // example: git://github.com/cvogt/cbt.git#<some-hash>
-)(implicit val logger: Logger, classLoaderCache: ClassLoaderCache ) extends Dependency{
+)(implicit val logger: Logger, classLoaderCache: ClassLoaderCache, context: Context ) extends Dependency{
   override def lib = new Lib(logger)
 
+  override def canBeCached = true
   // TODO: add support for authentication via ssh and/or https
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
 
@@ -37,7 +38,7 @@ case class GitDependency(
 
     }
     val managedBuild = lib.loadDynamic(
-      Context( cwd = checkoutDirectory, args = Seq(), logger, classLoaderCache )
+      context.copy( cwd = checkoutDirectory, args = Seq() )
     )    
     Seq( managedBuild )
   }

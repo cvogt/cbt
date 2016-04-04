@@ -3,6 +3,7 @@ import java.net._
 import scala.util.Try
 import scala.collection.immutable.Seq
 
+// do not make this a case class, required object identity equality
 class MultiClassLoader(parents: Seq[ClassLoader])(implicit val logger: Logger) extends ClassLoader with CachingClassLoader{
   override def findClass(name: String) = {
     parents.find( parent =>

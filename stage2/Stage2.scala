@@ -1,8 +1,6 @@
 package cbt
 
 import java.io._
-import java.time._
-import java.time.LocalTime.now
 
 import scala.collection.immutable.Seq
 
@@ -14,7 +12,7 @@ object Stage2 extends Stage2Base{
 
     val lib = new Lib(args.logger)
 
-    logger.stage2(s"[$now] Stage2 start")
+    logger.stage2(s"Stage2 start")
     val loop = args.args.lift(0) == Some("loop")
     val direct = args.args.lift(0) == Some("direct")
 
@@ -25,7 +23,7 @@ object Stage2 extends Stage2Base{
     }
     val task = args.args.lift( taskIndex )
 
-    val context = Context( args.cwd, args.args.drop( taskIndex ), logger, /*args.cbtHasChanged,*/ new ClassLoaderCache(logger) )
+    val context = Context( args.cwd, args.args.drop( taskIndex ), logger, args.cbtHasChanged, new ClassLoaderCache(logger) )
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
@@ -54,6 +52,6 @@ object Stage2 extends Stage2Base{
         new lib.ReflectBuild(build).callNullary(task)
       }
 
-    logger.stage2(s"[$now] Stage2 end")
+    logger.stage2(s"Stage2 end")
   }
 }
