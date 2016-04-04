@@ -61,7 +61,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val targetLength = compileTarget.toString.length + 1 // compile target and slash
 
     def className(file : File) : String = {
-      file.toString.dropRight(".class".length).drop(targetLength).replace("/", ".")
+      file.toString.dropRight(".class".length).drop(targetLength).replace(File.separator, ".")
     }
 
     /* for packaged applications */
