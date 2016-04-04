@@ -44,7 +44,7 @@ public class NailgunLauncher{
                                                 MalformedURLException,
                                                 IOException,
                                                 NoSuchAlgorithmException {
-    long now = System.currentTimeMillis();
+    long start = System.currentTimeMillis();
     //System.err.println("ClassLoader: "+stage1classLoader);
     //System.err.println("lastSuccessfullCompile: "+lastSuccessfullCompile);
     //System.err.println("now: "+now);
@@ -79,7 +79,7 @@ public class NailgunLauncher{
       EarlyDependencies earlyDeps = new EarlyDependencies();
       int exitCode = zinc(earlyDeps, stage1SourceFiles);
       if( exitCode == 0 ){
-        lastSuccessfullCompile = now;
+        lastSuccessfullCompile = start;
       } else {
         System.exit( exitCode );
       }
@@ -99,8 +99,8 @@ public class NailgunLauncher{
       Integer exitCode =
         (Integer) stage1classLoader
           .loadClass("cbt.Stage1")
-          .getMethod("run", String[].class, ClassLoader.class, Boolean.class)
-          .invoke( null, (Object) args, stage1classLoader, changed);
+          .getMethod("run", String[].class, ClassLoader.class, Boolean.class, Long.class)
+          .invoke( null, (Object) args, stage1classLoader, changed, start);
       System.exit(exitCode);
     }catch(Exception e){
       System.err.println(stage1classLoader);

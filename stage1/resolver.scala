@@ -1,5 +1,6 @@
 package cbt
 import java.nio.file._
+import java.nio.charset.StandardCharsets
 import java.net._
 import java.io._
 import scala.collection.immutable.Seq
@@ -323,7 +324,8 @@ case class BoundMavenDependency(
 
   private def resolveHash(suffix: String) = {
     Files.readAllLines(
-      resolve( suffix ++ ".sha1", None ).toPath
+      resolve( suffix ++ ".sha1", None ).toPath,
+      StandardCharsets.UTF_8
     ).mkString("\n").split(" ").head.trim
   }
   

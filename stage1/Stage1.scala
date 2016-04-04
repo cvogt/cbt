@@ -1,7 +1,6 @@
 package cbt
 
 import java.io._
-import java.time.LocalTime.now
 
 import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
@@ -50,9 +49,9 @@ object Stage1{
     a.lastModified > b.lastModified
   }
 
-  def run(_args: Array[String], classLoader: ClassLoader, _cbtChanged: java.lang.Boolean): Int = {
+  def run(_args: Array[String], classLoader: ClassLoader, _cbtChanged: java.lang.Boolean, start: java.lang.Long): Int = {
     val args = Stage1ArgsParser(_args.toVector)
-    val logger = new Logger(args.enabledLoggers)
+    val logger = new Logger(args.enabledLoggers, start)
     logger.stage1(s"Stage1 start")
 
     val lib = new Stage1Lib(logger)
@@ -70,12 +69,12 @@ object Stage1{
       zincVersion = "0.3.9", scalaVersion = constants.scalaVersion
     )
 
-    logger.stage1(s"[$now] calling CbtDependency.classLoader")
+    logger.stage1(s"calling CbtDependency.classLoader")
     if(cbtHasChanged){
       NailgunLauncher.stage2classLoader = CbtDependency().classLoader(classLoaderCache)
     }
 
-    logger.stage1(s"[$now] Run Stage2")
+    logger.stage1(s"Run Stage2")
     val exitCode = (
       NailgunLauncher.stage2classLoader.loadClass(
         if(args.admin) "cbt.AdminStage2" else "cbt.Stage2"
@@ -95,7 +94,7 @@ object Stage1{
         case _ => ExitCode.Success
       }
     ).integer
-    logger.stage1(s"[$now] Stage1 end")
+    logger.stage1(s"Stage1 end")
     return exitCode;
   }
 }

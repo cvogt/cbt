@@ -7,7 +7,7 @@ import java.io.File
 object Main{
   def main(_args: Array[String]): Unit = {
     val args = new Stage1ArgsParser(_args.toVector)
-    implicit val logger: Logger = new Logger(args.enabledLoggers)
+    implicit val logger: Logger = new Logger(args.enabledLoggers, System.currentTimeMillis)
     val lib = new Lib(logger)
     
     var successes = 0

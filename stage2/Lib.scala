@@ -133,7 +133,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           .filter{ m =>
             java.lang.reflect.Modifier.isPublic(m.getModifiers)
           }
-          .filter( _.getParameterCount == 0 )
+          .filter( _.getParameterTypes.length == 0 )
           .map(m => NameTransformer.decode(m.getName) -> m)
       ).toMap
 
