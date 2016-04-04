@@ -9,7 +9,7 @@ class AdminTasks(lib: Lib, args: Seq[String], cwd: File){
       args(1).split(",").toVector.map{
         d =>
           val v = d.split(":")
-          new JavaDependency(v(0),v(1),v(2)).classpath
+          MavenRepository.central.resolveOne(MavenDependency(v(0),v(1),v(2))).classpath
       }
     )
   }
@@ -17,15 +17,17 @@ class AdminTasks(lib: Lib, args: Seq[String], cwd: File){
     args(1).split(",").toVector.map{
       d =>
         val v = d.split(":")
-        new JavaDependency(v(0),v(1),v(2)).dependencyTree
+        MavenRepository.central.resolveOne(MavenDependency(v(0),v(1),v(2))).dependencyTree
     }.mkString("\n\n")
   }
   def amm = ammonite
   def ammonite = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val scalac = new ScalaCompilerDependency( version )
-    val d = JavaDependency(
-      "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.7")
+    val d = MavenRepository.central.resolveOne(
+      MavenDependency(
+        "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.7")
+      )
     )
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
     lib.runMain(
@@ -46,41 +48,25 @@ class AdminTasks(lib: Lib, args: Seq[String], cwd: File){
     val scalaMajorVersion = scalaVersion.split("\\.").take(2).mkString(".")
     val scalaXmlVersion = args.lift(2).getOrElse(constants.scalaXmlVersion)
     val zincVersion = args.lift(3).getOrElse(constants.zincVersion)
-    /*
-    def tree(d: JavaDependency, indent: Int): String ={
-      val dependencies = {
-        if( d.dependencies.nonEmpty ){
-          d.dependencies.map{
-            case d: JavaDependency => tree(d,indent + 1)
-          }.mkString(",\n" ++ ( "  " * indent ),",\n" ++ ( "  " * indent ), "")
-        } else ""
-      }
-      (
-        s"""new EarlyDependency( "${d.groupId}", "${d.artifactId}", "${d.version}", "${d.jarSha1}"$dependencies)"""
-      )
-    }*/
     val scalaDeps = Seq(
-      JavaDependency("org.scala-lang","scala-reflect",scalaVersion),
-      JavaDependency("org.scala-lang","scala-compiler",scalaVersion)
+      MavenRepository.central.resolveOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)),
+      MavenRepository.central.resolveOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion))
     )
     
     val scalaXml = Dependencies(
-      JavaDependency("org.scala-lang.modules","scala-xml_"+scalaMajorVersion,scalaXmlVersion),
-      JavaDependency("org.scala-lang","scala-library",scalaVersion)
+      MavenRepository.central.resolveOne(MavenDependency("org.scala-lang.modules","scala-xml_"+scalaMajorVersion,scalaXmlVersion)),
+      MavenRepository.central.resolveOne(MavenDependency("org.scala-lang","scala-library",scalaVersion))
     )
 
-    val zinc = JavaDependency("com.typesafe.zinc","zinc",zincVersion)
-    println(zinc.dependencyTree)
+    val zinc = MavenRepository.central.resolveOne(MavenDependency("com.typesafe.zinc","zinc",zincVersion))
 
-    def valName(dep: JavaDependency) = {
+    def valName(dep: BoundMavenDependency) = {
       val words = dep.artifactId.split("_").head.split("-")
       words(0) ++ words.drop(1).map(s => s(0).toString.toUpperCase ++ s.drop(1)).mkString ++ "_" ++ dep.version.replace(".","_") ++ "_"
     }
 
-    def vals(d: JavaDependency) = s"""  """
-
-    def jarVal(dep: JavaDependency) = "_" + valName(dep) +"Jar"
-    def transitive(dep: Dependency) = (dep +: dep.transitiveDependencies.reverse).collect{case d: JavaDependency => d}
+    def jarVal(dep: BoundMavenDependency) = "_" + valName(dep) +"Jar"
+    def transitive(dep: Dependency) = (dep +: dep.transitiveDependencies.reverse).collect{case d: BoundMavenDependency => d}
     def codeEach(dep: Dependency) = {    
       transitive(dep).tails.map(_.reverse).toVector.reverse.drop(1).map{
         deps =>
@@ -105,6 +91,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.net.*;
 import java.security.*;
+import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
 
 class EarlyDependencies{

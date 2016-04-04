@@ -16,9 +16,9 @@ trait SbtTest extends Test{
 trait ScalaTest extends Build with Test{
   def scalaTestVersion: String
 
-  override def dependencies = Seq(
+  override def dependencies = super.dependencies :+ MavenRepository.central.resolve(
     "org.scalatest" %% "scalatest" % scalaTestVersion
-  ) ++ super.dependencies
+  )
 
   override def run: ExitCode = {
     val discoveryPath = compile.toString++"/"

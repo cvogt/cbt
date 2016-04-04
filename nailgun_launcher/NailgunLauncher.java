@@ -2,13 +2,10 @@ package cbt;
 import java.io.*;
 import java.lang.reflect.*;
 import java.net.*;
-import java.nio.*;
-import java.nio.file.*;
-import static java.io.File.pathSeparator;
 import java.security.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
+import static cbt.Stage0Lib.*;
 
 /**
  * This launcher allows to start the JVM without loading anything else permanently into its
@@ -47,7 +44,7 @@ public class NailgunLauncher{
                                                 MalformedURLException,
                                                 IOException,
                                                 NoSuchAlgorithmException {
-    long now = System.currentTimeMillis();
+    long start = System.currentTimeMillis();
     //System.err.println("ClassLoader: "+stage1classLoader);
     //System.err.println("lastSuccessfullCompile: "+lastSuccessfullCompile);
     //System.err.println("now: "+now);
@@ -69,20 +66,20 @@ public class NailgunLauncher{
       }
     }
 
-    Boolean stage1SourcesChanged = false;
+    Boolean changed = lastSuccessfullCompile == 0;
     for( File file: stage1SourceFiles ){
       if( file.lastModified() > lastSuccessfullCompile ){
-        stage1SourcesChanged = true;
+        changed = true;
         //System.err.println("File change: "+file.lastModified());
         break;
       }
     }
 
-    if(stage1SourcesChanged || stage1classLoader == null){
+    if(changed){
       EarlyDependencies earlyDeps = new EarlyDependencies();
       int exitCode = zinc(earlyDeps, stage1SourceFiles);
       if( exitCode == 0 ){
-        lastSuccessfullCompile = now;
+        lastSuccessfullCompile = start;
       } else {
         System.exit( exitCode );
       }
@@ -102,113 +99,12 @@ public class NailgunLauncher{
       Integer exitCode =
         (Integer) stage1classLoader
           .loadClass("cbt.Stage1")
-          .getMethod("run", String[].class, ClassLoader.class, Boolean.class)
-          .invoke( null, (Object) args, stage1classLoader, stage1SourcesChanged);
+          .getMethod("run", String[].class, ClassLoader.class, Boolean.class, Long.class)
+          .invoke( null, (Object) args, stage1classLoader, changed, start);
       System.exit(exitCode);
     }catch(Exception e){
       System.err.println(stage1classLoader);
       throw e;
     }
-  }
-
-  public static void _assert(Boolean condition, Object msg){
-    if(!condition){
-      throw new AssertionError("Assertion failed: "+msg);
-    }
-  }
-
-  public static int runMain(String cls, String[] args, ClassLoader cl) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
-    try{
-      System.setSecurityManager( new TrapSecurityManager() );
-      cl.loadClass(cls)
-        .getMethod("main", String[].class)
-        .invoke( null, (Object) args);
-      return 0;
-    }catch( InvocationTargetException exception ){
-      Throwable cause = exception.getCause();
-      if(cause instanceof TrappedExitCode){
-        return ((TrappedExitCode) cause).exitCode;
-      }
-      throw exception;
-    } finally {
-      System.setSecurityManager(NailgunLauncher.defaultSecurityManager);
-    }
-  }
-
-  static int zinc( EarlyDependencies earlyDeps, List<File> sourceFiles ) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
-    String cp = NAILGUN+TARGET + pathSeparator + earlyDeps.scalaXml_1_0_5_File + pathSeparator + earlyDeps.scalaLibrary_2_11_8_File;
-    List<String> zincArgs = new ArrayList<String>(
-      Arrays.asList(
-        new String[]{ 
-          "-scala-compiler", earlyDeps.scalaCompiler_2_11_8_File,
-          "-scala-library", earlyDeps.scalaLibrary_2_11_8_File,
-          "-scala-extra", earlyDeps.scalaReflect_2_11_8_File,
-          "-sbt-interface", earlyDeps.sbtInterface_0_13_9_File,
-          "-compiler-interface", earlyDeps.compilerInterface_0_13_9_File,
-          "-cp", cp,
-          "-d", STAGE1+TARGET
-        }
-      )
-    );
-
-    for( File f: sourceFiles ){
-      zincArgs.add(f.toString());
-    }
-
-    PrintStream oldOut = System.out;
-    try{
-      System.setOut(System.err);
-      return runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc );
-    } finally {
-      System.setOut(oldOut);
-    }
-  }
-
-  static ClassLoader classLoader( String file ) throws MalformedURLException{
-    return new CbtURLClassLoader(
-      new URL[]{ new URL("file:"+file) }
-    );
-  }
-  static ClassLoader classLoader( String file, ClassLoader parent ) throws MalformedURLException{
-    return new CbtURLClassLoader(
-      new URL[]{ new URL("file:"+file) }, parent
-    );
-  }
-  static ClassLoader cacheGet( String key ){
-    return classLoaderCacheValues.get(
-      classLoaderCacheKeys.get( key )
-    );
-  }
-  static ClassLoader cachePut( ClassLoader classLoader, String... jars ){
-    String key = String.join( pathSeparator, jars );
-    Object keyObject = new Object();
-    classLoaderCacheKeys.put( key, keyObject );
-    classLoaderCacheValues.put( keyObject, classLoader );
-    return classLoader;
-  }
-
-  public static void download(URL urlString, Path target, String sha1) throws IOException, NoSuchAlgorithmException {
-    final Path unverified = Paths.get(target+".unverified");
-    if(!Files.exists(target)) {
-      new File(target.toString()).getParentFile().mkdirs();
-      System.err.println("downloading " + urlString);
-      System.err.println("to " + target);
-      final InputStream stream = urlString.openStream();
-      Files.copy(stream, unverified, StandardCopyOption.REPLACE_EXISTING);
-      stream.close();
-      final String checksum = sha1(Files.readAllBytes(unverified));
-      if(sha1 == null || sha1.toUpperCase().equals(checksum)) {
-        Files.move(unverified, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-      } else {
-        System.err.println(target + " checksum does not match.\nExpected: |" + sha1 + "|\nFound:    |" + checksum + "|");
-        System.exit(1);
-      }
-    }
-  }
-
-  public static String sha1(byte[] bytes) throws NoSuchAlgorithmException {
-    final MessageDigest sha1 = MessageDigest.getInstance("SHA1");
-    sha1.update(bytes, 0, bytes.length);
-    return (new HexBinaryAdapter()).marshal(sha1.digest());
   }
 }

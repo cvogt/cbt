@@ -2,6 +2,7 @@ package cbt;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import static cbt.Stage0Lib.*;
 class CbtURLClassLoader extends java.net.URLClassLoader{
   public String toString(){
     return (
@@ -9,7 +10,7 @@ class CbtURLClassLoader extends java.net.URLClassLoader{
       + "(\n  "
       + Arrays.toString(getURLs())
       + ",\n  "
-      + String.join("\n  ",getParent().toString().split("\n"))
+      + join("\n  ",getParent().toString().split("\n"))
       + "\n)"
     );
   }

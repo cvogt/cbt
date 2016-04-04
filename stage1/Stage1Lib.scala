@@ -31,7 +31,7 @@ object CatchTrappedExitCode{
   }
 }
 
-case class Context( cwd: File, args: Seq[String], logger: Logger, classLoaderCache: ClassLoaderCache )
+case class Context( cwd: File, args: Seq[String], logger: Logger, cbtHasChanged: Boolean, classLoaderCache: ClassLoaderCache )
 
 class BaseLib{
   def realpath(name: File) = new File(Paths.get(name.getAbsolutePath).normalize.toString)
@@ -56,23 +56,35 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   def blue(string: String) = scala.Console.BLUE++string++scala.Console.RESET
   def green(string: String) = scala.Console.GREEN++string++scala.Console.RESET
 
-  def download(urlString: URL, target: File, sha1: Option[String]){
-    val incomplete = Paths.get( target.string ++ ".incomplete" );
-    if( !target.exists ){
-      target.getParentFile.mkdirs
-      logger.resolver(blue("downloading ") ++ urlString.string)
-      logger.resolver(blue("to ") ++ target.string)
-      val stream = urlString.openStream
-      Files.copy(stream, incomplete, StandardCopyOption.REPLACE_EXISTING)
-      sha1.foreach{
-        hash =>
-          val expected = hash
-          val actual = this.sha1(Files.readAllBytes(incomplete))
-          assert( expected == actual, s"$expected == $actual" )
-          logger.resolver( green("verified") ++ " checksum for " ++ target.string)
+  def download(url: URL, target: File, sha1: Option[String]): Boolean = {
+    if( target.exists ){
+      true
+    } else {
+      val incomplete = Paths.get( target.string ++ ".incomplete" );
+      val connection = url.openConnection.asInstanceOf[HttpURLConnection]
+      if(connection.getResponseCode != HttpURLConnection.HTTP_OK){
+        logger.resolver(blue("not found: ") ++ url.string)
+        false
+      } else {
+        logger.resolver(blue("downloading ") ++ url.string)
+        logger.resolver(blue("to ") ++ target.string)
+        target.getParentFile.mkdirs
+        val stream = connection.getInputStream
+        try{
+          Files.copy(stream, incomplete, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+          stream.close()
+        }
+        sha1.foreach{
+          hash =>
+            val expected = hash
+            val actual = this.sha1(Files.readAllBytes(incomplete))
+            assert( expected == actual, s"$expected == $actual" )
+            logger.resolver( green("verified") ++ " checksum for " ++ target.string)
+        }
+        Files.move(incomplete, Paths.get(target.string), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        true
       }
-      stream.close
-      Files.move(incomplete, Paths.get(target.string), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }
   }
 
@@ -137,26 +149,37 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       None
     }else{
       if( needsRecompile ){
-        val zinc = JavaDependency("com.typesafe.zinc","zinc", zincVersion)
+        import MavenRepository.central
+        val zinc = central.resolveOne(MavenDependency("com.typesafe.zinc","zinc", zincVersion))
         val zincDeps = zinc.transitiveDependencies
         
         val sbtInterface =
           zincDeps
-            .collect{ case d @ JavaDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none ) => d }
+            .collect{ case d @
+              BoundMavenDependency(
+                MavenDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none),
+                _
+              ) => d
+            }
             .headOption
             .getOrElse( throw new Exception(s"cannot find sbt-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
             .jar
 
         val compilerInterface =
           zincDeps
-            .collect{ case d @ JavaDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources ) => d }
+            .collect{ case d @
+              BoundMavenDependency(
+                MavenDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources),
+                _
+              ) => d
+            }
             .headOption
             .getOrElse( throw new Exception(s"cannot find compiler-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
             .jar
 
-        val scalaLibrary = JavaDependency("org.scala-lang","scala-library",scalaVersion).jar
-        val scalaReflect = JavaDependency("org.scala-lang","scala-reflect",scalaVersion).jar
-        val scalaCompiler = JavaDependency("org.scala-lang","scala-compiler",scalaVersion).jar
+        val scalaLibrary = central.resolveOne(MavenDependency("org.scala-lang","scala-library",scalaVersion)).jar
+        val scalaReflect = central.resolveOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)).jar
+        val scalaCompiler = central.resolveOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion)).jar
 
         val start = System.currentTimeMillis
 
@@ -212,9 +235,9 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def ScalaDependency(
     groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
-    scalaVersion: String
+    scalaMajorVersion: String
   ) =
-    JavaDependency(
-      groupId, artifactId ++ "_" ++ scalaVersion, version, classifier
+    MavenDependency(
+      groupId, artifactId ++ "_" ++ scalaMajorVersion, version, classifier
     )
 }
