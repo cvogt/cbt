@@ -25,6 +25,6 @@ case class ClassPath(files: Seq[File]){
   def string = strings.mkString( File.pathSeparator )
   def strings = files.map{
     f => f.string ++ ( if(f.isDirectory) "/" else "" )
-  }
+  }.sorted
   def toConsole = string
 }

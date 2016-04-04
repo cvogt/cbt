@@ -8,12 +8,10 @@ import java.nio.file.{Path =>_,_}
 import java.nio.file.Files.{readAllBytes, deleteIfExists}
 import java.security.MessageDigest
 import java.util.jar._
+import java.lang.reflect.Method
 
 import scala.collection.immutable.Seq
-import scala.reflect.runtime.{universe => ru}
 import scala.util._
-
-import ammonite.ops.{cwd => _,_}
 
 // pom model
 case class Developer(id: String, name: String, timezone: String, url: URL)
@@ -55,24 +53,15 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-  def compile(
-    updated: Boolean,
-    sourceFiles: Seq[File], compileTarget: File, dependenyClasspath: ClassPath,
-    compileArgs: Seq[String], zincVersion: String, scalaVersion: String
-  ): File = {
-    if(sourceFiles.nonEmpty)
-      lib.zinc(
-        updated, sourceFiles, compileTarget, dependenyClasspath, compileArgs
-      )( zincVersion = zincVersion, scalaVersion = scalaVersion )
-    compileTarget
-  }
 
   /* recursively deletes folders*/
   def deleteRecursive(file: File) : Boolean = {
     if (file.isDirectory) {
       file.listFiles().map(deleteRecursive(_))
     }
-    deleteIfExists(file.toPath)
+    else {
+      deleteIfExists(file.toPath)
+    }
   }
   
   def clean (compileTarget : File) : ExitCode = {
@@ -86,16 +75,18 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-  def srcJar(sources: Seq[File], artifactId: String, version: String, jarTarget: File): File = {
-    val file = jarTarget ++ ("/"++artifactId++"-"++version++"-sources.jar")
-    lib.jarFile(file, sources)
-    file
+  def srcJar(sourceFiles: Seq[File], artifactId: String, version: String, jarTarget: File): Option[File] = {
+    lib.jarFile(
+      jarTarget ++ ("/"++artifactId++"-"++version++"-sources.jar"),
+      sourceFiles
+    )
   }
 
-  def jar(artifactId: String, version: String, compileTarget: File, jarTarget: File): File = {
-    val file = jarTarget ++ ("/"++artifactId++"-"++version++".jar")
-    lib.jarFile(file, Seq(compileTarget))
-    file
+  def jar(artifactId: String, version: String, compileTarget: File, jarTarget: File): Option[File] = {
+    lib.jarFile(
+      jarTarget ++ ("/"++artifactId++"-"++version++".jar"),
+      Seq(compileTarget)
+    )
   }
 
   def docJar(
@@ -106,29 +97,31 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     jarTarget: File,
     artifactId: String,
     version: String,
-    compileArgs: Seq[String]
-  ): File = {
-    mkdir(Path(apiTarget))
-    if(sourceFiles.nonEmpty){
+    compileArgs: Seq[String],
+    classLoaderCache: ClassLoaderCache
+  ): Option[File] = {
+    if(sourceFiles.isEmpty){
+      None
+    } else {
+      apiTarget.mkdirs
       val args = Seq(
         // FIXME: can we use compiler dependency here?
         "-cp", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
         "-d",  apiTarget.toString
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
-      trapExitCode{
-        redirectOutToErr{
-          runMain(
-            "scala.tools.nsc.ScalaDoc",
-            args,
-            ScalaDependencies(scalaVersion)(logger).classLoader
-          )
-        }
+      redirectOutToErr{
+        runMain(
+          "scala.tools.nsc.ScalaDoc",
+          args,
+          ScalaDependencies(scalaVersion)(logger).classLoader(classLoaderCache)
+        )
       }
+      lib.jarFile(
+        jarTarget ++ ("/"++artifactId++"-"++version++"-javadoc.jar"),
+        Vector(apiTarget)
+      )
     }
-    val docJar = jarTarget ++ ("/"++artifactId++"-"++version++"-javadoc.jar")
-    lib.jarFile(docJar, Vector(apiTarget))
-    docJar
   }
 
   def test( context: Context ): ExitCode = {
@@ -147,60 +140,66 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   // task reflection helpers
-  import ru._
-  private lazy val anyRefMembers: Set[String] = ru.typeOf[AnyRef].members.toSet.map(taskName)
-  def taskNames(tpe: Type): Seq[String] = tpe.members.toVector.flatMap(lib.toTask).map(taskName).sorted
-  private def taskName(method: Symbol): String = method.name.decodedName.toString
-  def toTask(symbol: Symbol): Option[MethodSymbol] = {
-    Option(symbol)
-      .filter(_.isPublic)
-      .filter(_.isMethod)
-      .map(_.asMethod)
-      .filter(_.paramLists.flatten.size == 0)
-      .filterNot(taskName(_) contains "$")
-      .filterNot(t => anyRefMembers contains taskName(t))
-  }
+  def tasks(cls:Class[_]): Map[String, Method] =
+    Stream
+      .iterate(cls.asInstanceOf[Class[Any]])(_.getSuperclass)
+      .takeWhile(_ != null)
+      .toVector
+      .dropRight(1) // drop Object
+      .reverse
+      .flatMap(
+        c =>
+          c
+          .getDeclaredMethods
+          .filterNot( _.getName contains "$" )
+          .filter{ m =>
+            java.lang.reflect.Modifier.isPublic(m.getModifiers)
+          }
+          .filter( _.getParameterTypes.length == 0 )
+          .map(m => NameTransformer.decode(m.getName) -> m)
+      ).toMap
 
-  class ReflectBuild(val build: Build) extends ReflectObject(build){
-    def usage: String = {
-      val baseTasks = lib.taskNames(ru.typeOf[Build])
-      val thisTasks = lib.taskNames(subclassType) diff baseTasks
+  def taskNames(cls: Class[_]): Seq[String] = tasks(cls).keys.toVector.sorted
+
+  def usage(buildClass: Class[_], context: Context): String = {
+    val baseTasks = lib.taskNames(classOf[Build])
+    val thisTasks = lib.taskNames(buildClass) diff baseTasks
+    (
       (
-        (
-          if( thisTasks.nonEmpty ){
-            s"""Methods provided by Build ${build.context.cwd}
+        if( thisTasks.nonEmpty ){
+          s"""Methods provided by Build ${context.cwd}
 
   ${thisTasks.mkString("  ")}
 
 """
-          } else ""
-        ) ++ s"""Methods provided by CBT (but possibly overwritten)
+        } else ""
+      ) ++ s"""Methods provided by CBT (but possibly overwritten)
 
   ${baseTasks.mkString("  ")}"""
       ) ++ "\n"
-    }
   }
 
+  class ReflectBuild[T:scala.reflect.ClassTag](build: Build) extends ReflectObject(build){
+    def usage = lib.usage(build.getClass, build.context)
+  }
   abstract class ReflectObject[T:scala.reflect.ClassTag](obj: T){
-    lazy val mirror = ru.runtimeMirror(obj.getClass.getClassLoader)
-    lazy val subclassType = mirror.classSymbol(obj.getClass).toType
     def usage: String
     def callNullary( taskName: Option[String] ): Unit = {
-      taskName
-        .map{ n => subclassType.member(ru.TermName(n).encodedName) }
-        .filter(_ != ru.NoSymbol)
-        .flatMap(toTask _)
-        .map{ methodSymbol =>
-          val result = mirror.reflect(obj).reflectMethod(methodSymbol)()
-
+      val ts = tasks(obj.getClass)
+      taskName.map( NameTransformer.encode ).flatMap(ts.get).map{ method =>
+        val result: Option[Any] = Option(method.invoke(obj)) // null in case of Unit
+        result.flatMap{
+          case v: Option[_] => v
+          case other => Some(other)
+        }.map{
+          value =>
           // Try to render console representation. Probably not the best way to do this.
-          scala.util.Try( result.getClass.getDeclaredMethod("toConsole") ) match {
-            case scala.util.Success(m) =>
-              println(m.invoke(result))
+          scala.util.Try( value.getClass.getDeclaredMethod("toConsole") ) match {
+            case scala.util.Success(toConsole) =>
+              println(toConsole.invoke(value))
 
-            case scala.util.Failure(e) if e.getMessage contains "toConsole" =>
-              result match {
-                case () => ""
+            case scala.util.Failure(e) if Option(e.getMessage).getOrElse("") contains "toConsole" =>
+              value match {
                 case ExitCode(code) => System.exit(code)
                 case other => println( other.toString ) // no method .toConsole, using to String
               }
@@ -208,16 +207,17 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             case scala.util.Failure(e) =>
               throw e
           }
-        }.getOrElse{
-          taskName.foreach{ n =>
-            System.err.println(s"Method not found: $n")
-            System.err.println("")
-          }
-          System.err.println(usage)
-          taskName.foreach{ _ =>
-            ExitCode.Failure
-          }
+        }.getOrElse("")
+      }.getOrElse{
+        taskName.foreach{ n =>
+          System.err.println(s"Method not found: $n")
+          System.err.println("")
         }
+        System.err.println(usage)
+        taskName.foreach{ _ =>
+          ExitCode.Failure
+        }
+      }
     }
   }
 
@@ -226,35 +226,41 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def dirname(path: File): File = new File(realpath(path).string.stripSuffix("/").split("/").dropRight(1).mkString("/"))
   def nameAndContents(file: File) = basename(file) -> readAllBytes(Paths.get(file.toString))
 
-  def jarFile( jarFile: File, files: Seq[File] ): Unit = {
-    logger.lib("Start packaging "++jarFile.string)
-    val manifest = new Manifest
-    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
-    val jar = new JarOutputStream(new FileOutputStream(jarFile.toString), manifest)
+  def jarFile( jarFile: File, files: Seq[File] ): Option[File] = {
+    if( files.isEmpty ){
+      None
+    } else {
+      logger.lib("Start packaging "++jarFile.string)
+      val manifest = new Manifest
+      manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
+      val jar = new JarOutputStream(new FileOutputStream(jarFile.toString), manifest)
 
-    val names = for {
-      base <- files.filter(_.exists).map(realpath)
-      file <- listFilesRecursive(base) if file.isFile
-    } yield {
-        val name = if(base.isDirectory){
-          file.toString stripPrefix base.toString
-        } else file.toString
-        val entry = new JarEntry( name )
-        entry.setTime(file.lastModified)
-        jar.putNextEntry(entry)
-        jar.write( readAllBytes( Paths.get(file.toString) ) )
-        jar.closeEntry
-        name
+      val names = for {
+        base <- files.filter(_.exists).map(realpath)
+        file <- listFilesRecursive(base) if file.isFile
+      } yield {
+          val name = if(base.isDirectory){
+            file.toString stripPrefix base.toString
+          } else file.toString
+          val entry = new JarEntry( name )
+          entry.setTime(file.lastModified)
+          jar.putNextEntry(entry)
+          jar.write( readAllBytes( Paths.get(file.toString) ) )
+          jar.closeEntry
+          name
+      }
+
+      val duplicateFiles = (names diff names.distinct).distinct
+      assert(
+        duplicateFiles.isEmpty,
+        s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
+      )
+
+      jar.close
+      logger.lib("Done packaging " ++ jarFile.toString)
+
+      Some(jarFile)
     }
-
-    val duplicateFiles = (names diff names.distinct).distinct
-    assert(
-      duplicateFiles.isEmpty,
-      s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
-    )
-
-    jar.close
-    logger.lib("Done packaging " ++ jarFile.toString)
   }
 
   lazy val passphrase =
@@ -340,8 +346,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           </dependencies>
       </project>
     val path = jarTarget.toString ++ ( "/" ++ artifactId ++ "-" ++ version ++ ".pom" )
-    write.over(Path(path), "<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString)
-    new File(path)
+    val file = new File(path)
+    Files.write(file.toPath, ("<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString).getBytes)
+    file
   }
 
   def concurrently[T,R]( concurrencyEnabled: Boolean )( items: Seq[T] )( projection: T => R ): Seq[R] = {
@@ -383,7 +390,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")
-    val userPassword = read(Path(sonatypeLogin)).trim
+    val userPassword = new String(readAllBytes(sonatypeLogin.toPath)).trim
     val encoding = new sun.misc.BASE64Encoder().encode(userPassword.getBytes)
     httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
     httpCon.setRequestProperty("Content-Type", "application/binary")

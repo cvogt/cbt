@@ -2,7 +2,6 @@ package cbt
 import cbt.paths._
 
 import java.io._
-import java.lang.reflect.InvocationTargetException
 import java.net._
 import java.nio.file.{Path =>_,_}
 import java.nio.file.Files.readAllBytes
@@ -10,28 +9,24 @@ import java.security.MessageDigest
 import java.util.jar._
 
 import scala.collection.immutable.Seq
-import scala.reflect.runtime.{universe => ru}
 import scala.util._
 
-import ammonite.ops.{cwd => _,_}
-
 class BasicBuild( context: Context ) extends Build( context )
-class Build(val context: Context) extends Dependency with TriggerLoop{
+class Build(val context: Context) extends Dependency with TriggerLoop with SbtDependencyDsl{
   // library available to builds
   implicit final val logger: Logger = context.logger
+  implicit final val classLoaderCache: ClassLoaderCache = context.classLoaderCache
+  implicit final val _context = context
   override final protected val lib: Lib = new Lib(logger)
 
   // ========== general stuff ==========
 
+  override def canBeCached = false
   def enableConcurrency = false
   final def projectDirectory: File = lib.realpath(context.cwd)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
-  final def usage: Unit = new lib.ReflectBuild(this).usage
-/*
-  def scaffold: Unit = lib.generateBasicBuildFile(
-    projectDirectory, scalaVersion, groupId, artifactId, version
-  )
-*/
+  final def usage: String = lib.usage(this.getClass, context)
+
   // ========== meta data ==========
 
   def scalaVersion: String = constants.scalaVersion
@@ -39,7 +34,9 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   def zincVersion = "0.3.9"
 
   def dependencies: Seq[Dependency] = Seq(
-    "org.scala-lang" % "scala-library" % scalaVersion
+    MavenRepository.central.resolve(
+      "org.scala-lang" % "scala-library" % scalaVersion
+    )
   )
 
   // ========== paths ==========
@@ -55,6 +52,12 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   def apiTarget: File = scalaTarget ++ "/api"
   /** directory where the class files should be put (in package directories) */
   def compileTarget: File = scalaTarget ++ "/classes"
+  /**
+  File which cbt uses to determine if it needs to trigger an incremental re-compile.
+  Last modified date is the time when the last successful compilation started.
+  Contents is the cbt version git hash.
+  */
+  def compileStatusFile: File = compileTarget ++ ".last-success"
 
   /** Source directories and files. Defaults to .scala and .java files in src/ and top-level. */
   def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
@@ -85,22 +88,6 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
     scalaVersion: String = scalaMajorVersion
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
-  /** SBT-like dependency builder DSL for syntax compatibility */
-  class DependencyBuilder2( groupId: String, artifactId: String, scalaVersion: Option[String] ){
-    def %(version: String) = scalaVersion.map(
-      v => ScalaDependency(groupId, artifactId, version, scalaVersion = v)
-    ).getOrElse(
-      JavaDependency(groupId, artifactId, version)
-    )
-  }
-  implicit class DependencyBuilder(groupId: String){
-    def %%(artifactId: String) = new DependencyBuilder2( groupId, artifactId, Some(scalaMajorVersion) )
-    def  %(artifactId: String) = new DependencyBuilder2( groupId, artifactId, None )
-  }
-  implicit class DependencyBuilder3(d: JavaDependency){
-    def  %(classifier: String) = d.copy(classifier = Classifier(Some(classifier)))
-  }
-
   final def BuildDependency(path: File) = cbt.BuildDependency(
     context.copy( cwd = path, args = Seq() )
   )
@@ -117,7 +104,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
   override def dependencyJars      : Seq[File] = localJars ++ super.dependencyJars
 
-  def exportedClasspath   : ClassPath = ClassPath(Seq(compile))
+  def exportedClasspath   : ClassPath = ClassPath(compile.toSeq:_*)
   def targetClasspath = ClassPath(Seq(compileTarget))
   def exportedJars: Seq[File] = Seq()
   // ========== compile, run, test ==========
@@ -125,40 +112,26 @@ class Build(val context: Context) extends Dependency with TriggerLoop{
   /** scalac options used for zinc and scaladoc */
   def scalacOptions: Seq[String] = Seq( "-feature", "-deprecation", "-unchecked" )
 
-  val updated: Boolean = {
-    val existingClassFiles = lib.listFilesRecursive(compileTarget)
-    val sourcesChanged = existingClassFiles.nonEmpty && {
-      val oldestClassFile = existingClassFiles.sortBy(_.lastModified).head
-      val oldestClassFileAge = oldestClassFile.lastModified
-      val changedSourceFiles = sourceFiles.filter(_.lastModified > oldestClassFileAge)
-      if(changedSourceFiles.nonEmpty){
-        /*
-        println(changedSourceFiles)
-        println(changedSourceFiles.map(_.lastModified))
-        println(changedSourceFiles.map(_.lastModified > oldestClassFileAge))
-        println(oldestClassFile)
-        println(oldestClassFileAge)
-        println("-"*80)
-        */
-      }
-      changedSourceFiles.nonEmpty
-    }
-    sourcesChanged || transitiveDependencies.map(_.updated).fold(false)(_ || _)
-  }
+  private object needsUpdateCache extends Cache[Boolean]
+  def needsUpdate: Boolean = needsUpdateCache(
+    context.cbtHasChanged
+    || lib.needsUpdate( sourceFiles, compileStatusFile )
+    || transitiveDependencies.exists(_.needsUpdate)
+  )
 
-  private object compileCache extends Cache[File]
-  def compile: File = compileCache{
+  private object compileCache extends Cache[Option[File]]
+  def compile: Option[File] = compileCache{
     lib.compile(
-      updated,
-      sourceFiles, compileTarget, dependencyClasspath, scalacOptions,
-      zincVersion = zincVersion, scalaVersion = scalaVersion
+      needsUpdate,
+      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath, scalacOptions,
+      context.classLoaderCache, zincVersion = zincVersion, scalaVersion = scalaVersion
     )
   }
 
   def clean : ExitCode = lib.clean(target)
 
   def runClass: String = "Main"
-  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader )
+  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
 
   def test: ExitCode = lib.test(context)
 

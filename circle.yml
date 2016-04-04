@@ -1,11 +1,9 @@
 machine:
   java:
-    version: oraclejdk8
+    version: oraclejdk7
 
 dependencies:
   cache_directories:
-    - "bootstrap_scala/cache"
-    - "bootstrap_scala/target"
     - "cache"
     - "nailgun_launcher/target"
     - "stage1/target"
