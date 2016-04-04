@@ -62,11 +62,21 @@ object Main{
       assert(res.out == "", debugToken ++ res.toString)
       assert(res.err contains usageString, debugToken ++ res.toString)
     }
+
     def compile(path: String)(implicit logger: Logger) = {
       val res = runCbt(path, Seq("compile"))
       val debugToken = "compile " ++ path ++ " "
       assertSuccess(res,debugToken)
       // assert(res.err == "", res.err) // FIXME: enable this
+    }
+
+    def clean(path: String)(implicit logger: Logger) = {
+      val res = runCbt(path, Seq("clean"))
+      
+      val debugToken = "clean " ++ path ++ " "
+      val pathToTarget = List(System.getProperty("user.dir"), path, "target").mkString(File.separator)
+      val target = new File(pathToTarget)
+      assertSuccess(res,debugToken)
     }
 
     logger.test( "Running tests " ++ _args.toList.toString )
@@ -124,10 +134,13 @@ object Main{
 
     usage("nothing")
     compile("nothing")
+    clean("nothing")
     usage("multi-build")
     compile("multi-build")
+    clean("multi-build")
     usage("simple")
     compile("simple")
+    clean("simple")
     
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )

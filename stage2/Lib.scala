@@ -58,6 +58,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def deleteRecursive(file: File) : Boolean = {
     if (file.isDirectory) {
       file.listFiles().map(deleteRecursive(_))
+      true
     }
     else {
       deleteIfExists(file.toPath)
@@ -66,6 +67,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   
   def clean (compileTarget : File) : ExitCode = {
     logger.lib(s"""Cleaning ${compileTarget}""")
+    if (!compileTarget.exists) return ExitCode.Success
+    
     if (deleteRecursive(compileTarget)) {
       logger.lib("Succeeded")
       return ExitCode.Success
