@@ -14,8 +14,6 @@ final case class Stage1ArgsParser(_args: Seq[String]) {
   **/
   val propsRaw: Seq[String] = _args.toVector.filter(_.startsWith("-D"))
 
-  val pathSep = if (System.getProperty("os.name").contains("Windows")) "\\" else "/"
-
   /**
    * All arguments that weren't `-D` property declarations.
   **/

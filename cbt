@@ -20,7 +20,7 @@ log () {
 		shift
 	done
 	if [ $enabled -eq 0 ]; then
-		which gdate > output.msg 2>&1 
+		which gdate > /dev/null 2>&1 
 		gdate_installed=$?
 		if [ $gdate_installed -eq 0 ]; then
 			i=`gdate +"%S.%N"`
@@ -31,7 +31,7 @@ log () {
 
 log "Checking for dependencies" $*
 
-which javac > output.msg 2>&1 
+which javac > /dev/null 2>&1 
 javac_installed=$?
 if [ ! $javac_installed -eq 0 ]; then
 	echo "You need to install javac! CBT needs it to bootstrap from Java sources into Scala." 1>&2
@@ -44,25 +44,25 @@ if [ ! "$javac_version_minor" -ge "7" ]; then
 	echo "Current javac version is $javac_version" 2>&1
 	exit 1
 fi
-which ng > output.msg 2>&1 
+which ng > /dev/null 2>&1 
 ng_installed=$?
-which ng-server > output.msg 2>&1 
+which ng-server > /dev/null 2>&1 
 ng_server_installed=$?
 nailgun_installed=0
 if [ ! $ng_installed -eq 0 ] || [ ! $ng_server_installed -eq 0 ]; then
 	nailgun_installed=1
 	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun'.)" 1>&2
 fi
-which realpath > output.msg 2>&1 
+which realpath > /dev/null 2>&1 
 realpath_installed=$?
-which gcc > output.msg 2>&1 
+which gcc > /dev/null 2>&1 
 gcc_installed=$?
 if [ ! $realpath_installed -eq 0 ] && [ ! $gcc_installed -eq 0 ]; then
 	echo "You need realpath or gcc installed! CBT needs it to locate itself reliably." 1>&2
 	exit 1
 fi
 
-which gpg > output.msg 2>&1 
+which gpg > /dev/null 2>&1 
 gpg_installed=$?
 if [ ! $gpg_installed -eq 0 ]; then
 	echo "(Note: gpg not found. In order to use publishSigned you'll need it.)" 1>&2
@@ -72,7 +72,7 @@ NAILGUN_PORT=4444
 NG="ng --nailgun-port $NAILGUN_PORT"
 
 CWD=$(pwd)
-_DIR=$(dirname $(readlink "$0") 2>output.msg || dirname "$0" 2>output.msg )
+_DIR=$(dirname $(readlink "$0") 2>/dev/null || dirname "$0" 2>/dev/null )
 
 log "Find out real path. Build realpath if needed." $*
 
@@ -108,14 +108,14 @@ if [ "$1" = "kill" ]; then
 	exit 1
 fi
 
-which nc > output.msg 2>&1 
+which nc > /dev/null 2>&1 
 nc_installed=$?
 
 log "Check for running nailgun with nc." $*
 
 server_up=1
 if [ $nc_installed -eq 0 ]; then
-	nc -z -n -w 1 127.0.0.1 $NAILGUN_PORT > output.msg 2>&1
+	nc -z -n -w 1 127.0.0.1 $NAILGUN_PORT > /dev/null 2>&1
 	server_up=$?
 else
 	echo "(Note: nc not found. It will make slightly startup faster.)" 1>&2
@@ -141,12 +141,12 @@ stage1 () {
 	done
 	compiles=0
 	if [ $changed -eq 1 ]; then
-		#rm $NAILGUN$TARGET/cbt/*.class 2>output.msg # defensive delete of potentially broken class files
+		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
 		javac -Xlint:deprecation -Xlint:unchecked -d $NAILGUN$TARGET `ls $NAILGUN*.java`
 		compiles=$?
 		if [ $compiles -ne 0 ]; then
-			rm $NAILGUN$TARGET/cbt/*.class 2>output.msg # triggers recompilation next time.
+			rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # triggers recompilation next time.
 			break
 		fi
 		if [ $use_nailgun -eq 0 ]; then
@@ -164,7 +164,6 @@ stage1 () {
 		log "Running JVM directly" $*
 		# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
 		java -cp $NAILGUN$TARGET cbt.NailgunLauncher "$CWD" $*
-		echo "java -cp $NAILGUN$TARGET cbt.NailgunLauncher $CWD $*"
 	else
 		log "Running via nailgun." $*
 		for i in 0 1 2 3 4 5 6 7 8 9; do

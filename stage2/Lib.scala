@@ -61,8 +61,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val targetLength = compileTarget.toString.length + 1 // compile target and slash
 
     def className(file : File) : String = {
-      val pathSep = if (System.getProperty("os.name").contains("Windows")) "\\" else "/"
-      file.toString.dropRight(".class".length).drop(targetLength).replace(pathSep, ".")
+      file.toString.dropRight(".class".length).drop(targetLength).replace("/", ".")
     }
 
     /* for packaged applications */
