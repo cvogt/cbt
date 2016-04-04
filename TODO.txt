@@ -1,45 +1,26 @@
 TODO:
  - in progress
-   - automated tests
    - improve logging
  
- - bugs
-   - condition guarding zinc is too eager, needs to invalid
-
  - immediate features
    - maybe rename context.cwd
-   - add another class that makes all pom required fields abstract
    - fix main project main method being run during tests
-   - DI lib into depencies
-   - fix conflicts in classpath stemming from dependencies
-   - cleanup classpath/classloader stuff
    - investigate and solve multiple compilations of the same SourceDependency Build. Maybe introduce global Build map.
 
  - cleanup
    - move from java File to nio Path
-   - defs for all tasks and cached where needed
-   - unify work classpath
-   - unify argument order
  
  - near future features
-   - strip out ammonite dependency
    - make cbt's own re-build concurrency safe
    - unify with sbts key names where sensible
    - allow updating snapshots
    - cbt cli options inject add dependencies into default build
-   - write cached macro
-   - add "debug" mode that shows lots of logging
-   - running subproject tasks in parallel
-     http://stackoverflow.com/questions/743288/java-synchronization-utility
    - dependency exclusion, etc.
-   - cache class loader per dependency in global, synchronized mutable Map
    - use cli friendly responses by default everywhere
    - class path debugging
-     - duplicate class detection
-     - missing/broken jars detection
+     - broken jars detection
      - invalid files in lib folder
    - integrate / build out maven search
-   - proper exit codes
    - use zinc nailgun multi platform nailgun wrapper https://github.com/typesafehub/zinc/tree/7af98ba11d27d7667301c2222c1e702c7092bc44/src/universal/bin
 
 
