@@ -76,8 +76,10 @@ object Stage1{
     }
 
     logger.stage1(s"Run Stage2")
+    val cl = NailgunLauncher.stage2classLoader
     val exitCode = (
-      NailgunLauncher.stage2classLoader.loadClass(
+      cl
+      .loadClass(
         if(args.admin) "cbt.AdminStage2" else "cbt.Stage2"
       )
       .getMethod( "run", classOf[Stage2Args] )

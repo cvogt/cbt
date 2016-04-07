@@ -85,7 +85,7 @@ abstract class Dependency{
     )
   }
 
-  private def actual(current: Dependency, latest: Map[(String,String),Dependency]) = current match {
+  protected def actual(current: Dependency, latest: Map[(String,String),Dependency]) = current match {
     case d: ArtifactInfo => latest((d.groupId,d.artifactId))
     case d => d
   }
@@ -103,31 +103,26 @@ abstract class Dependency{
         )
       )
     } else {
-      val (cachable, nonCachable) = dependencies.partition(_.canBeCached)
-      new URLClassLoader(
-        ClassPath.flatten( nonCachable.map(actual(_,latest)).map(_.exportedClasspath) ),
-        cache.persistent.get(
-          ClassPath.flatten( cachable.map(actual(_,latest)).map(_.exportedClasspath) ).string,
-          new MultiClassLoader(
-            cachable.map( _.classLoaderRecursion(latest, cache) )
-          )
+      cache.transient.get(
+        dependencyClasspath.string,
+        new MultiClassLoader(
+          dependencies.map( _.classLoaderRecursion(latest, cache) )
         )
-      )
-      new MultiClassLoader(
-        dependencies.map( _.classLoaderRecursion(latest, cache) )
       )
     }
   }
   protected def classLoaderRecursion( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
-    if( canBeCached ){
-      val a = actual( this, latest )
-      cache.persistent.get(
-        a.classpath.string,
-        new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
-      )
-    } else {
-      new cbt.URLClassLoader( exportedClasspath, dependencyClassLoader(latest, cache) )
-    }
+    val a = actual( this, latest )
+    (
+      if( canBeCached ){
+        cache.persistent
+      } else {
+        cache.transient
+      }
+    ).get(
+      a.classpath.string,
+      new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
+    )
   }
   def classLoader( cache: ClassLoaderCache  ): ClassLoader = {
     if( concurrencyEnabled ){
@@ -231,8 +226,13 @@ case class Stage1Dependency()(implicit val logger: Logger) extends Dependency{
     )
   )
   // FIXME: implement sanity check to prevent using incompatible scala-library and xml version on cp
-  override def classLoaderRecursion( latest: Map[(String,String),Dependency], cache: ClassLoaderCache )
-    = getClass.getClassLoader
+  override def classLoaderRecursion( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ) = {
+    val a = actual( this, latest )
+    cache.transient.get(
+      a.classpath.string,
+      getClass.getClassLoader
+    )
+  }
 }
 case class CbtDependency()(implicit val logger: Logger) extends Dependency{
   override def needsUpdate = false // FIXME: think this through, might allow simplifications and/or optimizations
