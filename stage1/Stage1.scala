@@ -41,7 +41,8 @@ case class Stage2Args(
   cwd: File,
   args: Seq[String],
   cbtHasChanged: Boolean,
-  logger: Logger
+  logger: Logger,
+  classLoaderCache: ClassLoaderCache
 )
 
 object Stage1{
@@ -87,7 +88,8 @@ object Stage1{
           args.args.drop(1).toVector,
           // launcher changes cause entire nailgun restart, so no need for them here
           cbtHasChanged = cbtHasChanged,
-          logger
+          logger,
+          classLoaderCache
         )
       ) match {
         case code: ExitCode => code
