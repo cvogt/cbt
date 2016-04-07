@@ -133,6 +133,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
 
   def test: ExitCode = lib.test(context)
 
+  /*
   context.logger.composition(">"*80)
   context.logger.composition("class   " ++ this.getClass.toString)
   context.logger.composition("dir     " ++ projectDirectory.string)
@@ -141,6 +142,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   context.logger.composition("context " ++ context.toString)
   context.logger.composition("dependencyTree\n" ++ dependencyTree)
   context.logger.composition("<"*80)
+  */
 
   // ========== cbt internals ==========
   private[cbt] def finalBuild = this

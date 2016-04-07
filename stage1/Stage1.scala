@@ -71,8 +71,10 @@ object Stage1{
     )
 
     logger.stage1(s"calling CbtDependency.classLoader")
-    if(cbtHasChanged){
+    if(cbtHasChanged) {
       NailgunLauncher.stage2classLoader = CbtDependency().classLoader(classLoaderCache)
+    }else{
+      classLoaderCache.transient.get( CbtDependency().classpath.string, NailgunLauncher.stage2classLoader )
     }
 
     logger.stage1(s"Run Stage2")

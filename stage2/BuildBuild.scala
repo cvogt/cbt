@@ -6,16 +6,14 @@ class BuildBuild(context: Context) extends Build(context){
   override def dependencies = Seq( CbtDependency()(context.logger) ) ++ super.dependencies
   def managedBuildDirectory: File = lib.realpath( projectDirectory.parent )
   val managedBuild = try{
-    val cl = new cbt.URLClassLoader(
-      exportedClasspath,
-      classOf[BuildBuild].getClassLoader // FIXME: this looks wrong. Should be ClassLoader.getSystemClassLoader but that crashes
-    )
     val managedContext = context.copy( projectDirectory = managedBuildDirectory )
-    cl
-      .loadClass(lib.buildClassName)
-      .getConstructor(classOf[Context])
-      .newInstance(managedContext)
-      .asInstanceOf[Build]
+    val cl = classLoader(context.classLoaderCache)
+    logger.composition("Loading build at "+managedContext.projectDirectory)
+      cl
+        .loadClass(lib.buildClassName)
+        .getConstructor(classOf[Context])
+        .newInstance(managedContext)
+        .asInstanceOf[Build]
   } catch {
     case e: ClassNotFoundException if e.getMessage == lib.buildClassName => 
       throw new Exception("You need to remove the directory or define a class Build in: "+context.projectDirectory)
