@@ -3,7 +3,7 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-// import tut.TutMain
+import tut.TutMain
 
 class Build(context: Context) extends BasicBuild(context){
   // FIXME: somehow consolidate this with cbt's own boot-strapping from source.
@@ -19,6 +19,6 @@ class Build(context: Context) extends BasicBuild(context){
 
   private object tutCache extends Cache[Unit]
   def tut = {
-    println("Hello tut")
+    println(TutMain)
   }
 }
