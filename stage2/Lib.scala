@@ -34,19 +34,19 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   This can either the Build itself, of if exists a BuildBuild or a BuildBuild for a BuildBuild and so on.
   */
   def loadRoot(context: Context, default: Context => Build = new Build(_)): Build = {
-    context.logger.composition( context.logger.showInvocation("Build.loadRoot",context) )
-    def findStartDir(cwd: File): File = {
-      val buildDir = realpath( cwd ++ "/build" )
-      if(buildDir.exists) findStartDir(buildDir) else cwd
+    context.logger.composition( context.logger.showInvocation("Build.loadRoot",context.projectDirectory) )
+    def findStartDir(projectDirectory: File): File = {
+      val buildDir = realpath( projectDirectory ++ "/build" )
+      if(buildDir.exists) findStartDir(buildDir) else projectDirectory
     }
 
-    val start = findStartDir(context.cwd)
+    val start = findStartDir(context.projectDirectory)
 
-    val useBasicBuildBuild = context.cwd == start
+    val useBasicBuildBuild = context.projectDirectory == start
 
     val rootBuildClassName = if( useBasicBuildBuild ) buildBuildClassName else buildClassName
     try{
-      if(useBasicBuildBuild) default( context ) else new cbt.BuildBuild( context.copy( cwd = start ) )
+      if(useBasicBuildBuild) default( context ) else new cbt.BuildBuild( context.copy( projectDirectory = start ) )
     } catch {
       case e:ClassNotFoundException if e.getMessage == rootBuildClassName =>
         throw new Exception(s"no class $rootBuildClassName found in " ++ start.string)
@@ -110,7 +110,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     logger.lib(s"invoke testDefault( $context )")
     val exitCode: ExitCode = loadDynamic(
-      context.copy( cwd = context.cwd ++ "/test", args = loggerArg.toVector ++ context.args ),
+      context.copy( projectDirectory = context.projectDirectory ++ "/test", args = loggerArg.toVector ++ context.args ),
       new Build(_) with mixins.Test
     ).run
     logger.lib(s"return testDefault( $context )")
@@ -145,7 +145,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     (
       (
         if( thisTasks.nonEmpty ){
-          s"""Methods provided by Build ${context.cwd}
+          s"""Methods provided by Build ${context.projectDirectory}
 
   ${thisTasks.mkString("  ")}
 

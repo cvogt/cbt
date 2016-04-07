@@ -15,5 +15,15 @@ class ClassLoaderCache(logger: Logger){
     new ConcurrentHashMap[AnyRef,ClassLoader],
     Some(logger)
   )
-  override def toString = s"""ClassLoaderCache("""+ persistent.keys.keySet.toVector.map(_.toString).sorted.map(" "++_).mkString("\n","\n","\n") +""")"""
+  override def toString = (
+    s"ClassLoaderCache("
+    ++
+    persistent.keys.keySet.toVector.map(_.toString.split(":").mkString("\n")).sorted.mkString("\n\n","\n\n","\n\n")
+    ++
+    "---------"
+    ++
+    transient.keys.keySet.toVector.map(_.toString.split(":").mkString("\n")).sorted.mkString("\n\n","\n\n^","\n\n")
+    ++
+    ")"
+  )
 }

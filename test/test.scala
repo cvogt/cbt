@@ -72,7 +72,7 @@ object Main{
     logger.test( "Running tests " ++ _args.toList.toString )
 
     {
-      val noContext = Context(cbtHome ++ "/test/nothing", Seq(), logger, false, new ClassLoaderCache(logger))
+      val noContext = Context(cbtHome ++ "/test/nothing", cbtHome, Seq(), logger, false, new ClassLoaderCache(logger))
       val b = new Build(noContext){
         override def dependencies = Seq(
           MavenRepository.central.resolve(

@@ -23,7 +23,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
 
   override def canBeCached = false
   def enableConcurrency = false
-  final def projectDirectory: File = lib.realpath(context.cwd)
+  final def projectDirectory: File = lib.realpath(context.projectDirectory)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   final def usage: String = lib.usage(this.getClass, context)
 
@@ -89,7 +89,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
   final def BuildDependency(path: File) = cbt.BuildDependency(
-    context.copy( cwd = path, args = Seq() )
+    context.copy( projectDirectory = path, args = Seq() )
   )
 
   def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
@@ -133,6 +133,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
 
   def test: ExitCode = lib.test(context)
 
+  /*
   context.logger.composition(">"*80)
   context.logger.composition("class   " ++ this.getClass.toString)
   context.logger.composition("dir     " ++ projectDirectory.string)
@@ -141,6 +142,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   context.logger.composition("context " ++ context.toString)
   context.logger.composition("dependencyTree\n" ++ dependencyTree)
   context.logger.composition("<"*80)
+  */
 
   // ========== cbt internals ==========
   private[cbt] def finalBuild = this

@@ -41,7 +41,8 @@ case class Stage2Args(
   cwd: File,
   args: Seq[String],
   cbtHasChanged: Boolean,
-  logger: Logger
+  logger: Logger,
+  classLoaderCache: ClassLoaderCache
 )
 
 object Stage1{
@@ -70,13 +71,17 @@ object Stage1{
     )
 
     logger.stage1(s"calling CbtDependency.classLoader")
-    if(cbtHasChanged){
+    if(cbtHasChanged) {
       NailgunLauncher.stage2classLoader = CbtDependency().classLoader(classLoaderCache)
+    }else{
+      classLoaderCache.transient.get( CbtDependency().classpath.string, NailgunLauncher.stage2classLoader )
     }
 
     logger.stage1(s"Run Stage2")
+    val cl = NailgunLauncher.stage2classLoader
     val exitCode = (
-      NailgunLauncher.stage2classLoader.loadClass(
+      cl
+      .loadClass(
         if(args.admin) "cbt.AdminStage2" else "cbt.Stage2"
       )
       .getMethod( "run", classOf[Stage2Args] )
@@ -87,7 +92,8 @@ object Stage1{
           args.args.drop(1).toVector,
           // launcher changes cause entire nailgun restart, so no need for them here
           cbtHasChanged = cbtHasChanged,
-          logger
+          logger,
+          classLoaderCache
         )
       ) match {
         case code: ExitCode => code

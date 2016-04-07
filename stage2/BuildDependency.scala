@@ -16,7 +16,7 @@ trait TriggerLoop extends Dependency{
 }
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
 case class BuildDependency(context: Context) extends TriggerLoop{
-  override def show = this.getClass.getSimpleName ++ "(" ++ context.cwd.string ++ ")"
+  override def show = this.getClass.getSimpleName ++ "(" ++ context.projectDirectory.string ++ ")"
   final override lazy val logger = context.logger
   final override lazy val lib: Lib = new Lib(logger)
   private val root = lib.loadRoot( context.copy(args=Seq()) )
@@ -31,7 +31,7 @@ case class BuildDependency(context: Context) extends TriggerLoop{
 }
 /*
 case class DependencyOr(first: BuildDependency, second: JavaDependency) extends ProjectProxy with BuildDependencyBase{
-  val isFirst = new File(first.context.cwd).exists
+  val isFirst = new File(first.context.projectDirectory).exists
   def triggerLoopFiles = if(isFirst) first.triggerLoopFiles else Seq()
   protected val delegate = if(isFirst) first else second
 }

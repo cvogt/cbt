@@ -22,8 +22,8 @@ object Stage2 extends Stage2Base{
       0
     }
     val task = args.args.lift( taskIndex )
-
-    val context = Context( args.cwd, args.args.drop( taskIndex ), logger, args.cbtHasChanged, new ClassLoaderCache(logger) )
+    
+    val context = Context( args.cwd, args.cwd, args.args.drop( taskIndex ), logger, args.cbtHasChanged, args.classLoaderCache )
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
@@ -44,9 +44,8 @@ object Stage2 extends Stage2Base{
 
           case file if triggerFiles.exists(file.toString startsWith _.toString) =>
             val build = lib.loadDynamic(context)
-            val reflectBuild = new lib.ReflectBuild( build )
             logger.loop(s"Re-running $task for " ++ build.projectDirectory.toString)
-            reflectBuild.callNullary(task)
+            new lib.ReflectBuild(build).callNullary(task)
         }
       } else {
         new lib.ReflectBuild(build).callNullary(task)

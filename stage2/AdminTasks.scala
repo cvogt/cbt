@@ -2,7 +2,7 @@ package cbt
 import scala.collection.immutable.Seq
 import java.io.{Console=>_,_}
 import java.nio.file._
-class AdminTasks(lib: Lib, args: Seq[String], cwd: File){
+class AdminTasks(lib: Lib, args: Seq[String], cwd: File, classLoaderCache: ClassLoaderCache){
   implicit val logger: Logger = lib.logger
   def resolve = {
     ClassPath.flatten(
@@ -31,14 +31,14 @@ class AdminTasks(lib: Lib, args: Seq[String], cwd: File){
     )
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
     lib.runMain(
-      "ammonite.repl.Main", Seq(), d.classLoader(new ClassLoaderCache(logger))
+      "ammonite.repl.Main", Seq(), d.classLoader(classLoaderCache)
     )
   }
   def scala = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val scalac = new ScalaCompilerDependency( version )
     lib.runMain(
-      "scala.tools.nsc.MainGenericRunner", Seq("-cp", scalac.classpath.string), scalac.classLoader(new ClassLoaderCache(logger))
+      "scala.tools.nsc.MainGenericRunner", Seq("-cp", scalac.classpath.string), scalac.classLoader(classLoaderCache)
     )
   }
   def scaffoldBasicBuild: Unit = lib.scaffoldBasicBuild( cwd )

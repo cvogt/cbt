@@ -38,7 +38,7 @@ case class GitDependency(
 
     }
     val managedBuild = lib.loadDynamic(
-      context.copy( cwd = checkoutDirectory, args = Seq() )
+      context.copy( projectDirectory = checkoutDirectory, args = Seq() )
     )    
     Seq( managedBuild )
   }
