@@ -3,7 +3,6 @@ TODO:
    - improve logging
  
  - immediate features
-   - maybe rename context.cwd
    - fix main project main method being run during tests
    - investigate and solve multiple compilations of the same SourceDependency Build. Maybe introduce global Build map.
 
