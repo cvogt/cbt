@@ -19,6 +19,17 @@ class Build(context: Context) extends BasicBuild(context){
 
   private object tutCache extends Cache[Unit]
   def tut = {
-    println(TutMain)
+
+    // tut is normally run as a commandline app so it wants strings :-\
+    // we can modify tut to add a typed runner and provide a logging hook
+    // but as a proof of concept yep it works
+    val in  = new File(projectDirectory, "doc/src/tut")
+    val out = new File(projectDirectory, "doc/target/tut")
+    val re  = """.*\.(md|txt|htm|html)"""
+    val cp  = dependencyClasspath.string // we really want cbt on here too
+    val opt = "-cp" :: cp :: scalacOptions.toList
+    TutMain.runl(in.getAbsolutePath :: out.getAbsolutePath :: re :: opt).unsafePerformIO
+
   }
+
 }
