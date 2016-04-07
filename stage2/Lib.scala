@@ -24,6 +24,11 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   val buildClassName = "Build"
   val buildBuildClassName = "BuildBuild"
 
+  def copy(cls: Class[_], context: Context) = 
+    cls
+    .getConstructor(classOf[Context])
+    .newInstance(context)
+
   /** Loads Build for given Context */
   def loadDynamic(context: Context, default: Context => Build = new Build(_)): Build = {
     context.logger.composition( context.logger.showInvocation("Build.loadDynamic",context) )
@@ -53,16 +58,16 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-  def srcJar(sourceFiles: Seq[File], artifactId: String, version: String, jarTarget: File): Option[File] = {
+  def srcJar(sourceFiles: Seq[File], artifactId: String, scalaMajorVersion: String, version: String, jarTarget: File): Option[File] = {
     lib.jarFile(
-      jarTarget ++ ("/"++artifactId++"-"++version++"-sources.jar"),
+      jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-sources.jar"),
       sourceFiles
     )
   }
 
-  def jar(artifactId: String, version: String, compileTarget: File, jarTarget: File): Option[File] = {
+  def jar(artifactId: String, scalaMajorVersion: String, version: String, compileTarget: File, jarTarget: File): Option[File] = {
     lib.jarFile(
-      jarTarget ++ ("/"++artifactId++"-"++version++".jar"),
+      jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++".jar"),
       Seq(compileTarget)
     )
   }
@@ -74,6 +79,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     apiTarget: File,
     jarTarget: File,
     artifactId: String,
+    scalaMajorVersion: String,
     version: String,
     compileArgs: Seq[String],
     classLoaderCache: ClassLoaderCache
@@ -96,7 +102,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         )
       }
       lib.jarFile(
-        jarTarget ++ ("/"++artifactId++"-"++version++"-javadoc.jar"),
+        jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-javadoc.jar"),
         Vector(apiTarget)
       )
     }

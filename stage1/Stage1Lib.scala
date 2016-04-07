@@ -31,7 +31,16 @@ object CatchTrappedExitCode{
   }
 }
 
-case class Context( projectDirectory: File, cwd: File, args: Seq[String], logger: Logger, cbtHasChanged: Boolean, classLoaderCache: ClassLoaderCache )
+case class Context(
+  projectDirectory: File,
+  cwd: File,
+  args: Seq[String],
+  logger: Logger,
+  cbtHasChanged: Boolean,
+  classLoaderCache: ClassLoaderCache,
+  version: Option[String] = None,
+  scalaVersion: Option[String] = None
+)
 
 class BaseLib{
   def realpath(name: File) = new File(Paths.get(name.getAbsolutePath).normalize.toString)

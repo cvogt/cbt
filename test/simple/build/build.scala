@@ -7,7 +7,7 @@ class Build(context: cbt.Context) extends BasicBuild(context){
     super.dependencies
     ++
     Seq(
-      GitDependency("https://github.com/xdotai/diff.git", "8b501902999fe76d49e04937c4bd6d0b9e07b4a6"),
+      GitDependency("https://github.com/xdotai/diff.git", "666bbbf4dbff6fadc81c011ade7b83e91d3f9256"),
       MavenRepository.central.resolve(
         ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
         MavenDependency("joda-time", "joda-time", "2.9.2"),

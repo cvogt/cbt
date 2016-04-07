@@ -36,6 +36,11 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
   final protected def releaseFolder = s"/${groupId.replace(".","/")}/$artifactId/$version/"
   def snapshotUrl = new URL("https://oss.sonatype.org/content/repositories/snapshots")
   def releaseUrl = new URL("https://oss.sonatype.org/service/local/staging/deploy/maven2")
-  def publishSnapshot: Unit = lib.publishSnapshot(sourceFiles, pom +: `package`, snapshotUrl ++ releaseFolder )
+  override def copy(context: Context) = super.copy(context).asInstanceOf[PublishBuild]
+  def publishSnapshot: Unit = {
+    val snapshotBuild = copy( context.copy(version = Some(version+"-SNAPSHOT")) )
+    val files = snapshotBuild.pom +: snapshotBuild.`package`
+    lib.publishSnapshot(sourceFiles, files, snapshotUrl ++ releaseFolder )
+  }
   def publishSigned: Unit = lib.publishSigned(sourceFiles, pom +: `package`, releaseUrl ++ releaseFolder )
 }
