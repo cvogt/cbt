@@ -14,7 +14,9 @@ class Build(context: cbt.Context) extends BasicBuild(context){
         // the below tests pom inheritance with dependencyManagement and variable substitution for pom properties
         MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
         // the below tests pom inheritance with variable substitution for pom xml tag contents
-        MavenDependency("com.spotify", "missinglink-core", "0.1.1")
+        MavenDependency("com.spotify", "missinglink-core", "0.1.1"),
+        // the below tests pom inheritance with variable substitution being parts of strings
+        MavenDependency("cc.factorie","factorie_2.11","1.2")
       ),
       MavenRepository.combine(
         MavenRepository.central,

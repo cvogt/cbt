@@ -402,10 +402,12 @@ case class BoundMavenDependency(
   def lookup( xml: Node, accessor: Node => NodeSeq ): Option[String] = {
     //println("lookup in "++pomUrl)
     val Substitution = "\\$\\{([^\\}]+)\\}".r
-    accessor(xml).headOption.flatMap{v =>
+    accessor(xml).headOption.map{v =>
       //println("found: "++v.text)
-      v.text match {
-        case Substitution(path) => Option(
+      Substitution.replaceAllIn(
+        v.text,
+        matcher => {
+          val path = matcher.group(1)
           properties.get(path).orElse(
             transitivePom.reverse.flatMap{ d =>
               Some(path.split("\\.").toList).collect{
@@ -414,10 +416,12 @@ case class BoundMavenDependency(
               }.filter(_ != "")
             }.headOption
           )
-          .getOrElse( throw new Exception(s"Can't find $path in \n$properties.\n\npomParents: $transitivePom\n\n pomXml:\n$pomXml" )))
-          //println("lookup "++path ++ ": "++(pomXml\path).text)          
-        case value => Option(value)
-      }
+          .getOrElse(
+            throw new Exception(s"Can't find $path in \n$properties.\n\npomParents: $transitivePom\n\n pomXml:\n$pomXml" )
+          )
+            //println("lookup "++path ++ ": "++(pomXml\path).text)          
+        }
+      )
     }
   }
 }
