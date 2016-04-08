@@ -5,7 +5,7 @@ import java.io._
 trait Test extends Build{
   lazy val testedBuild = BuildDependency( projectDirectory.parent )
   override def dependencies = Seq( testedBuild ) ++ super.dependencies
-  override def scalaVersion = testedBuild.build.scalaVersion
+  override def defaultScalaVersion = testedBuild.build.scalaVersion
 }
 trait Sbt extends Build{
   override def sources = Seq( projectDirectory ++ "/src/main/scala" )

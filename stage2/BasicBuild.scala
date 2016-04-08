@@ -29,8 +29,11 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
 
   // ========== meta data ==========
 
-  def scalaVersion: String = constants.scalaVersion
+  def defaultScalaVersion: String = constants.scalaVersion
+  final def scalaVersion = context.scalaVersion getOrElse defaultScalaVersion
   final def scalaMajorVersion: String = lib.scalaMajorVersion(scalaVersion)
+  def crossScalaVersions: Seq[String] = Seq(scalaVersion, "2.10.6")
+  def copy(context: Context) = lib.copy(this.getClass, context).asInstanceOf[Build]
   def zincVersion = "0.3.9"
 
   def dependencies: Seq[Dependency] = Seq(

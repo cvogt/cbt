@@ -15,8 +15,9 @@ object Stage2 extends Stage2Base{
     logger.stage2(s"Stage2 start")
     val loop = args.args.lift(0) == Some("loop")
     val direct = args.args.lift(0) == Some("direct")
+    val cross = args.args.lift(0) == Some("cross")
 
-    val taskIndex = if (loop || direct) {
+    val taskIndex = if (loop || direct || cross) {
       1
     } else {
       0
@@ -26,6 +27,18 @@ object Stage2 extends Stage2Base{
     val context = Context( args.cwd, args.cwd, args.args.drop( taskIndex ), logger, args.cbtHasChanged, args.classLoaderCache )
     val first = lib.loadRoot( context )
     val build = first.finalBuild
+
+    def call(build: Build) = {
+      if(cross){
+        build.crossScalaVersions.foreach{
+          v => new lib.ReflectBuild(
+            build.copy(context.copy(scalaVersion = Some(v)))
+          ).callNullary(task)
+        }
+      } else {
+        new lib.ReflectBuild(build).callNullary(task)
+      }
+    }
 
     val res =
       if (loop) {
@@ -45,10 +58,10 @@ object Stage2 extends Stage2Base{
           case file if triggerFiles.exists(file.toString startsWith _.toString) =>
             val build = lib.loadDynamic(context)
             logger.loop(s"Re-running $task for " ++ build.projectDirectory.toString)
-            new lib.ReflectBuild(build).callNullary(task)
+            call(build)
         }
       } else {
-        new lib.ReflectBuild(build).callNullary(task)
+        call(build)
       }
 
     logger.stage2(s"Stage2 end")
