@@ -9,14 +9,6 @@ import paths._
 import scala.concurrent._
 import scala.concurrent.duration._
 
-private final class Tree( val root: Dependency, computeChildren: => Seq[Tree] ){
-  lazy val children = computeChildren
-  def linearize: Seq[Dependency] = root +: children.flatMap(_.linearize)
-  def show(indent: Int = 0): Stream[Char] = {
-    ("  " * indent ++ root.show ++ "\n").toStream #::: children.map(_.show(indent+1)).foldLeft(Stream.empty[Char])(_ #::: _)
-  }
-}
-
 trait ArtifactInfo extends Dependency{
   def artifactId: String
   def groupId: String
@@ -143,11 +135,6 @@ abstract class Dependency{
   def dependencyJars      : Seq[File] = transitiveDependencies.flatMap(_.jars)
   def dependencyClasspath : ClassPath = ClassPath.flatten( transitiveDependencies.map(_.exportedClasspath) )
   def dependencies: Seq[Dependency]
-
-  private def resolveRecursive(parents: List[Dependency] = List()): Tree = {
-    // diff removes circular dependencies
-    new Tree(this, (dependencies diff parents).map(_.resolveRecursive(this :: parents)))
-  }
 
   private def linearize(deps: Seq[Dependency]): Seq[Dependency] =
     // Order is important here in order to generate the correct lineraized dependency order for EarlyDependencies
