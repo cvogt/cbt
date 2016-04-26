@@ -152,8 +152,10 @@ stage1 () {
 		if [ $use_nailgun -eq 0 ]; then
 			echo "Stopping nailgun" 1>&2
 			$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
+			sleep 1
 			echo "Restarting nailgun" 1>&2
 			ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
+			sleep 1
 		fi
 	fi
 
