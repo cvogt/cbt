@@ -8,6 +8,19 @@
 # - reduction of dependencies
 # - performance improvements
 
+start_seconds=$(gdate +"%s")
+start_nanos=1$(gdate +"%N")
+
+time_taken() {
+	i=$(( $(gdate +"%s") - start_seconds ))
+	n=$(( $(( 1$(gdate +"%N") - start_nanos )) / 1000000 ))
+	if [[ ( "$n" < 0 ) ]]; then
+		i=$(( i-1 ))
+		n=$(( n+1000 ))
+	fi
+	echo "$i.$n"
+}
+
 # utility function to log message to stderr with stating the time
 log () {
 	msg=$1
@@ -23,8 +36,8 @@ log () {
 		which gdate 2>&1 > /dev/null
 		gdate_installed=$?
 		if [ $gdate_installed -eq 0 ]; then
-			i=`gdate +"%S.%N"`
-			echo "[$i] $msg" 1>&2
+			delta=$(time_taken)
+			echo "[$delta] $msg" 1>&2
 		fi
 	fi
 }
