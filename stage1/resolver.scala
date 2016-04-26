@@ -157,10 +157,16 @@ abstract class Dependency{
   private object transitiveDependenciesCache extends Cache[Seq[Dependency]]
   /** return dependencies in order of linearized dependence. this is a bit tricky. */
   def transitiveDependencies: Seq[Dependency] = transitiveDependenciesCache{
-    val deps = linearize(dependencies)
-    val hasInfo = deps.collect{ case d:ArtifactInfo => d }
-    val noInfo  = deps.filter{
-      case _:ArtifactInfo => false
+    // FIXME: this is probably wrong too eager.
+    // We should consider replacing versions during traversals already
+    // not just replace after traversals, because that could mean we
+    // pulled down dependencies current versions don't even rely
+    // on anymore.
+
+    val deps: Seq[Dependency] = linearize(dependencies).reverse.distinct.reverse
+    val hasInfo: Seq[Dependency with ArtifactInfo] = deps.collect{ case d:Dependency with ArtifactInfo => d }
+    val noInfo: Seq[Dependency]  = deps.filter{
+      case _:Dependency with ArtifactInfo => false
       case _ => true
     }
     noInfo ++ BoundMavenDependency.updateOutdated( hasInfo ).reverse.distinct
@@ -429,9 +435,9 @@ case class BoundMavenDependency(
 }
 object BoundMavenDependency{
   def ValidIdentifier = "^([A-Za-z0-9_\\-.]+)$".r // according to maven's DefaultModelValidator.java
-  def semanticVersionLessThan(left: String, right: String) = {
+  def semanticVersionLessThan(left: Array[Either[Int,String]], right: Array[Either[Int,String]]) = {
     // FIXME: this ignores ends when different size
-    val zipped = left.split("\\.|\\-").map(toInt) zip right.split("\\.|\\-").map(toInt)
+    val zipped = left zip right
     val res = zipped.map {
       case (Left(i),Left(j)) => i compare j
       case (Right(i),Right(j)) => i compare j
@@ -447,13 +453,16 @@ object BoundMavenDependency{
   }
   /* this obviously should be overridable somehow */
   def updateOutdated(
-    deps: Seq[ArtifactInfo],
-    versionLessThan: (String, String) => Boolean = semanticVersionLessThan
-  )(implicit logger: Logger): Seq[ArtifactInfo] = {
+    deps: Seq[Dependency with ArtifactInfo],
+    versionLessThan: (Array[Either[Int,String]], Array[Either[Int,String]]) => Boolean = semanticVersionLessThan
+  )(implicit logger: Logger): Seq[Dependency with ArtifactInfo] = {
     val latest = deps
       .groupBy( d => (d.groupId, d.artifactId) )
       .mapValues(
-        _.sortBy( _.version )( Ordering.fromLessThan(versionLessThan) )
+        _.groupBy(_.version) // remove duplicates
+         .map( _._2.head )
+         .toVector
+         .sortBy( _.version.split("\\.|\\-").map(toInt) )( Ordering.fromLessThan(versionLessThan) )
          .last
       )
     deps.map{
