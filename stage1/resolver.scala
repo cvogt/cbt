@@ -149,9 +149,11 @@ abstract class Dependency{
     new Tree(this, (dependencies diff parents).map(_.resolveRecursive(this :: parents)))
   }
 
-  def linearize(deps: Seq[Dependency]): Seq[Dependency] =
+  private def linearize(deps: Seq[Dependency]): Seq[Dependency] =
+    // Order is important here in order to generate the correct lineraized dependency order for EarlyDependencies
+    // (and maybe this as well in case we want to get rid of MultiClassLoader)
     if(deps.isEmpty) deps else ( deps ++ linearize(deps.flatMap(_.dependencies)) )
-  
+
   private object transitiveDependenciesCache extends Cache[Seq[Dependency]]
   /** return dependencies in order of linearized dependence. this is a bit tricky. */
   def transitiveDependencies: Seq[Dependency] = transitiveDependenciesCache{
