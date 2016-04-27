@@ -129,10 +129,14 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   }
 
   //def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
-  def run: ExitCode = lib.run( runClass, classLoader(context.classLoaderCache) )
-  def runClass: Option[String] = mainClasses.headOption 
+  def run: ExitCode = lib.run( discoveredRunClass, classLoader(context.classLoaderCache) )
+  def runClass: String = discoveredRunClass match {
+    case Some (classToRun) => classToRun
+    case None              => "Main"
+  }
   
-  def mainClasses: Seq[String] = lib.mainClasses(compileTarget, classLoader(context.classLoaderCache)) 
+  private def discoveredRunClass : Option[String] = mainClasses.headOption 
+  private def mainClasses: Seq[String] = lib.mainClasses(compileTarget, classLoader(context.classLoaderCache)) 
 
   def test: ExitCode = lib.test(context)
 
