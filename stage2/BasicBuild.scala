@@ -63,16 +63,10 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   def compileStatusFile: File = compileTarget ++ ".last-success"
 
   /** Source directories and files. Defaults to .scala and .java files in src/ and top-level. */
-  def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
-
-  /** Which file endings to consider being source files. */
-  def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
+  def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(lib.sourceFileFilter)
 
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
-  final def sourceFiles: Seq[File] = for {
-    base <- sources.filter(_.exists).map(lib.realpath)
-    file <- lib.listFilesRecursive(base) if file.isFile && sourceFileFilter(file)
-  } yield file
+  final def sourceFiles: Seq[File] = lib.sourceFiles(sources)
 
   protected def assertSourceDirectories(): Unit = {
     val nonExisting =
