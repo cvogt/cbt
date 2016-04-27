@@ -340,14 +340,14 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     else items.map(projection)
   }
 
-  def publishSnapshot( sourceFiles: Seq[File], artifacts: Seq[File], url: URL ): Unit = {
+  def publishSnapshot( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
     if(sourceFiles.nonEmpty){
       val files = artifacts.map(nameAndContents)
-      uploadAll(url, files)
+      uploadAll(url, files, credentials)
     }
   }
 
-  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL ): Unit = {
+  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
     // TODO: make concurrency configurable here
     if(sourceFiles.nonEmpty){
       val files = (artifacts ++ artifacts.map(sign)).map(nameAndContents)
@@ -358,15 +358,15 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         )
       }
       val all = (files ++ checksums)
-      uploadAll(url, all)
+      uploadAll(url, all, credentials)
     }
   }
 
 
-  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])]): Unit =
-    nameAndContents.map{ case(name, content) => upload(name, content, url) }
+  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: String ): Unit =
+    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials: String ) }
 
-  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL): Unit = {
+  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: String): Unit = {
     import java.net._
     import java.io._
     logger.task("uploading "++fileName)
@@ -374,8 +374,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")
-    val userPassword = new String(readAllBytes(sonatypeLogin.toPath)).trim
-    val encoding = new sun.misc.BASE64Encoder().encode(userPassword.getBytes)
+    val encoding = new sun.misc.BASE64Encoder().encode(credentials.getBytes)
     httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
     httpCon.setRequestProperty("Content-Type", "application/binary")
     httpCon.getOutputStream.write(

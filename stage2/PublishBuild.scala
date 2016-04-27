@@ -1,6 +1,7 @@
 package cbt
 import java.io.File
 import java.net.URL
+import java.nio.file.Files.readAllBytes
 import scala.collection.immutable.Seq
 
 abstract class PublishBuild(context: Context) extends PackageBuild(context){
@@ -37,10 +38,22 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
   def snapshotUrl = new URL("https://oss.sonatype.org/content/repositories/snapshots")
   def releaseUrl = new URL("https://oss.sonatype.org/service/local/staging/deploy/maven2")
   override def copy(context: Context) = super.copy(context).asInstanceOf[PublishBuild]
+
+  protected def sonatypeCredentials = {
+    // FIXME: this should probably not use cbtHome, but some reference to the system's host cbt
+    new String(readAllBytes((context.cbtHome ++ "/sonatype.login").toPath)).trim
+  }
+
   def publishSnapshot: Unit = {
     val snapshotBuild = copy( context.copy(version = Some(version+"-SNAPSHOT")) )
     val files = snapshotBuild.pom +: snapshotBuild.`package`
-    lib.publishSnapshot(sourceFiles, files, snapshotUrl ++ releaseFolder )
+    lib.publishSnapshot(
+      sourceFiles, files, snapshotUrl ++ releaseFolder, sonatypeCredentials
+    )
   }
-  def publishSigned: Unit = lib.publishSigned(sourceFiles, pom +: `package`, releaseUrl ++ releaseFolder )
+  def publishSigned: Unit = {
+    lib.publishSigned(
+      sourceFiles, pom +: `package`, releaseUrl ++ releaseFolder, sonatypeCredentials
+    )
+  }
 }
