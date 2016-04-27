@@ -139,7 +139,9 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   def runClass: String = "Main"
   def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
 
-  def test: ExitCode = lib.test(context)
+  def test: Option[ExitCode] = {
+    lib.test(context)
+  }
 
   /*
   context.logger.composition(">"*80)

@@ -108,19 +108,21 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-  def test( context: Context ): ExitCode = {
-    val loggers = logger.enabledLoggers.mkString(",")
-    // FIXME: this is a hack to pass logger args on to the tests.
-    // should probably have a more structured way
-    val loggerArg = if(loggers != "") Some("-Dlog="++loggers) else None
+  def test( context: Context ): Option[ExitCode] = {
+    if((context.projectDirectory ++ "/test").exists){
+      val loggers = logger.enabledLoggers.mkString(",")
+      // FIXME: this is a hack to pass logger args on to the tests.
+      // should probably have a more structured way
+      val loggerArg = if(loggers != "") Some("-Dlog="++loggers) else None
 
-    logger.lib(s"invoke testDefault( $context )")
-    val exitCode: ExitCode = loadDynamic(
-      context.copy( projectDirectory = context.projectDirectory ++ "/test", args = loggerArg.toVector ++ context.args ),
-      new Build(_) with mixins.Test
-    ).run
-    logger.lib(s"return testDefault( $context )")
-    exitCode
+      logger.lib(s"invoke testDefault( $context )")
+      val exitCode: ExitCode = loadDynamic(
+        context.copy( projectDirectory = context.projectDirectory ++ "/test", args = loggerArg.toVector ++ context.args ),
+        new BasicBuild(_) with mixins.Test
+      ).run.asInstanceOf[ExitCode] // FIXME
+      logger.lib(s"return testDefault( $context )")
+      Some(exitCode)
+    } else None
   }
 
   // task reflection helpers
