@@ -53,6 +53,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
+
   def run( mainClass: Option[String], classLoader: ClassLoader ) : ExitCode = {
     mainClass.map( runMain( _, Seq(), classLoader ) ).getOrElse( ExitCode.Failure )
   }
@@ -95,16 +96,19 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     hasMain.map(className(_))
   }
 
-  def srcJar(sources: Seq[File], artifactId: String, version: String, jarTarget: File): File = {
-    val file = jarTarget ++ ("/"++artifactId++"-"++version++"-sources.jar")
-    lib.jarFile(file, sources)
-    file
+  def srcJar(sourceFiles: Seq[File], artifactId: String, version: String, jarTarget: File): Option[File] = {
+    lib.jarFile(
+      jarTarget ++ ("/"++artifactId++"-"++version++"-sources.jar"),
+      sourceFiles
+    )
+
   }
 
-  def jar(artifactId: String, version: String, compileTarget: File, jarTarget: File): File = {
-    val file = jarTarget ++ ("/"++artifactId++"-"++version++".jar")
-    lib.jarFile(file, Seq(compileTarget))
-    file
+  def jar(artifactId: String, version: String, compileTarget: File, jarTarget: File): Option[File] = {
+    lib.jarFile(
+      jarTarget ++ ("/"++artifactId++"-"++version++".jar"),
+      Seq(compileTarget)
+    )
   }
 
   def docJar(
@@ -117,9 +121,11 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     version: String,
     compileArgs: Seq[String],
     classLoaderCache: ClassLoaderCache
-  ): File = {
-    apiTarget.mkdirs
-    if(sourceFiles.nonEmpty){
+  ): Option[File] = {
+    if(sourceFiles.isEmpty){
+      None
+    } else {
+      apiTarget.mkdirs
       val args = Seq(
         // FIXME: can we use compiler dependency here?
         "-cp", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
@@ -133,10 +139,11 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           ScalaDependencies(scalaVersion)(logger).classLoader(classLoaderCache)
         )
       }
+      lib.jarFile(
+        jarTarget ++ ("/"++artifactId++"-"++version++"-javadoc.jar"),
+        Vector(apiTarget)
+      )
     }
-    val docJar = jarTarget ++ ("/"++artifactId++"-"++version++"-javadoc.jar")
-    lib.jarFile(docJar, Vector(apiTarget))
-    docJar
   }
 
   def test( context: Context ): ExitCode = {
@@ -170,7 +177,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           .filter{ m =>
             java.lang.reflect.Modifier.isPublic(m.getModifiers)
           }
-          .filter( _.getParameterCount == 0 )
+          .filter( _.getParameterTypes.length == 0 )
           .map(m => NameTransformer.decode(m.getName) -> m)
       ).toMap
 
@@ -182,7 +189,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     (
       (
         if( thisTasks.nonEmpty ){
-          s"""Methods provided by Build ${context}
+          s"""Methods provided by Build ${context.cwd}
 
   ${thisTasks.mkString("  ")}
 
@@ -203,7 +210,10 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       val ts = tasks(obj.getClass)
       taskName.map( NameTransformer.encode ).flatMap(ts.get).map{ method =>
         val result: Option[Any] = Option(method.invoke(obj)) // null in case of Unit
-        result.map{
+        result.flatMap{
+          case v: Option[_] => v
+          case other => Some(other)
+        }.map{
           value =>
           // Try to render console representation. Probably not the best way to do this.
           scala.util.Try( value.getClass.getDeclaredMethod("toConsole") ) match {
@@ -238,35 +248,41 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def dirname(path: File): File = new File(realpath(path).string.stripSuffix("/").split("/").dropRight(1).mkString("/"))
   def nameAndContents(file: File) = basename(file) -> readAllBytes(Paths.get(file.toString))
 
-  def jarFile( jarFile: File, files: Seq[File] ): Unit = {
-    logger.lib("Start packaging "++jarFile.string)
-    val manifest = new Manifest
-    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
-    val jar = new JarOutputStream(new FileOutputStream(jarFile.toString), manifest)
+  def jarFile( jarFile: File, files: Seq[File] ): Option[File] = {
+    if( files.isEmpty ){
+      None
+    } else {
+      logger.lib("Start packaging "++jarFile.string)
+      val manifest = new Manifest
+      manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
+      val jar = new JarOutputStream(new FileOutputStream(jarFile.toString), manifest)
 
-    val names = for {
-      base <- files.filter(_.exists).map(realpath)
-      file <- listFilesRecursive(base) if file.isFile
-    } yield {
-        val name = if(base.isDirectory){
-          file.toString stripPrefix base.toString
-        } else file.toString
-        val entry = new JarEntry( name )
-        entry.setTime(file.lastModified)
-        jar.putNextEntry(entry)
-        jar.write( readAllBytes( Paths.get(file.toString) ) )
-        jar.closeEntry
-        name
+      val names = for {
+        base <- files.filter(_.exists).map(realpath)
+        file <- listFilesRecursive(base) if file.isFile
+      } yield {
+          val name = if(base.isDirectory){
+            file.toString stripPrefix base.toString
+          } else file.toString
+          val entry = new JarEntry( name )
+          entry.setTime(file.lastModified)
+          jar.putNextEntry(entry)
+          jar.write( readAllBytes( Paths.get(file.toString) ) )
+          jar.closeEntry
+          name
+      }
+
+      val duplicateFiles = (names diff names.distinct).distinct
+      assert(
+        duplicateFiles.isEmpty,
+        s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
+      )
+
+      jar.close
+      logger.lib("Done packaging " ++ jarFile.toString)
+
+      Some(jarFile)
     }
-
-    val duplicateFiles = (names diff names.distinct).distinct
-    assert(
-      duplicateFiles.isEmpty,
-      s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
-    )
-
-    jar.close
-    logger.lib("Done packaging " ++ jarFile.toString)
   }
 
   lazy val passphrase =

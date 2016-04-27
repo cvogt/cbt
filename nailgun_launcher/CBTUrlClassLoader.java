@@ -2,14 +2,15 @@ package cbt;
 import java.io.*;
 import java.net.*;
 import java.util.*;
-class CbtURLClassLoader extends URLClassLoader{
+import static cbt.Stage0Lib.*;
+class CbtURLClassLoader extends java.net.URLClassLoader{
   public String toString(){
     return (
       super.toString()
       + "(\n  "
       + Arrays.toString(getURLs())
       + ",\n  "
-      + String.join("\n  ",getParent().toString().split("\n"))
+      + join("\n  ",getParent().toString().split("\n"))
       + "\n)"
     );
   }

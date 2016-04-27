@@ -1,7 +1,5 @@
 package cbt
 
-import java.time._
-
 /**
  * This represents a logger with namespaces that can  be enabled or disabled as needed. The
  * namespaces are defined using {{enabledLoggers}}. Possible values are defined in the subobject
@@ -9,13 +7,11 @@ import java.time._
  *
  * We can replace this with something more sophisticated eventually.
  */
-case class Logger(enabledLoggers: Set[String]) {
-  def this(enabledLoggers: Option[String]) = this( enabledLoggers.toVector.flatMap( _.split(",") ).toSet )
-
-  val start = LocalTime.now()
+case class Logger(enabledLoggers: Set[String], start: Long) {
+  def this(enabledLoggers: Option[String], start: Long) = this( enabledLoggers.toVector.flatMap( _.split(",") ).toSet, start )
 
   def log(name: String, msg: => String) = {
-    val timeTaken = (Duration.between(start, LocalTime.now()).toMillis.toDouble / 1000).toString
+    val timeTaken = ((start - System.currentTimeMillis) / 1000).toString
     System.err.println( s"[${" "*(6-timeTaken.size)}$timeTaken][$name] $msg" )
   }
 

@@ -1,7 +1,6 @@
 package cbt
 
 import java.io._
-import java.time.LocalTime.now
 
 import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
@@ -50,51 +49,35 @@ object Stage1{
     a.lastModified > b.lastModified
   }
 
-  def run(_args: Array[String], classLoader: ClassLoader, stage1SourcesChanged: java.lang.Boolean): Int = {
+  def run(_args: Array[String], classLoader: ClassLoader, _cbtChanged: java.lang.Boolean, start: java.lang.Long): Int = {
     val args = Stage1ArgsParser(_args.toVector)
-    val logger = new Logger(args.enabledLoggers)
+    val logger = new Logger(args.enabledLoggers, start)
     logger.stage1(s"Stage1 start")
 
     val lib = new Stage1Lib(logger)
     import lib._
 
-    val sourceFiles = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
-    val changeIndicator = stage2Target ++ "/cbt/Build.class"
-
-    val deps = Dependencies(
-      JavaDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
-      JavaDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
-    )
-
     val classLoaderCache = new ClassLoaderCache(logger)
 
-    val stage2SourcesChanged = lib.needsUpdate(sourceFiles, stage2StatusFile)
+    val sourceFiles = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
+    val cbtHasChanged = _cbtChanged || lib.needsUpdate(sourceFiles, stage2StatusFile)
     logger.stage1("Compiling stage2 if necessary")
-    val scalaXml = JavaDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
     compile(
-      stage2SourcesChanged,
+      cbtHasChanged,
       sourceFiles, stage2Target, stage2StatusFile,
-      nailgunTarget +: stage1Target +: Dependencies(deps, scalaXml).classpath,
+      CbtDependency().dependencyClasspath,
       Seq("-deprecation"), classLoaderCache,
       zincVersion = "0.3.9", scalaVersion = constants.scalaVersion
     )
 
-    logger.stage1(s"[$now] calling CbtDependency.classLoader")
+    logger.stage1(s"calling CbtDependency.classLoader")
+    if(cbtHasChanged){
+      NailgunLauncher.stage2classLoader = CbtDependency().classLoader(classLoaderCache)
+    }
 
-    val cl = /*classLoaderCache.transient.get(
-      (stage2Target +: deps.classpath).string,*/
-      cbt.URLClassLoader(
-        ClassPath(Seq(stage2Target)),
-        classLoaderCache.persistent.get(
-          deps.classpath.string,
-          cbt.URLClassLoader( deps.classpath, classLoader )
-        )
-      )
-    //)
-
-    logger.stage1(s"[$now] Run Stage2")
+    logger.stage1(s"Run Stage2")
     val exitCode = (
-      cl.loadClass(
+      NailgunLauncher.stage2classLoader.loadClass(
         if(args.admin) "cbt.AdminStage2" else "cbt.Stage2"
       )
       .getMethod( "run", classOf[Stage2Args] )
@@ -104,7 +87,7 @@ object Stage1{
           new File( args.args(0) ),
           args.args.drop(1).toVector,
           // launcher changes cause entire nailgun restart, so no need for them here
-          cbtHasChanged = stage1SourcesChanged || stage2SourcesChanged,
+          cbtHasChanged = cbtHasChanged,
           logger
         )
       ) match {
@@ -112,7 +95,7 @@ object Stage1{
         case _ => ExitCode.Success
       }
     ).integer
-    logger.stage1(s"[$now] Stage1 end")
+    logger.stage1(s"Stage1 end")
     return exitCode;
   }
 }

@@ -48,14 +48,16 @@ class Build(context: cbt.Context) extends PackageBuild(context){
   override def version = "0.6.1-SNAPSHOT"
   override def groupId = "org.cvogt"
   override def artifactId = "play-json-extensions"
-  override def dependencies = super.dependencies ++ Vector(
-    // encouraged way to declare dependencies
-    ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
-    JavaDependency("joda-time", "joda-time", "2.9.2")
-    // also supported for SBT syntax compatibility:
-    // "com.typesafe.play" %% "play-json" % "2.4.4"
-    // "joda-time" % "joda-time % "2.9.2"
-  )
+  override def dependencies =
+    super.dependencies :+
+    MavenRepository.central.resolve(
+      // encouraged way to declare dependencies
+      ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
+      MavenDependency("joda-time", "joda-time", "2.9.2")
+      // also supported for SBT syntax compatibility:
+      // "com.typesafe.play" %% "play-json" % "2.4.4"
+      // Maven.central % "joda-time" % "joda-time % "2.9.2"
+    )
   override def compile = {
     println("Compiling...")
     super.compile
