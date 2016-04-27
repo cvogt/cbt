@@ -11,6 +11,17 @@ import java.util.jar._
 import scala.collection.immutable.Seq
 import scala.util._
 
+trait Recommended extends BasicBuild{
+  override def scalacOptions = super.scalacOptions ++ Seq(
+    "-feature",
+    "-deprecation",
+    "-unchecked",
+    "-language:postfixOps",
+    "-language:implicitConversions",
+    "-language:higherKinds",
+    "-language:existentials"
+  )
+}
 class BasicBuild( context: Context ) extends Build( context )
 class Build(val context: Context) extends Dependency with TriggerLoop with SbtDependencyDsl{
   // library available to builds
@@ -107,7 +118,7 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   // ========== compile, run, test ==========
 
   /** scalac options used for zinc and scaladoc */
-  def scalacOptions: Seq[String] = Seq( "-feature", "-deprecation", "-unchecked" )
+  def scalacOptions: Seq[String] = Seq()
 
   private object needsUpdateCache extends Cache[Boolean]
   def needsUpdate: Boolean = needsUpdateCache(
