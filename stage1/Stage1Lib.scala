@@ -193,21 +193,50 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
         val start = System.currentTimeMillis
 
-        val code = redirectOutToErr{
-          lib.runMain(
-            "com.typesafe.zinc.Main",
-            Seq(
-              "-scala-compiler", scalaCompiler.toString,
-              "-scala-library", scalaLibrary.toString,
-              "-sbt-interface", sbtInterface.toString,
-              "-compiler-interface", compilerInterface.toString,
-              "-scala-extra", scalaReflect.toString,
-              "-cp", cp,
-              "-d", compileTarget.toString
-            ) ++ scalacOptions.map("-S"++_) ++ files.map(_.toString),
-            zinc.classLoader(classLoaderCache)
+        val _class = "com.typesafe.zinc.Main"
+        val dualArgs =
+          Seq(
+            "-scala-compiler", scalaCompiler.toString,
+            "-scala-library", scalaLibrary.toString,
+            "-sbt-interface", sbtInterface.toString,
+            "-compiler-interface", compilerInterface.toString,
+            "-scala-extra", scalaReflect.toString,
+            "-d", compileTarget.toString
           )
-        }
+        val singleArgs = scalacOptions.map( "-S" ++ _ )
+
+        val code = 
+          try{
+            redirectOutToErr{
+              lib.runMain(
+                _class,
+                dualArgs ++ singleArgs ++ Seq(
+                  "-cp", cp // let's put cp last. It so long
+                ) ++ files.map(_.toString),
+                zinc.classLoader(classLoaderCache)
+              )
+            }
+          } catch {
+            case e: Exception =>
+            System.err.println(red("The Scala compiler crashed. Try running it by hand:"))
+            System.out.println(s"""
+java -cp \\
+${zinc.classpath.strings.mkString(":\\\n")} \\
+\\
+${_class} \\
+\\
+${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
+\\
+${singleArgs.mkString(" \\\n")} \\
+\\
+-cp \\
+${classpath.strings.mkString(":\\\n")} \\
+\\
+${files.sorted.mkString(" \\\n")}
+"""
+            )
+            ExitCode.Failure
+          }
 
         if(code == ExitCode.Success){
           // write version and when last compilation started so we can trigger
