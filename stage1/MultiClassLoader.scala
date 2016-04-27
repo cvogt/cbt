@@ -8,14 +8,13 @@ class MultiClassLoader(parents: Seq[ClassLoader])(implicit val logger: Logger) e
   override def findClass(name: String) = {
     parents.find( parent =>
       try{
-        parent.loadClass(name)
-        true
+        null != parent.loadClass(name) // FIXME: is it correct to just ignore the resolve argument here?
       } catch {
         case _:ClassNotFoundException => false
       }
     ).map(
       _.loadClass(name)
-    ).getOrElse( throw new ClassNotFoundException(name) )
+    ).getOrElse( null )
   }
   override def toString = (
     scala.Console.BLUE

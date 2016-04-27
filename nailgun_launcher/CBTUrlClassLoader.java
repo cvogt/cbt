@@ -3,6 +3,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import static cbt.Stage0Lib.*;
+import java.util.concurrent.ConcurrentHashMap;
 class CbtURLClassLoader extends java.net.URLClassLoader{
   public String toString(){
     return (
@@ -15,6 +16,9 @@ class CbtURLClassLoader extends java.net.URLClassLoader{
     );
   }
   public Class loadClass(String name) throws ClassNotFoundException{
+    Class _class = super.loadClass(name);
+    if(_class == null) throw new ClassNotFoundException(name);
+    else return _class;
     //System.out.println("loadClass("+name+") on \n"+this);
     return super.loadClass(name);
   }
