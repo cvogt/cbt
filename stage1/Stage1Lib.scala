@@ -67,9 +67,10 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def download(url: URL, target: File, sha1: Option[String]): Boolean = {
     if( target.exists ){
+      logger.resolver(green("found ") ++ url.string)
       true
     } else {
-      val incomplete = Paths.get( target.string ++ ".incomplete" );
+      val incomplete = ( target ++ ".incomplete" ).toPath;
       val connection = url.openConnection.asInstanceOf[HttpURLConnection]
       if(connection.getResponseCode != HttpURLConnection.HTTP_OK){
         logger.resolver(blue("not found: ") ++ url.string)
@@ -91,7 +92,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
             assert( expected == actual, s"$expected == $actual" )
             logger.resolver( green("verified") ++ " checksum for " ++ target.string)
         }
-        Files.move(incomplete, Paths.get(target.string), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        Files.move(incomplete, target.toPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         true
       }
     }
