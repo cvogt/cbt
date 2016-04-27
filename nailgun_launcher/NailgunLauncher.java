@@ -44,7 +44,6 @@ public class NailgunLauncher{
                                                 MalformedURLException,
                                                 IOException,
                                                 NoSuchAlgorithmException {
-    long start = System.currentTimeMillis();
     //System.err.println("ClassLoader: "+stage1classLoader);
     //System.err.println("lastSuccessfullCompile: "+lastSuccessfullCompile);
     //System.err.println("now: "+now);
@@ -54,11 +53,14 @@ public class NailgunLauncher{
     _assert(TARGET != null, TARGET);
     _assert(STAGE1 != null, STAGE1);
 
+    Long _start = System.currentTimeMillis();
     if(args[0].equals("check-alive")){
       System.exit(33);
       return;
     }
 
+    String[] diff = args[0].split("\\.");
+    long start = _start - (Long.parseLong(diff[0]) * 1000L) - Long.parseLong(diff[1]);
     List<File> stage1SourceFiles = new ArrayList<File>();
     for( File f: new File(STAGE1).listFiles() ){
       if( f.isFile() && f.toString().endsWith(".scala") ){
