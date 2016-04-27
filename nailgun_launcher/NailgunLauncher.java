@@ -13,9 +13,6 @@ import static cbt.Stage0Lib.*;
  * dependencies outside the JDK.
  */
 public class NailgunLauncher{
-  public static String SCALA_VERSION = "2.11.8";
-  public static String SCALA_XML_VERSION = "1.0.5";
-  public static String ZINC_VERSION = "0.3.9";
 
   public static String CBT_HOME = System.getenv("CBT_HOME");
   public static String NAILGUN = System.getenv("NAILGUN");
