@@ -17,6 +17,9 @@ class Build(context: cbt.Context) extends BasicBuild(context){
         MavenDependency("com.spotify", "missinglink-core", "0.1.1"),
         // the below tests pom inheritance with variable substitution being parts of strings
         MavenDependency("cc.factorie","factorie_2.11","1.2")
+        // the dependency below uses a maven version range. Currently not supported.
+        // TODO: put in a proper error message for version range not supported
+        //MavenDependency("com.github.nikita-volkov", "sext", "0.2.4")
       ),
       MavenRepository.combine(
         MavenRepository.central,
