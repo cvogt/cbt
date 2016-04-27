@@ -71,16 +71,16 @@ You can see how your build is configured via overrides.
 
 call `cbt` to see a full list of available commands for this build.
 
-Look into the class `DefaultBuild` in CBT's source code to see their
+Look into the class PackageBuild (and it's super class BasicBuild) in CBT's source code to see their
 details. The source code is really simple. Don't shy away from
 looking, even as a beginner. No crazy stuff, I promise ;). You
-can find the relevant code in CBT's `stage2/DefaultBuild.scala`
+can find the relevant code in CBT's stage2/BasicBuild.scala
 
 I order to keep executing the same command triggered by file changes use `cbt loop <command>`.
 
 You can find example builds in CBT's own `test/` folder.
 Not all of them have a build file, in which case CBT uses the default
-`cbt.DefaultBuild`.
+cbt.BasicBuild.
 
 A folder `build/` can have its own folder `build/` inside in order
 to add source or maven dependencies to your build. Eventually

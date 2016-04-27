@@ -2,6 +2,8 @@ package cbt
 import java.io._
 import java.nio.file._
 import java.net._
+import scala.collection.immutable.Seq
+
 object `package`{
   private val lib = new BaseLib
   implicit class FileExtensionMethods( file: File ){

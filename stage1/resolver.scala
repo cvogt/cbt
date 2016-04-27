@@ -159,7 +159,7 @@ abstract class Dependency{
     noInfo ++ BoundMavenDependency.updateOutdated( hasInfo ).reverse.distinct
   }
 
-  def show: String = this.getClass.getSimpleName
+  override def show: String = this.getClass.getSimpleName
   // ========== debug ==========
   def dependencyTree: String = dependencyTreeRecursion()
   private def dependencyTreeRecursion(indent: Int = 0): String = (
@@ -296,6 +296,7 @@ case class BoundMavenDependency(
   import scala.collection.JavaConversions._
 
   private def resolve(suffix: String, hash: Option[String]): File = {
+    logger.resolver("Resolving "+this)
     val file = mavenCache ++ basePath ++ "." ++ suffix
     val urls = repositories.map(_ ++ basePath ++ "." ++ suffix)
     urls.find(
@@ -325,10 +326,10 @@ case class BoundMavenDependency(
   private object pomCache extends Cache[File]
   def pom: File = pomCache{ resolve("pom", Some(pomSha1)) }
 
-  def pomXml = XML.loadFile(pom.string)
+  private def pomXml = XML.loadFile(pom.string)
   // ========== pom traversal ==========
 
-  lazy val transitivePom: Seq[BoundMavenDependency] = {
+  private lazy val transitivePom: Seq[BoundMavenDependency] = {
     (pomXml \ "parent").collect{
       case parent =>
         BoundMavenDependency(
@@ -342,7 +343,7 @@ case class BoundMavenDependency(
     }.flatMap(_.transitivePom) :+ this
   }
 
-  lazy val properties: Map[String, String] = (
+  private lazy val properties: Map[String, String] = (
     transitivePom.flatMap{ d =>
       val props = (d.pomXml \ "properties").flatMap(_.child).map{
         tag => tag.label -> tag.text
@@ -352,7 +353,7 @@ case class BoundMavenDependency(
     }
   ).toMap
 
-  lazy val dependencyVersions: Map[String, (String,String)] =
+  private lazy val dependencyVersions: Map[String, (String,String)] =
     transitivePom.flatMap(
       p =>
       (p.pomXml \ "dependencyManagement" \ "dependencies" \ "dependency").map{

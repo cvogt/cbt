@@ -1,6 +1,5 @@
 package cbt
 import java.net._
-import scala.util.Try
 import scala.collection.immutable.Seq
 
 // do not make this a case class, required object identity equality
