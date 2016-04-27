@@ -208,7 +208,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   // file system helpers
   def basename(path: File): String = path.toString.stripSuffix("/").split("/").last
   def dirname(path: File): File = new File(realpath(path).string.stripSuffix("/").split("/").dropRight(1).mkString("/"))
-  def nameAndContents(file: File) = basename(file) -> readAllBytes(Paths.get(file.toString))
+  def nameAndContents(file: File) = basename(file) -> readAllBytes(file.toPath)
+
   /** Which file endings to consider being source files. */
   def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
 
@@ -238,7 +239,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           val entry = new JarEntry( name )
           entry.setTime(file.lastModified)
           jar.putNextEntry(entry)
-          jar.write( readAllBytes( Paths.get(file.toString) ) )
+          jar.write( readAllBytes( file.toPath ) )
           jar.closeEntry
           name
       }
