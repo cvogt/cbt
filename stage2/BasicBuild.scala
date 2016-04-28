@@ -1,5 +1,4 @@
 package cbt
-import cbt.paths._
 
 import java.io._
 import java.net._
@@ -22,21 +21,19 @@ trait Recommended extends BasicBuild{
     "-language:existentials"
   )
 }
-class BasicBuild( context: Context ) extends Build( context )
-class Build(val context: Context) extends Dependency with TriggerLoop with SbtDependencyDsl{
+class BasicBuild(val context: Context) extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
   // library available to builds
-  implicit final val logger: Logger = context.logger
-  implicit final val classLoaderCache: ClassLoaderCache = context.classLoaderCache
-  implicit final val _context = context
-  override final protected val lib: Lib = new Lib(logger)
+  implicit protected final val logger: Logger = context.logger
+  implicit protected final val classLoaderCache: ClassLoaderCache = context.classLoaderCache
+  implicit protected final val _context = context
+  override protected final val lib: Lib = new Lib(logger)
 
   // ========== general stuff ==========
 
-  override def canBeCached = false
   def enableConcurrency = false
   final def projectDirectory: File = lib.realpath(context.projectDirectory)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
-  final def usage: String = lib.usage(this.getClass, context)
+  final def usage: String = lib.usage(this.getClass, show)
 
   // ========== meta data ==========
 
@@ -44,11 +41,15 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   final def scalaVersion = context.scalaVersion getOrElse defaultScalaVersion
   final def scalaMajorVersion: String = lib.scalaMajorVersion(scalaVersion)
   def crossScalaVersions: Seq[String] = Seq(scalaVersion, "2.10.6")
-  def copy(context: Context) = lib.copy(this.getClass, context).asInstanceOf[Build]
+  final def crossScalaVersionsArray: Array[String] = crossScalaVersions.to
+
+  // TODO: this should probably provide a nice error message if class has constructor signature
+  def copy(context: Context): BuildInterface = lib.copy(this.getClass, context).asInstanceOf[BuildInterface]
   def zincVersion = "0.3.9"
 
   def dependencies: Seq[Dependency] = Seq(
-    MavenRepository.central.resolve(
+    // FIXME: this should probably be removed
+    MavenResolver(context.cbtHasChanged, context.paths.mavenCache, MavenResolver.central).resolve(
       "org.scala-lang" % "scala-library" % scalaVersion
     )
   )
@@ -108,13 +109,10 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
       .flatMap(_.listFiles)
       .filter(_.toString.endsWith(".jar"))
 
-  //def cacheJar = false
   override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
-  override def dependencyJars      : Seq[File] = localJars ++ super.dependencyJars
 
   def exportedClasspath   : ClassPath = ClassPath(compile.toSeq:_*)
   def targetClasspath = ClassPath(Seq(compileTarget))
-  def exportedJars: Seq[File] = Seq()
   // ========== compile, run, test ==========
 
   /** scalac options used for zinc and scaladoc */
@@ -124,15 +122,17 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   def needsUpdate: Boolean = needsUpdateCache(
     context.cbtHasChanged
     || lib.needsUpdate( sourceFiles, compileStatusFile )
-    || transitiveDependencies.exists(_.needsUpdate)
+    || transitiveDependencies.filterNot(_ == context.parentBuild).exists(_.needsUpdate)
   )
 
   private object compileCache extends Cache[Option[File]]
   def compile: Option[File] = compileCache{
     lib.compile(
-      needsUpdate,
-      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath, scalacOptions,
-      context.classLoaderCache, zincVersion = zincVersion, scalaVersion = scalaVersion
+      context.cbtHasChanged,
+      needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
+      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath,
+      context.paths.mavenCache, scalacOptions, context.classLoaderCache,
+      zincVersion = zincVersion, scalaVersion = scalaVersion
     )
   }
 
@@ -155,6 +155,6 @@ class Build(val context: Context) extends Dependency with TriggerLoop with SbtDe
   */
 
   // ========== cbt internals ==========
-  private[cbt] def finalBuild = this
+  def finalBuild: BuildInterface = this
   override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
 }

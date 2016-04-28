@@ -10,11 +10,10 @@ object GitDependency{
 }
 case class GitDependency(
   url: String, ref: String // example: git://github.com/cvogt/cbt.git#<some-hash>
-)(implicit val logger: Logger, classLoaderCache: ClassLoaderCache, context: Context ) extends Dependency{
+)(implicit val logger: Logger, classLoaderCache: ClassLoaderCache, context: Context ) extends DependencyImplementation{
   import GitDependency._
   override def lib = new Lib(logger)
 
-  override def canBeCached = dependency.canBeCached
   // TODO: add support for authentication via ssh and/or https
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
   private val GitUrl( _, domain, path ) = url  
@@ -47,7 +46,6 @@ case class GitDependency(
   def dependencies = Seq(dependency)
 
   def exportedClasspath = ClassPath(Seq())
-  def exportedJars = Seq()
   private[cbt] def targetClasspath = exportedClasspath
   def needsUpdate: Boolean = false
 }

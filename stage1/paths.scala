@@ -1,17 +1,17 @@
 package cbt
 import java.io._
-object paths{  
-  val cbtHome: File = new File(Option(System.getenv("CBT_HOME")).get)
-  val mavenCache: File = cbtHome ++ "/cache/maven"
+case class Paths(private val cbtHome: File, private val cache: File){
   val userHome: File = new File(Option(System.getProperty("user.home")).get)
-  val bootstrapScala: File = cbtHome ++ "/bootstrap_scala"
-  val nailgun: File = new File(Option(System.getenv("NAILGUN")).get)
-  val stage1: File = new File(NailgunLauncher.STAGE1)
+  val nailgun: File = cbtHome ++ "/nailgun_launcher"
+  val stage1: File = cbtHome ++ "/stage1"
   val stage2: File = cbtHome ++ "/stage2"
-  private val target = Option(System.getenv("TARGET")).get.stripSuffix("/")
+  val mavenCache: File = cache ++ "/maven"
+  private val target = NailgunLauncher.TARGET.stripSuffix("/")
   val stage1Target: File = stage1 ++ ("/" ++ target)
   val stage2Target: File = stage2 ++ ("/" ++ target)
   val stage2StatusFile: File = stage2Target ++ ".last-success"
+  val compatibility: File = cbtHome ++ "/compatibility"
+  val compatibilityTarget: File = compatibility ++ ("/" ++ target)
+  val compatibilityStatusFile: File = compatibilityTarget ++ ".last-success"
   val nailgunTarget: File = nailgun ++ ("/" ++ target)
-  val sonatypeLogin: File = cbtHome ++ "/sonatype.login"
 }

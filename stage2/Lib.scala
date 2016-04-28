@@ -1,5 +1,4 @@
 package cbt
-import cbt.paths._
 
 import java.io._
 import java.net._
@@ -30,7 +29,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     .newInstance(context)
 
   /** Loads Build for given Context */
-  def loadDynamic(context: Context, default: Context => Build = new Build(_)): Build = {
+  def loadDynamic(context: Context, default: Context => BuildInterface = new BasicBuild(_)): BuildInterface = {
     context.logger.composition( context.logger.showInvocation("Build.loadDynamic",context) )
     loadRoot(context, default).finalBuild
   }
@@ -38,7 +37,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   Loads whatever Build needs to be executed first in order to eventually build the build for the given context.
   This can either the Build itself, of if exists a BuildBuild or a BuildBuild for a BuildBuild and so on.
   */
-  def loadRoot(context: Context, default: Context => Build = new Build(_)): Build = {
+  def loadRoot(context: Context, default: Context => BuildInterface = new BasicBuild(_)): BuildInterface = {
     context.logger.composition( context.logger.showInvocation("Build.loadRoot",context.projectDirectory) )
     def findStartDir(projectDirectory: File): File = {
       val buildDir = realpath( projectDirectory ++ "/build" )
@@ -73,6 +72,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   def docJar(
+    cbtHasChanged: Boolean,
     scalaVersion: String,
     sourceFiles: Seq[File],
     dependencyClasspath: ClassPath,
@@ -82,7 +82,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     scalaMajorVersion: String,
     version: String,
     compileArgs: Seq[String],
-    classLoaderCache: ClassLoaderCache
+    classLoaderCache: ClassLoaderCache,
+    mavenCache: File
   ): Option[File] = {
     if(sourceFiles.isEmpty){
       None
@@ -98,7 +99,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         runMain(
           "scala.tools.nsc.ScalaDoc",
           args,
-          ScalaDependencies(scalaVersion)(logger).classLoader(classLoaderCache)
+          ScalaDependencies(cbtHasChanged,mavenCache,scalaVersion)(logger).classLoader(classLoaderCache)
         )
       }
       lib.jarFile(
@@ -116,10 +117,13 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       val loggerArg = if(loggers != "") Some("-Dlog="++loggers) else None
 
       logger.lib(s"invoke testDefault( $context )")
-      val exitCode: ExitCode = loadDynamic(
-        context.copy( projectDirectory = context.projectDirectory ++ "/test", args = loggerArg.toVector ++ context.args ),
-        new BasicBuild(_) with mixins.Test
-      ).run.asInstanceOf[ExitCode] // FIXME
+      val exitCode: ExitCode =
+        new ReflectBuild(
+          loadDynamic(
+            context.copy( projectDirectory = context.projectDirectory ++ "/test", args = loggerArg.toVector ++ context.args ),
+            new BasicBuild(_) with mixins.Test
+          )
+        ).callNullary( Some("run") )
       logger.lib(s"return testDefault( $context )")
       Some(exitCode)
     } else None
@@ -147,13 +151,18 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
   def taskNames(cls: Class[_]): Seq[String] = tasks(cls).keys.toVector.sorted
 
-  def usage(buildClass: Class[_], context: Context): String = {
-    val baseTasks = lib.taskNames(classOf[Build])
+  def usage(buildClass: Class[_], show: String): String = {
+    val baseTasks = Seq(
+      classOf[BasicBuild],
+      classOf[PackageBuild],
+      classOf[PublishBuild],
+      classOf[Recommended]
+    ).flatMap(lib.taskNames).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks
     (
       (
         if( thisTasks.nonEmpty ){
-          s"""Methods provided by Build ${context.projectDirectory}
+          s"""Methods provided by Build ${show}
 
   ${thisTasks.mkString("  ")}
 
@@ -165,12 +174,13 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       ) ++ "\n"
   }
 
-  class ReflectBuild[T:scala.reflect.ClassTag](build: Build) extends ReflectObject(build){
-    def usage = lib.usage(build.getClass, build.context)
+  class ReflectBuild[T:scala.reflect.ClassTag](build: BuildInterface) extends ReflectObject(build){
+    def usage = lib.usage(build.getClass, build.show)
   }
-  abstract class ReflectObject[T:scala.reflect.ClassTag](obj: T){
+  abstract class ReflectObject[T](obj: T){
     def usage: String
-    def callNullary( taskName: Option[String] ): Unit = {
+    def callNullary( taskName: Option[String] ): ExitCode = {
+      logger.lib("Calling task " ++ taskName.toString)
       val ts = tasks(obj.getClass)
       taskName.map( NameTransformer.encode ).flatMap(ts.get).map{ method =>
         val result: Option[Any] = Option(method.invoke(obj)) // null in case of Unit
@@ -183,26 +193,30 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           scala.util.Try( value.getClass.getDeclaredMethod("toConsole") ) match {
             case scala.util.Success(toConsole) =>
               println(toConsole.invoke(value))
+              ExitCode.Success
 
             case scala.util.Failure(e) if Option(e.getMessage).getOrElse("") contains "toConsole" =>
               value match {
-                case ExitCode(code) => System.exit(code)
-                case other => println( other.toString ) // no method .toConsole, using to String
+                case code:ExitCode =>
+                  code
+                case other =>
+                  println( other.toString ) // no method .toConsole, using to String
+                  ExitCode.Success
               }
 
             case scala.util.Failure(e) =>
               throw e
           }
-        }.getOrElse("")
+        }.getOrElse(ExitCode.Success)
       }.getOrElse{
         taskName.foreach{ n =>
           System.err.println(s"Method not found: $n")
           System.err.println("")
         }
         System.err.println(usage)
-        taskName.foreach{ _ =>
+        taskName.map{ _ =>
           ExitCode.Failure
-        }
+        }.getOrElse( ExitCode.Success )
       }
     }
   }

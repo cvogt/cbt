@@ -1,14 +1,16 @@
 import cbt._
-import cbt.paths._
 import scala.collection.immutable.Seq
+import java.util.concurrent.ConcurrentHashMap
 import java.io.File
 
 // micro framework
 object Main{
   def main(_args: Array[String]): Unit = {
+    val start = System.currentTimeMillis
     val args = new Stage1ArgsParser(_args.toVector)
     implicit val logger: Logger = new Logger(args.enabledLoggers, System.currentTimeMillis)
     val lib = new Lib(logger)
+    val cbtHome = new File(System.getenv("CBT_HOME"))
     
     var successes = 0
     var failures = 0
@@ -71,11 +73,32 @@ object Main{
 
     logger.test( "Running tests " ++ _args.toList.toString )
 
+    val cache = cbtHome ++ "/cache"
+    val mavenCache = cache ++ "/maven"
+    val cbtHasChanged = true
+    val mavenCentral = MavenResolver(cbtHasChanged, mavenCache, MavenResolver.central)
+
     {
-      val noContext = Context(cbtHome ++ "/test/nothing", cbtHome, Seq(), logger, false, new ClassLoaderCache(logger))
-      val b = new Build(noContext){
+      val noContext = ContextImplementation(
+        cbtHome ++ "/test/nothing",
+        cbtHome,
+        Array(),
+        Array(),
+        start,
+        cbtHasChanged,
+        null,
+        null,
+        new ConcurrentHashMap[String,AnyRef],
+        new ConcurrentHashMap[AnyRef,ClassLoader],
+        cache,
+        cbtHome,
+        cbtHome ++ "/compatibilityTarget",
+        null
+      )
+
+      val b = new BasicBuild(noContext){
         override def dependencies = Seq(
-          MavenRepository.central.resolve(
+          mavenCentral.resolve(
             MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
             MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")
           )
@@ -87,34 +110,34 @@ object Main{
 
     // test that messed up artifacts crash with an assertion (which should tell the user what's up)
     assertException[AssertionError](){
-      MavenRepository.central.resolveOne( MavenDependency("com.jcraft", "jsch", " 0.1.53") ).classpath
+      mavenCentral.resolveOne( MavenDependency("com.jcraft", "jsch", " 0.1.53") ).classpath
     }
     assertException[AssertionError](){
-      MavenRepository.central.resolveOne( MavenDependency("com.jcraft", null, "0.1.53") ).classpath
+      mavenCentral.resolveOne( MavenDependency("com.jcraft", null, "0.1.53") ).classpath
     }
     assertException[AssertionError](){
-      MavenRepository.central.resolveOne( MavenDependency("com.jcraft", "", " 0.1.53") ).classpath
+      mavenCentral.resolveOne( MavenDependency("com.jcraft", "", " 0.1.53") ).classpath
     }
     assertException[AssertionError](){
-      MavenRepository.central.resolveOne( MavenDependency("com.jcraft%", "jsch", " 0.1.53") ).classpath
+      mavenCentral.resolveOne( MavenDependency("com.jcraft%", "jsch", " 0.1.53") ).classpath
     }
     assertException[AssertionError](){
-      MavenRepository.central.resolveOne( MavenDependency("", "jsch", " 0.1.53") ).classpath
+      mavenCentral.resolveOne( MavenDependency("", "jsch", " 0.1.53") ).classpath
     }
 
     (
-      MavenRepository.combine(
-        MavenRepository.central, MavenRepository.bintray("tpolecat")
+      MavenResolver(
+        cbtHasChanged, mavenCache, MavenResolver.central, MavenResolver.bintray("tpolecat")
       ).resolve(
         lib.ScalaDependency("org.tpolecat","tut-core","0.4.2", scalaMajorVersion="2.11")
       ).classpath.strings
       ++
-      MavenRepository.sonatype.resolve(
+      MavenResolver(cbtHasChanged, mavenCache,MavenResolver.sonatype).resolve(
         MavenDependency("org.cvogt","play-json-extensions_2.11","0.8.0")
       ).classpath.strings
       ++
-      MavenRepository.combine(
-        MavenRepository.central, MavenRepository.sonatypeSnapshots
+      MavenResolver(
+        cbtHasChanged, mavenCache, MavenResolver.central, MavenResolver.sonatypeSnapshots
       ).resolve(
         MavenDependency("ai.x","lens_2.11","1.0.0-SNAPSHOT")
       ).classpath.strings

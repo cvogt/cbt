@@ -11,7 +11,7 @@ class CbtURLClassLoader extends java.net.URLClassLoader{
       + "(\n  "
       + Arrays.toString(getURLs())
       + ",\n  "
-      + join("\n  ",getParent().toString().split("\n"))
+      + join("\n  ",(getParent() == null?"":getParent().toString()).split("\n"))
       + "\n)"
     );
   }
@@ -53,7 +53,7 @@ class CbtURLClassLoader extends java.net.URLClassLoader{
     assertExist(urls);
   }
   public CbtURLClassLoader(URL[] urls){
-    super(urls);
+    super(urls, null);
     assertExist(urls);
   }
 }

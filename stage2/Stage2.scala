@@ -4,12 +4,23 @@ import java.io._
 
 import scala.collection.immutable.Seq
 
-import cbt.paths._
 
 object Stage2 extends Stage2Base{
+  def getBuild(__context: java.lang.Object, _cbtChanged: java.lang.Boolean) = {
+    val cl1 = __context.getClass.getClassLoader
+    val cl2 = classOf[Context].getClassLoader
+    val _context = __context.asInstanceOf[Context]
+    val context = _context.copy(
+      cbtHasChanged = _context.cbtHasChanged || _cbtChanged
+    )
+    val first = new Lib(context.logger).loadRoot( context )
+    first.finalBuild
+  }
+
   def run( args: Stage2Args ): Unit = {
     import args.logger
-
+    val paths = Paths(args.cbtHome,args.cache)
+    import paths._
     val lib = new Lib(args.logger)
 
     logger.stage2(s"Stage2 start")
@@ -24,11 +35,26 @@ object Stage2 extends Stage2Base{
     }
     val task = args.args.lift( taskIndex )
     
-    val context = Context( args.cwd, args.cwd, args.args.drop( taskIndex ), logger, args.cbtHasChanged, args.classLoaderCache )
+    val context: Context = ContextImplementation(
+      args.cwd,
+      args.cwd,
+      args.args.drop( taskIndex ).toArray,
+      logger.enabledLoggers.toArray,
+      logger.start,
+      args.cbtHasChanged,
+      null,
+      null,
+      args.permanentKeys,
+      args.permanentClassLoaders,
+      args.cache,
+      args.cbtHome,
+      compatibilityTarget,
+      null
+    )
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
-    def call(build: Build) = {
+    def call(build: BuildInterface) = {
       if(cross){
         build.crossScalaVersions.foreach{
           v => new lib.ReflectBuild(
@@ -57,7 +83,7 @@ object Stage2 extends Stage2Base{
 
           case file if triggerFiles.exists(file.toString startsWith _.toString) =>
             val build = lib.loadDynamic(context)
-            logger.loop(s"Re-running $task for " ++ build.projectDirectory.toString)
+            logger.loop(s"Re-running $task for " ++ build.show)
             call(build)
         }
       } else {

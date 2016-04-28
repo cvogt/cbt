@@ -50,7 +50,7 @@ class Build(context: cbt.Context) extends PackageBuild(context){
   override def artifactId = "play-json-extensions"
   override def dependencies =
     super.dependencies :+
-    MavenRepository.central.resolve(
+    MavenResolver(context.cbtHasChanged,context.paths.mavenCache,MavenResolver.central).resolve(
       // encouraged way to declare dependencies
       ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
       MavenDependency("joda-time", "joda-time", "2.9.2")

@@ -8,8 +8,9 @@ import java.security.*;
 import java.util.*;
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
 import static java.io.File.pathSeparator;
-import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
+import java.nio.file.*;
+import java.nio.file.attribute.FileTime;
 
 public class Stage0Lib{
   public static void _assert(Boolean condition, Object msg){
@@ -18,7 +19,7 @@ public class Stage0Lib{
     }
   }
 
-  public static int runMain(String cls, String[] args, ClassLoader cl) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
+  public static int runMain(String cls, String[] args, ClassLoader cl, SecurityManager defaultSecurityManager) throws Exception{
     try{
       System.setSecurityManager( new TrapSecurityManager() );
       cl.loadClass(cls)
@@ -32,63 +33,78 @@ public class Stage0Lib{
       }
       throw exception;
     } finally {
-      System.setSecurityManager(NailgunLauncher.defaultSecurityManager);
+      System.setSecurityManager(defaultSecurityManager);
     }
   }
 
-  public static int zinc( EarlyDependencies earlyDeps, List<File> sourceFiles ) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException{
-    String cp = NAILGUN+TARGET + pathSeparator + earlyDeps.scalaXml_1_0_5_File + pathSeparator + earlyDeps.scalaLibrary_2_11_8_File;
-    List<String> zincArgs = new ArrayList<String>(
-      Arrays.asList(
-        new String[]{ 
-          "-scala-compiler", earlyDeps.scalaCompiler_2_11_8_File,
-          "-scala-library", earlyDeps.scalaLibrary_2_11_8_File,
-          "-scala-extra", earlyDeps.scalaReflect_2_11_8_File,
-          "-sbt-interface", earlyDeps.sbtInterface_0_13_9_File,
-          "-compiler-interface", earlyDeps.compilerInterface_0_13_9_File,
-          "-cp", cp,
-          "-d", STAGE1+TARGET
+  public static Object get(Object object, String method) throws Exception{
+    return object.getClass().getMethod( method ).invoke(object);
+  }
+
+  public static String classpath( String... files ){
+    Arrays.sort(files);
+    return join( pathSeparator, files );
+  }
+
+  public static Boolean compile(
+    Boolean changed, Long start, String classpath, String target,
+    EarlyDependencies earlyDeps, List<File> sourceFiles, SecurityManager defaultSecurityManager
+  ) throws Exception{
+    File statusFile = new File( new File(target) + ".last-success" );
+    Long lastSuccessfullCompile = statusFile.lastModified();
+    for( File file: sourceFiles ){
+      if( file.lastModified() > lastSuccessfullCompile ){
+        changed = true;
+        break;
+      }
+    }
+    if(changed){
+      List<String> zincArgs = new ArrayList<String>(
+        Arrays.asList(
+          new String[]{ 
+            "-scala-compiler", earlyDeps.scalaCompiler_2_11_8_File,
+            "-scala-library", earlyDeps.scalaLibrary_2_11_8_File,
+            "-scala-extra", earlyDeps.scalaReflect_2_11_8_File,
+            "-sbt-interface", earlyDeps.sbtInterface_0_13_9_File,
+            "-compiler-interface", earlyDeps.compilerInterface_0_13_9_File,
+            "-cp", classpath,
+            "-d", target
+          }
+        )
+      );
+
+      for( File f: sourceFiles ){
+        zincArgs.add(f.toString());
+      }
+
+      PrintStream oldOut = System.out;
+      try{
+        System.setOut(System.err);
+        int exitCode = runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc, defaultSecurityManager );
+        if( exitCode == 0 ){
+          Files.write( statusFile.toPath(), "".getBytes());
+          Files.setLastModifiedTime( statusFile.toPath(), FileTime.fromMillis(start) );
+        } else {
+          System.exit( exitCode );
         }
-      )
-    );
-
-    for( File f: sourceFiles ){
-      zincArgs.add(f.toString());
+      } finally {
+        System.setOut(oldOut);
+      }
     }
-
-    PrintStream oldOut = System.out;
-    try{
-      System.setOut(System.err);
-      return runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc );
-    } finally {
-      System.setOut(oldOut);
-    }
+    return changed;
   }
 
-  public static ClassLoader classLoader( String file ) throws MalformedURLException{
+  public static ClassLoader classLoader( String file ) throws Exception{
     return new CbtURLClassLoader(
       new URL[]{ new URL("file:"+file) }
     );
   }
-  public static ClassLoader classLoader( String file, ClassLoader parent ) throws MalformedURLException{
+  public static ClassLoader classLoader( String file, ClassLoader parent ) throws Exception{
     return new CbtURLClassLoader(
       new URL[]{ new URL("file:"+file) }, parent
     );
   }
-  public static ClassLoader cacheGet( String key ){
-    return classLoaderCacheValues.get(
-      classLoaderCacheKeys.get( key )
-    );
-  }
-  public static ClassLoader cachePut( ClassLoader classLoader, String... jars ){
-    String key = join( pathSeparator, jars );
-    Object keyObject = new Object();
-    classLoaderCacheKeys.put( key, keyObject );
-    classLoaderCacheValues.put( keyObject, classLoader );
-    return classLoader;
-  }
-
-  public static void download(URL urlString, Path target, String sha1) throws IOException, NoSuchAlgorithmException {
+  public static void download(URL urlString, Path target, String sha1) throws Exception {
     final Path unverified = Paths.get(target+".unverified");
     if(!Files.exists(target)) {
       new File(target.toString()).getParentFile().mkdirs();
@@ -107,7 +123,7 @@ public class Stage0Lib{
     }
   }
 
-  public static String sha1(byte[] bytes) throws NoSuchAlgorithmException {
+  public static String sha1(byte[] bytes) throws Exception {
     final MessageDigest sha1 = MessageDigest.getInstance("SHA1");
     sha1.update(bytes, 0, bytes.length);
     return (new HexBinaryAdapter()).marshal(sha1.digest());
@@ -119,5 +135,11 @@ public class Stage0Lib{
       result += separator + parts[i];
     }
     return result;
+  }
+
+  public static String[] append( String[] array, String item ){
+    String[] copy = Arrays.copyOf(array, array.length + 1);
+    copy[array.length] = item;
+    return copy;
   }
 }

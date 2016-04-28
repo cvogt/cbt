@@ -6,6 +6,7 @@ import java.security.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import static cbt.Stage0Lib.*;
+import static java.io.File.pathSeparator;
 
 /**
  * This launcher allows to start the JVM without loading anything else permanently into its
@@ -13,43 +14,40 @@ import static cbt.Stage0Lib.*;
  * dependencies outside the JDK.
  */
 public class NailgunLauncher{
+  /** Persistent cache for caching classloaders for the JVM life time. */
+  private final static ClassLoaderCache2<ClassLoader> classLoaderCache = new ClassLoaderCache2<ClassLoader>(
+    new ConcurrentHashMap<String,Object>(),
+    new ConcurrentHashMap<Object,ClassLoader>()
+  );
 
-  public static String CBT_HOME = System.getenv("CBT_HOME");
-  public static String NAILGUN = System.getenv("NAILGUN");
+  public final static SecurityManager defaultSecurityManager = System.getSecurityManager();
+
   public static String TARGET = System.getenv("TARGET");
-  public static String STAGE1 = CBT_HOME + "/stage1/";
-  public static String MAVEN_CACHE = CBT_HOME + "/cache/maven";
-  public static String MAVEN_URL = "https://repo1.maven.org/maven2";
+  private static String NAILGUN = "nailgun_launcher/";
+  private static String STAGE1 = "stage1/";
+  
+  @SuppressWarnings("unchecked")
+  public static Object getBuild( Object context ) throws Exception{
+    BuildStage1Result res = buildStage1(
+      (Boolean) get(context, "cbtHasChanged"),
+      (Long) get(context, "start"),
+      ((File) get(context, "cache")).toString() + "/",
+      ((File) get(context, "cbtHome")).toString(),
+      ((File) get(context, "compatibilityTarget")).toString() + "/",
+      new ClassLoaderCache2<ClassLoader>(
+        (ConcurrentHashMap<String,Object>) get(context, "permanentKeys"),
+        (ConcurrentHashMap<Object,ClassLoader>) get(context, "permanentClassLoaders")
+      )
+    );
+    return
+      res
+        .classLoader
+        .loadClass("cbt.Stage1")
+        .getMethod( "getBuild", Object.class, Boolean.class )
+        .invoke(null, context, res.changed);
+  }
 
-  /**
-   * Persistent cache for caching classloaders for the JVM life time. Can be used as needed by user
-   * code to improve startup time.
-   */
-  public static ConcurrentHashMap<String, Object> classLoaderCacheKeys = new ConcurrentHashMap<String,Object>();
-  public static ConcurrentHashMap<Object, ClassLoader> classLoaderCacheValues = new ConcurrentHashMap<Object,ClassLoader>();
-
-  public static SecurityManager defaultSecurityManager = System.getSecurityManager();
-
-  public static long lastSuccessfullCompile = 0;
-  static ClassLoader stage1classLoader = null;
-  public static ClassLoader stage2classLoader = null;
-
-  public static void main(String[] args) throws ClassNotFoundException,
-                                                NoSuchMethodException,
-                                                IllegalAccessException,
-                                                InvocationTargetException,
-                                                MalformedURLException,
-                                                IOException,
-                                                NoSuchAlgorithmException {
-    //System.err.println("ClassLoader: "+stage1classLoader);
-    //System.err.println("lastSuccessfullCompile: "+lastSuccessfullCompile);
-    //System.err.println("now: "+now);
-
-    _assert(CBT_HOME != null, CBT_HOME);
-    _assert(NAILGUN != null, NAILGUN);
-    _assert(TARGET != null, TARGET);
-    _assert(STAGE1 != null, STAGE1);
-
+  public static void main( String[] args ) throws Exception {
     Long _start = System.currentTimeMillis();
     if(args[0].equals("check-alive")){
       System.exit(33);
@@ -58,52 +56,108 @@ public class NailgunLauncher{
 
     String[] diff = args[0].split("\\.");
     long start = _start - (Long.parseLong(diff[0]) * 1000L) - Long.parseLong(diff[1]);
+    
+    _assert(System.getenv("CBT_HOME") != null, "environment variable CBT_HOME not defined");
+    String CBT_HOME = System.getenv("CBT_HOME");
+    String cache = CBT_HOME + "/cache/";
+    BuildStage1Result res = buildStage1(
+      false, start, cache, CBT_HOME, CBT_HOME + "/compatibility/" + TARGET, classLoaderCache
+    );
+
+    System.exit(
+      (Integer) res
+        .classLoader
+        .loadClass("cbt.Stage1")
+        .getMethod(
+          "run",
+          String[].class, File.class, File.class, Boolean.class,
+          Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
+        )
+        .invoke(
+          null,
+          (Object) args, new File(cache), new File(CBT_HOME), res.changed,
+          start, classLoaderCache.keys, classLoaderCache.values
+        )
+    );
+  }
+
+  public static BuildStage1Result buildStage1(
+    Boolean changed, long start, String cache, String cbtHome, String compatibilityTarget, ClassLoaderCache2<ClassLoader> classLoaderCache
+  ) throws Exception {
+    _assert(TARGET != null, "environment variable TARGET not defined");
+    String nailgunTarget = cbtHome + "/" + NAILGUN + TARGET;
+    String stage1Sources = cbtHome + "/" + STAGE1;
+    String stage1Target = stage1Sources + TARGET;
+    File compatibilitySources = new File(cbtHome + "/compatibility");
+    String mavenCache = cache + "maven";
+    String mavenUrl = "https://repo1.maven.org/maven2";
+
+    ClassLoader rootClassLoader = new CbtURLClassLoader( new URL[]{}, ClassLoader.getSystemClassLoader().getParent() ); // wrap for caching
+    EarlyDependencies earlyDeps = new EarlyDependencies(mavenCache, mavenUrl, classLoaderCache, rootClassLoader);
+
+    List<File> compatibilitySourceFiles = new ArrayList<File>();
+    for( File f: compatibilitySources.listFiles() ){
+      if( f.isFile() && (f.toString().endsWith(".scala") || f.toString().endsWith(".java")) ){
+        compatibilitySourceFiles.add(f);
+      }
+    }
+    changed = compile(changed, start, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles, defaultSecurityManager);
+    
+    ClassLoader compatibilityClassLoader;
+    if( classLoaderCache.contains( compatibilityTarget ) ){
+      compatibilityClassLoader = classLoaderCache.get( compatibilityTarget );
+    } else {
+      compatibilityClassLoader = classLoaderCache.put( classLoader(compatibilityTarget, rootClassLoader), compatibilityTarget );
+    }
+
+    String[] nailgunClasspathArray = append( earlyDeps.classpathArray, nailgunTarget );
+    String nailgunClasspath = classpath( nailgunClasspathArray );
+    ClassLoader nailgunClassLoader = new CbtURLClassLoader( new URL[]{}, NailgunLauncher.class.getClassLoader() ); // wrap for caching
+    if( !classLoaderCache.contains( nailgunClasspath ) ){
+      nailgunClassLoader = classLoaderCache.put( nailgunClassLoader, nailgunClasspath );
+    }
+
+    String[] stage1ClasspathArray =
+      append( append( nailgunClasspathArray, compatibilityTarget ), stage1Target );
+    String stage1Classpath = classpath( stage1ClasspathArray );
+
     List<File> stage1SourceFiles = new ArrayList<File>();
-    for( File f: new File(STAGE1).listFiles() ){
+    for( File f: new File(stage1Sources).listFiles() ){
       if( f.isFile() && f.toString().endsWith(".scala") ){
         stage1SourceFiles.add(f);
       }
     }
+    changed = compile(changed, start, stage1Classpath, stage1Target, earlyDeps, stage1SourceFiles, defaultSecurityManager);
 
-    Boolean changed = lastSuccessfullCompile == 0;
-    for( File file: stage1SourceFiles ){
-      if( file.lastModified() > lastSuccessfullCompile ){
-        changed = true;
-        //System.err.println("File change: "+file.lastModified());
-        break;
-      }
+    ClassLoader stage1classLoader;
+    if( !changed && classLoaderCache.contains( stage1Classpath ) ){
+      stage1classLoader = classLoaderCache.get( stage1Classpath );
+    } else {
+      stage1classLoader =
+      classLoaderCache.put(
+        classLoader(
+          stage1Target,
+          new MultiClassLoader2(
+            nailgunClassLoader,
+            compatibilityClassLoader,
+            earlyDeps.classLoader
+          )
+        ),
+        stage1Classpath
+      );
     }
 
-    if(changed){
-      EarlyDependencies earlyDeps = new EarlyDependencies();
-      int exitCode = zinc(earlyDeps, stage1SourceFiles);
-      if( exitCode == 0 ){
-        lastSuccessfullCompile = start;
-      } else {
-        System.exit( exitCode );
-      }
-
-      ClassLoader nailgunClassLoader;
-      if( classLoaderCacheKeys.containsKey( NAILGUN+TARGET ) ){
-        nailgunClassLoader = cacheGet( NAILGUN+TARGET );
-      } else {
-        nailgunClassLoader = cachePut( classLoader(NAILGUN+TARGET, earlyDeps.stage1), NAILGUN+TARGET ); // FIXME: key is wrong here, should be full CP
-      }
-
-      stage1classLoader = classLoader(STAGE1+TARGET, nailgunClassLoader);
-      stage2classLoader = null;
-    }
-
-    try{
-      Integer exitCode =
-        (Integer) stage1classLoader
-          .loadClass("cbt.Stage1")
-          .getMethod("run", String[].class, ClassLoader.class, Boolean.class, Long.class)
-          .invoke( null, (Object) args, stage1classLoader, changed, start);
-      System.exit(exitCode);
-    }catch(Exception e){
-      System.err.println(stage1classLoader);
-      throw e;
-    }
+    return new BuildStage1Result(
+      changed,
+      stage1classLoader
+    );
+  }
+}
+class BuildStage1Result{
+  Boolean changed;
+  ClassLoader classLoader;
+  BuildStage1Result( Boolean changed, ClassLoader classLoader ){
+    this.changed = changed;
+    this.classLoader = classLoader;
   }
 }
