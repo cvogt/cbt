@@ -1,5 +1,5 @@
 package cbt
-trait SbtDependencyDsl{ self: Build =>
+trait SbtDependencyDsl{ self: BasicBuild =>
   /** SBT-like dependency builder DSL for syntax compatibility */
   class DependencyBuilder2( groupId: String, artifactId: String, scalaVersion: Option[String] ){
     def %(version: String) = scalaVersion.map(
@@ -13,7 +13,7 @@ trait SbtDependencyDsl{ self: Build =>
     def  %(artifactId: String) = new DependencyBuilder2( groupId, artifactId, None )
   }
   implicit class DependencyBuilder3(d: MavenDependency){
-    def  %(classifier: String) = d.copy(classifier = Classifier(Some(classifier)))
+    def  %(classifier: String): MavenDependency = d//.copy(classifier = Classifier(Some(classifier)))
   }
 
   /*

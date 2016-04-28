@@ -2,14 +2,25 @@ package cbt
 import scala.collection.immutable.Seq
 import java.io.{Console=>_,_}
 import java.nio.file._
-class AdminTasks(lib: Lib, args: Seq[String], cwd: File, classLoaderCache: ClassLoaderCache){
+class AdminTasks(
+  lib: Lib,
+  args: Seq[String],
+  cwd: File,
+  classLoaderCache: ClassLoaderCache,
+  cache: File,
+  cbtHome: File,
+  cbtHasChanged: Boolean
+){
+  private val paths = Paths(cbtHome, cache)
+  import paths._
+  private val mavenCentral = MavenResolver(cbtHasChanged,mavenCache,MavenResolver.central)
   implicit val logger: Logger = lib.logger
   def resolve = {
     ClassPath.flatten(
       args(1).split(",").toVector.map{
         d =>
           val v = d.split(":")
-          MavenRepository.central.resolveOne(MavenDependency(v(0),v(1),v(2))).classpath
+          mavenCentral.resolveOne(MavenDependency(v(0),v(1),v(2))).classpath
       }
     )
   }
@@ -17,14 +28,14 @@ class AdminTasks(lib: Lib, args: Seq[String], cwd: File, classLoaderCache: Class
     args(1).split(",").toVector.map{
       d =>
         val v = d.split(":")
-        MavenRepository.central.resolveOne(MavenDependency(v(0),v(1),v(2))).dependencyTree
+        mavenCentral.resolveOne(MavenDependency(v(0),v(1),v(2))).dependencyTree
     }.mkString("\n\n")
   }
   def amm = ammonite
   def ammonite = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
-    val scalac = new ScalaCompilerDependency( version )
-    val d = MavenRepository.central.resolveOne(
+    val scalac = new ScalaCompilerDependency( cbtHasChanged,mavenCache, version )
+    val d = mavenCentral.resolveOne(
       MavenDependency(
         "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.7")
       )
@@ -36,7 +47,7 @@ class AdminTasks(lib: Lib, args: Seq[String], cwd: File, classLoaderCache: Class
   }
   def scala = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
-    val scalac = new ScalaCompilerDependency( version )
+    val scalac = new ScalaCompilerDependency( cbtHasChanged, mavenCache, version )
     lib.runMain(
       "scala.tools.nsc.MainGenericRunner", Seq("-cp", scalac.classpath.string), scalac.classLoader(classLoaderCache)
     )
@@ -49,16 +60,16 @@ class AdminTasks(lib: Lib, args: Seq[String], cwd: File, classLoaderCache: Class
     val scalaXmlVersion = args.lift(2).getOrElse(constants.scalaXmlVersion)
     val zincVersion = args.lift(3).getOrElse(constants.zincVersion)
     val scalaDeps = Seq(
-      MavenRepository.central.resolveOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)),
-      MavenRepository.central.resolveOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion))
+      mavenCentral.resolveOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)),
+      mavenCentral.resolveOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion))
     )
     
     val scalaXml = Dependencies(
-      MavenRepository.central.resolveOne(MavenDependency("org.scala-lang.modules","scala-xml_"+scalaMajorVersion,scalaXmlVersion)),
-      MavenRepository.central.resolveOne(MavenDependency("org.scala-lang","scala-library",scalaVersion))
+      mavenCentral.resolveOne(MavenDependency("org.scala-lang.modules","scala-xml_"+scalaMajorVersion,scalaXmlVersion)),
+      mavenCentral.resolveOne(MavenDependency("org.scala-lang","scala-library",scalaVersion))
     )
 
-    val zinc = MavenRepository.central.resolveOne(MavenDependency("com.typesafe.zinc","zinc",zincVersion))
+    val zinc = mavenCentral.resolveOne(MavenDependency("com.typesafe.zinc","zinc",zincVersion))
 
     def valName(dep: BoundMavenDependency) = {
       val words = dep.artifactId.split("_").head.split("-")
@@ -66,24 +77,28 @@ class AdminTasks(lib: Lib, args: Seq[String], cwd: File, classLoaderCache: Class
     }
 
     def jarVal(dep: BoundMavenDependency) = "_" + valName(dep) +"Jar"
-    def transitive(dep: Dependency) = (dep +: dep.transitiveDependencies.reverse).collect{case d: BoundMavenDependency => d}
+    def transitive(dep: Dependency) = (dep +: lib.transitiveDependencies(dep).reverse).collect{case d: BoundMavenDependency => d}
     def codeEach(dep: Dependency) = {    
       transitive(dep).tails.map(_.reverse).toVector.reverse.drop(1).map{
         deps =>
           val d = deps.last
           val parents = deps.dropRight(1)
-          val parentString = if(parents.isEmpty) ""  else ( ", " ++ valName(parents.last) )
+          val parentString = if(parents.isEmpty) "rootClassLoader"  else ( valName(parents.last) )
           val n = valName(d)
           s"""
     // ${d.groupId}:${d.artifactId}:${d.version}
-    download(new URL(MAVEN_URL + "${d.basePath}.jar"), Paths.get(${n}File), "${d.jarSha1}");
-    ClassLoader $n = cachePut(
-      classLoader( ${n}File$parentString ),
-      ${deps.sortBy(_.jar).map(valName(_)+"File").mkString(", ")}
-    );"""
+    download(new URL(mavenUrl + "${d.basePath}.jar"), Paths.get(${n}File), "${d.jarSha1}");
+
+    String[] ${n}ClasspathArray = new String[]{${deps.sortBy(_.jar).map(valName(_)+"File").mkString(", ")}};
+    String ${n}Classpath = classpath( ${n}ClasspathArray );
+    ClassLoader $n =
+      classLoaderCache.contains( ${n}Classpath )
+      ? classLoaderCache.get( ${n}Classpath )
+      : classLoaderCache.put( classLoader( ${n}File, $parentString ), ${n}Classpath );"""
       }
     }
     val assignments = codeEach(zinc) ++ codeEach(scalaXml)
+    val files = scalaDeps ++ transitive(scalaXml) ++ transitive(zinc)
     //{ case (name, dep) => s"$name =\n      ${tree(dep, 4)};" }.mkString("\n\n    ")
     val code = s"""// This file was auto-generated using `cbt admin cbtEarlyDependencies`
 package cbt;
@@ -97,23 +112,29 @@ import static cbt.NailgunLauncher.*;
 class EarlyDependencies{
 
   /** ClassLoader for stage1 */
-  ClassLoader stage1;
+  ClassLoader classLoader;
+  String[] classpathArray;
   /** ClassLoader for zinc */
   ClassLoader zinc;
 
-${(scalaDeps ++ transitive(scalaXml) ++ transitive(zinc)).map(d => s"""  String ${valName(d)}File = MAVEN_CACHE + "${d.basePath}.jar";""").mkString("\n")}
+${files.map(d => s"""  String ${valName(d)}File;""").mkString("\n")}
 
-  public EarlyDependencies() throws MalformedURLException, IOException, NoSuchAlgorithmException{
-${scalaDeps.map(d => s"""    download(new URL(MAVEN_URL + "${d.basePath}.jar"), Paths.get(${valName(d)}File), "${d.jarSha1}");""").mkString("\n")}
+  public EarlyDependencies(
+    String mavenCache, String mavenUrl, ClassLoaderCache2<ClassLoader> classLoaderCache, ClassLoader rootClassLoader
+  ) throws Exception {
+${files.map(d => s"""    ${valName(d)}File = mavenCache + "${d.basePath}.jar";""").mkString("\n")}
+
+${scalaDeps.map(d => s"""    download(new URL(mavenUrl + "${d.basePath}.jar"), Paths.get(${valName(d)}File), "${d.jarSha1}");""").mkString("\n")}
 ${assignments.mkString("\n")}
   
-    stage1 = scalaXml_${scalaXmlVersion.replace(".","_")}_;
+    classLoader = scalaXml_${scalaXmlVersion.replace(".","_")}_;
+    classpathArray = scalaXml_${scalaXmlVersion.replace(".","_")}_ClasspathArray;
 
     zinc = zinc_${zincVersion.replace(".","_")}_;
   }
 }
 """
-    val file = paths.nailgun ++ ("/" ++ "EarlyDependencies.java")
+    val file = nailgun ++ ("/" ++ "EarlyDependencies.java")
     Files.write( file.toPath, code.getBytes )
     println( Console.GREEN ++ "Wrote " ++ file.string ++ Console.RESET )
   }

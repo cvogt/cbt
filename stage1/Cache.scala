@@ -1,6 +1,6 @@
 package cbt
 /**
-Caches exactly one value
+Caches exactly one value.
 Is there a less boiler-platy way to achieve this, that doesn't
 require creating an instance for each thing you want to cache?
 */

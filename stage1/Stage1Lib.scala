@@ -1,15 +1,15 @@
 package cbt
 
-import cbt.paths._
-
 import java.io._
 import java.lang.reflect.InvocationTargetException
 import java.net._
+import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.nio.file.attribute.FileTime
 import javax.tools._
 import java.security._
-import java.util._
+import java.util.{Set=>_,Map=>_,_}
+import java.util.concurrent.ConcurrentHashMap
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
 import scala.collection.immutable.Seq
@@ -31,19 +31,8 @@ object CatchTrappedExitCode{
   }
 }
 
-case class Context(
-  projectDirectory: File,
-  cwd: File,
-  args: Seq[String],
-  logger: Logger,
-  cbtHasChanged: Boolean,
-  classLoaderCache: ClassLoaderCache,
-  version: Option[String] = None,
-  scalaVersion: Option[String] = None
-)
-
 class BaseLib{
-  def realpath(name: File) = new File(Paths.get(name.getAbsolutePath).normalize.toString)
+  def realpath(name: File) = new File(java.nio.file.Paths.get(name.getAbsolutePath).normalize.toString)
 }
 
 class Stage1Lib( val logger: Logger ) extends BaseLib{
@@ -67,9 +56,10 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def download(url: URL, target: File, sha1: Option[String]): Boolean = {
     if( target.exists ){
+      logger.resolver(green("found ") ++ url.string)
       true
     } else {
-      val incomplete = Paths.get( target.string ++ ".incomplete" );
+      val incomplete = ( target ++ ".incomplete" ).toPath;
       val connection = url.openConnection.asInstanceOf[HttpURLConnection]
       if(connection.getResponseCode != HttpURLConnection.HTTP_OK){
         logger.resolver(blue("not found: ") ++ url.string)
@@ -91,7 +81,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
             assert( expected == actual, s"$expected == $actual" )
             logger.resolver( green("verified") ++ " checksum for " ++ target.string)
         }
-        Files.move(incomplete, Paths.get(target.string), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        Files.move(incomplete, target.toPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         true
       }
     }
@@ -139,11 +129,13 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   }
 
   def compile(
+    cbtHasChanged: Boolean,
     needsRecompile: Boolean,
     files: Seq[File],
     compileTarget: File,
     statusFile: File,
     classpath: ClassPath,
+    mavenCache: File,
     scalacOptions: Seq[String] = Seq(),
     classLoaderCache: ClassLoaderCache,
     zincVersion: String,
@@ -158,7 +150,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       None
     }else{
       if( needsRecompile ){
-        import MavenRepository.central
+        val central = MavenResolver(cbtHasChanged, mavenCache,MavenResolver.central)
         val zinc = central.resolveOne(MavenDependency("com.typesafe.zinc","zinc", zincVersion))
         val zincDeps = zinc.transitiveDependencies
         
@@ -166,8 +158,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
           zincDeps
             .collect{ case d @
               BoundMavenDependency(
-                MavenDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none),
-                _
+                _, _, MavenDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none), _
               ) => d
             }
             .headOption
@@ -178,8 +169,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
           zincDeps
             .collect{ case d @
               BoundMavenDependency(
-                MavenDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources),
-                _
+                _, _, MavenDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources), _
               ) => d
             }
             .headOption
@@ -192,21 +182,51 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
         val start = System.currentTimeMillis
 
-        val code = redirectOutToErr{
-          lib.runMain(
-            "com.typesafe.zinc.Main",
-            Seq(
-              "-scala-compiler", scalaCompiler.toString,
-              "-scala-library", scalaLibrary.toString,
-              "-sbt-interface", sbtInterface.toString,
-              "-compiler-interface", compilerInterface.toString,
-              "-scala-extra", scalaReflect.toString,
-              "-cp", cp,
-              "-d", compileTarget.toString
-            ) ++ scalacOptions.map("-S"++_) ++ files.map(_.toString),
-            zinc.classLoader(classLoaderCache)
+        val _class = "com.typesafe.zinc.Main"
+        val dualArgs =
+          Seq(
+            "-scala-compiler", scalaCompiler.toString,
+            "-scala-library", scalaLibrary.toString,
+            "-sbt-interface", sbtInterface.toString,
+            "-compiler-interface", compilerInterface.toString,
+            "-scala-extra", scalaReflect.toString,
+            "-d", compileTarget.toString
           )
-        }
+        val singleArgs = scalacOptions.map( "-S" ++ _ )
+
+        val code = 
+          try{
+            System.err.println("Compiling to " ++ compileTarget.toString)
+            redirectOutToErr{
+              lib.runMain(
+                _class,
+                dualArgs ++ singleArgs ++ Seq(
+                  "-cp", cp // let's put cp last. It so long
+                ) ++ files.map(_.toString),
+                zinc.classLoader(classLoaderCache)
+              )
+            }
+          } catch {
+            case e: Exception =>
+            System.err.println(red("The Scala compiler crashed. Try running it by hand:"))
+            System.out.println(s"""
+java -cp \\
+${zinc.classpath.strings.mkString(":\\\n")} \\
+\\
+${_class} \\
+\\
+${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
+\\
+${singleArgs.mkString(" \\\n")} \\
+\\
+-cp \\
+${classpath.strings.mkString(":\\\n")} \\
+\\
+${files.sorted.mkString(" \\\n")}
+"""
+            )
+            ExitCode.Failure
+          }
 
         if(code == ExitCode.Success){
           // write version and when last compilation started so we can trigger
@@ -249,4 +269,93 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     MavenDependency(
       groupId, artifactId ++ "_" ++ scalaMajorVersion, version, classifier
     )
+
+  def cacheOnDisk[T]
+    ( cbtHasChanged: Boolean, cacheFile: File )
+    ( deserialize: String => T )
+    ( serialize: T => String )
+    ( compute: => Seq[T] ) = {
+    if(!cbtHasChanged && cacheFile.exists){
+      import collection.JavaConversions._
+      Files
+        .readAllLines( cacheFile.toPath, StandardCharsets.UTF_8 )
+        .toStream
+        .map(deserialize)
+    } else {
+      val result = compute
+      val string = result.map(serialize).mkString("\n")
+      Files.write(cacheFile.toPath, string.getBytes)
+      result
+    }
+  }
+
+  def dependencyTreeRecursion(root: Dependency, indent: Int = 0): String = (
+    ( " " * indent )
+    ++ (if(root.needsUpdate) red(root.show) else root.show)
+    ++ root.dependencies.map( d =>
+      "\n" ++ dependencyTreeRecursion(d,indent + 1)
+    ).mkString
+  )
+
+  def transitiveDependencies(dependency: Dependency): Seq[Dependency] = {
+    def linearize(deps: Seq[Dependency]): Seq[Dependency] = {
+      // Order is important here in order to generate the correct lineraized dependency order for EarlyDependencies
+      // (and maybe this as well in case we want to get rid of MultiClassLoader)
+      try{
+        if(deps.isEmpty) deps else ( deps ++ linearize(deps.flatMap(_.dependencies)) )
+      } catch{
+        case e: Exception => throw new Exception(dependency.show, e)
+      }
+    }
+
+    // FIXME: this is probably wrong too eager.
+    // We should consider replacing versions during traversals already
+    // not just replace after traversals, because that could mean we
+    // pulled down dependencies current versions don't even rely
+    // on anymore.
+
+    val deps: Seq[Dependency] = linearize(dependency.dependencies).reverse.distinct.reverse
+    val hasInfo: Seq[Dependency with ArtifactInfo] = deps.collect{ case d:Dependency with ArtifactInfo => d }
+    val noInfo: Seq[Dependency]  = deps.filter{
+      case _:Dependency with ArtifactInfo => false
+      case _ => true
+    }
+    noInfo ++ BoundMavenDependency.updateOutdated( hasInfo ).reverse.distinct
+  }
+
+
+  def actual(current: Dependency, latest: Map[(String,String),Dependency]) = current match {
+    case d: ArtifactInfo => latest((d.groupId,d.artifactId))
+    case d => d
+  }
+
+  def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+    val d = dependency
+    val dependencies = dependency.dependencies
+    def dependencyClassLoader( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+      if( dependency.dependencies.isEmpty ){
+        // wrap for caching
+        new cbt.URLClassLoader( ClassPath(Seq()), ClassLoader.getSystemClassLoader().getParent() )
+      } else if( dependencies.size == 1 ){
+        classLoaderRecursion( dependencies.head, latest, cache )
+      } else{
+        val cp = d.dependencyClasspath.string
+        if( dependencies.exists(_.needsUpdate) && cache.persistent.containsKey(cp) ){
+          cache.persistent.remove(cp)
+        }
+        cache.persistent.get(
+          cp,
+          new MultiClassLoader(
+            dependencies.map( classLoaderRecursion(_, latest, cache) )
+          )
+        )
+      }
+    }
+
+    val a = actual( dependency, latest )
+    cache.persistent.get(
+      a.classpath.string,
+      new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
+    )
+  }
 }
