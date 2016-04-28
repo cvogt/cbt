@@ -143,6 +143,54 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
     lib.test(context)
   }
 
+  def recursiveSafe(_run: BuildInterface => Any): ExitCode = {
+    val builds = (this +: transitiveDependencies).collect{
+      case b: BuildInterface => b
+    }
+    val results = builds.map(_run)
+    if(
+      results.forall{
+        case Some(_:ExitCode) => true
+        case None => true
+        case _:ExitCode => true
+        case other => false
+      }
+    ){
+      if(
+        results.collect{
+          case Some(c:ExitCode) => c
+          case c:ExitCode => c
+        }.filter(_ != 0)
+         .nonEmpty
+      ) ExitCode.Failure
+      else ExitCode.Success
+    } else ExitCode.Success
+  }
+
+  def recursive: ExitCode = {
+    recursiveUnsafe(context.args.lift(1))
+  }
+
+  def recursiveUnsafe(taskName: Option[String]): ExitCode = {
+    recursiveSafe{
+      b =>
+      System.err.println(b.show)
+      lib.trapExitCode{ // FIXME: trapExitCode does not seem to work here
+        try{
+          new lib.ReflectBuild(b).callNullary(taskName)
+          ExitCode.Success
+        } catch {
+          case e: Throwable => println(e.getClass); throw e
+        }        
+      }
+      ExitCode.Success
+    }
+  }
+
+  def c = compile
+  def t = test
+  def rt = recursiveUnsafe(Some("test"))
+
   /*
   context.logger.composition(">"*80)
   context.logger.composition("class   " ++ this.getClass.toString)
