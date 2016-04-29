@@ -111,10 +111,7 @@ object Stage1{
       classLoaderCache.persistent.remove( cbtDependency.classpath.string )
     }
 
-    val stage2ClassLoader = classLoaderCache.persistent.get(
-      cbtDependency.classpath.string,
-      cbtDependency.classLoader(classLoaderCache)
-    )
+    val stage2ClassLoader = cbtDependency.classLoader(classLoaderCache)
 
     {
       // a few classloader sanity checks
