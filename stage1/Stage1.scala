@@ -43,7 +43,8 @@ case class Stage2Args(
   cbtHasChanged: Boolean,
   classLoaderCache: ClassLoaderCache,
   cache: File,
-  cbtHome: File
+  cbtHome: File,
+  compatibilityTarget: File
 ){
   val ClassLoaderCache(
     logger,
@@ -78,7 +79,7 @@ object Stage1{
   }
 
   def buildStage2(
-    _compatibilityTarget: File, classLoaderCache: ClassLoaderCache, _cbtChanged: Boolean, cbtHome: File, cache: File
+    compatibilityTarget: File, classLoaderCache: ClassLoaderCache, _cbtChanged: Boolean, cbtHome: File, cache: File
   ): (Boolean, ClassLoader) = {
     import classLoaderCache.logger
 
@@ -92,7 +93,7 @@ object Stage1{
 
     val cls = this.getClass.getClassLoader.loadClass("cbt.NailgunLauncher")
     
-    val cbtDependency = CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, _compatibilityTarget)
+    val cbtDependency = CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)
 
     logger.stage1("Compiling stage2 if necessary")
     compile(
@@ -118,16 +119,14 @@ object Stage1{
     {
       // a few classloader sanity checks
       val compatibilityClassLoader =
-        CompatibilityDependency(cbtHasChanged, compatibilityTarget)
-          .classLoader(classLoaderCache)
+        cbtDependency.stage1Dependency.compatibilityDependency.classLoader(classLoaderCache)
       assert(
         classOf[BuildInterface].getClassLoader == compatibilityClassLoader,
         classOf[BuildInterface].getClassLoader.toString ++ "\n\nis not the same as\n\n" ++ compatibilityClassLoader.toString
       )
       //-------------
-      val stage1Dependency = Stage1Dependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, compatibilityTarget)
       val stage1ClassLoader =
-        stage1Dependency.classLoader(classLoaderCache)
+        cbtDependency.stage1Dependency.classLoader(classLoaderCache)
       assert(
         classOf[Stage1Dependency].getClassLoader == stage1ClassLoader,
         classOf[Stage1Dependency].getClassLoader.toString ++ "\n\nis not the same as\n\n" ++ stage1ClassLoader.toString
@@ -147,6 +146,7 @@ object Stage1{
     cache: File,
     cbtHome: File,
     _cbtChanged: java.lang.Boolean,
+    compatibilityTarget: File,
     start: java.lang.Long,
     classLoaderCacheKeys: ConcurrentHashMap[String,AnyRef],
     classLoaderCacheValues: ConcurrentHashMap[AnyRef,ClassLoader]
@@ -162,7 +162,7 @@ object Stage1{
     )
     
 
-    val (cbtHasChanged, classLoader) = buildStage2( CbtPaths(cbtHome, cache).compatibilityTarget, classLoaderCache, _cbtChanged, cbtHome, cache )
+    val (cbtHasChanged, classLoader) = buildStage2( compatibilityTarget, classLoaderCache, _cbtChanged, cbtHome, cache )
 
     val stage2Args = Stage2Args(
       new File( args.args(0) ),
@@ -171,7 +171,8 @@ object Stage1{
       cbtHasChanged = cbtHasChanged,
       classLoaderCache = classLoaderCache,
       cache,
-      cbtHome
+      cbtHome,
+      compatibilityTarget
     )
 
     logger.stage1(s"Run Stage2")

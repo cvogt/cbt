@@ -7,8 +7,6 @@ import scala.collection.immutable.Seq
 
 object Stage2 extends Stage2Base{
   def getBuild(__context: java.lang.Object, _cbtChanged: java.lang.Boolean) = {
-    val cl1 = __context.getClass.getClassLoader
-    val cl2 = classOf[Context].getClassLoader
     val _context = __context.asInstanceOf[Context]
     val context = _context.copy(
       cbtHasChanged = _context.cbtHasChanged || _cbtChanged
@@ -48,7 +46,7 @@ object Stage2 extends Stage2Base{
       args.permanentClassLoaders,
       args.cache,
       args.cbtHome,
-      compatibilityTarget,
+      args.compatibilityTarget,
       null
     )
     val first = lib.loadRoot( context )
