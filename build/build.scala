@@ -11,9 +11,9 @@ class Build(context: Context) extends BasicBuild(context){
       MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
       MavenDependency("com.typesafe.zinc","zinc","0.3.9"),
       ScalaDependency("org.scala-lang.modules","scala-xml","1.0.5")
-    ) :+ BinaryDependency(new File(System.getenv("CBT_HOME")+"/compatibility"), Seq())
+    )
   }
   override def sources = Seq(
-    "nailgun_launcher", "stage1", "stage2"
+    "nailgun_launcher", "stage1", "stage2", "compatibility"
   ).map(d => projectDirectory ++ ("/" + d))
 }

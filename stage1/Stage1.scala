@@ -84,7 +84,7 @@ object Stage1{
 
     val lib = new Stage1Lib(logger)
     import lib._
-    val paths = Paths(cbtHome, cache)
+    val paths = CbtPaths(cbtHome, cache)
     import paths._
 
     val stage2sourceFiles = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
@@ -162,7 +162,7 @@ object Stage1{
     )
     
 
-    val (cbtHasChanged, classLoader) = buildStage2( Paths(cbtHome, cache).compatibilityTarget, classLoaderCache, _cbtChanged, cbtHome, cache )
+    val (cbtHasChanged, classLoader) = buildStage2( CbtPaths(cbtHome, cache).compatibilityTarget, classLoaderCache, _cbtChanged, cbtHome, cache )
 
     val stage2Args = Stage2Args(
       new File( args.args(0) ),

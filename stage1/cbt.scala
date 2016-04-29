@@ -41,7 +41,7 @@ object `package`{
   }
   implicit class ContextExtensions(subject: Context){
     import subject._
-    val paths = Paths(cbtHome, cache)
+    val paths = CbtPaths(cbtHome, cache)
     implicit def logger: Logger = new Logger(enabledLoggers, start)
     def classLoaderCache: ClassLoaderCache = new ClassLoaderCache(
       logger,
