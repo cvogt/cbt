@@ -8,12 +8,27 @@
 # - reduction of dependencies
 # - performance improvements
 
-start_seconds=$(gdate +"%s")
-start_nanos=1$(gdate +"%N")
+seconds() {
+	date +"%s"
+}
+
+nanos() {
+	n=$(date +"%N")
+	if [ "$n" = "N" ]; then
+		n=$(gdate +"%N" 2>/dev/null)
+	fi
+	if [ "$n" = "" ]; then
+		n="0"
+	fi
+	echo $n
+}
+
+start_seconds=$(seconds)
+start_nanos=1$(nanos)
 
 time_taken() {
-	i=$(( $(gdate +"%s") - start_seconds ))
-	n=$(( $(( 1$(gdate +"%N") - start_nanos )) / 1000000 ))
+	i=$(( $(seconds) - start_seconds ))
+	n=$(( $(( 1$(nanos) - start_nanos )) / 1000000 ))
 	if [[ ( "$n" < 0 ) ]]; then
 		i=$(( i-1 ))
 		n=$(( n+1000 ))
@@ -33,12 +48,8 @@ log () {
 		shift
 	done
 	if [ $enabled -eq 0 ]; then
-		which gdate 2>&1 > /dev/null
-		gdate_installed=$?
-		if [ $gdate_installed -eq 0 ]; then
-			delta=$(time_taken)
-			echo "[$delta] $msg" 1>&2
-		fi
+		delta=$(time_taken)
+		echo "[$delta] $msg" 1>&2
 	fi
 }
 
