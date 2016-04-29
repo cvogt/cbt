@@ -38,3 +38,4 @@ We strongly suggest well polished PRs, but don't want to stall improvements
 by discussions about minor flaws. As long as the PR does not break anything and
 improves the product, we should merge it, polishing remaining things afterwards.
 
+On OSX `brew install coreutils` to have gdate and get nanosecond timings during bash script.

@@ -5,12 +5,11 @@ machine:
 dependencies:
   cache_directories:
     - "cache"
-    - "nailgun_launcher/target"
-    - "stage1/target"
-    - "stage2/target"
   override:
+    - ./cbt compile -Dlog=all
     - ./cbt direct -Dlog=all
     - ./cbt -Dlog=all
+    - cd plugins/scalatest/ && ../../cbt compile -Dlog=all && cd ../../
 
 test:
   override:
