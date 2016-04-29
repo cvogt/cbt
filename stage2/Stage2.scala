@@ -52,13 +52,13 @@ object Stage2 extends Stage2Base{
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
-    def call(build: BuildInterface) = {
+    def call(build: BuildInterface): ExitCode = {
       if(cross){
-        build.crossScalaVersions.foreach{
+        build.crossScalaVersions.map{
           v => new lib.ReflectBuild(
             build.copy(context.copy(scalaVersion = Some(v)))
           ).callNullary(task)
-        }
+        }.filter(_ != ExitCode.Success).headOption getOrElse ExitCode.Success
       } else {
         new lib.ReflectBuild(build).callNullary(task)
       }
@@ -85,9 +85,9 @@ object Stage2 extends Stage2Base{
             call(build)
         }
       } else {
-        call(build)
+        val code = call(build)
+        logger.stage2(s"Stage2 end")
+        System.exit(code.integer)
       }
-
-    logger.stage2(s"Stage2 end")
   }
 }
