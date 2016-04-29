@@ -343,19 +343,19 @@ ${files.sorted.mkString(" \\\n")}
         if( dependencies.exists(_.needsUpdate) && cache.persistent.containsKey(cp) ){
           cache.persistent.remove(cp)
         }
-        cache.persistent.get(
-          cp,
-          new MultiClassLoader(
-            dependencies.map( classLoaderRecursion(_, latest, cache) )
-          )
-        )
+        def cl = new MultiClassLoader( dependencies.map( classLoaderRecursion(_, latest, cache) ) )
+        if(d.isInstanceOf[BuildInterface])
+          cl // Don't cache builds right now. We need to fix invalidation first.
+        else
+          cache.persistent.get( cp, cl )
       }
     }
 
     val a = actual( dependency, latest )
-    cache.persistent.get(
-      a.classpath.string,
-      new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
-    )
+    def cl = new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
+    if(d.isInstanceOf[BuildInterface])
+      cl
+    else
+      cache.persistent.get( a.classpath.string, cl )
   }
 }
