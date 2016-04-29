@@ -1,15 +1,14 @@
 import cbt._
-import cbt.extensions._ // FIXME: do not require this import
 import scala.collection.immutable.Seq
 import java.io.File
 
-// cbt:file:///Users/chris/code/cbt/#b65159f95421d9484f29327c11c0fa179eb7483f
+// cbt:file:///Users/chris/code/cbt/#bdd6d905807a8cee7655d436401e76196ec4fe67
 class Build(context: cbt.Context) extends BasicBuild(context){
   override def dependencies = (
     super.dependencies
     ++
     Seq(
-      GitDependency("https://github.com/xdotai/diff.git", "80a08bf45f7c4c3fd20c4bc6dbc9cae0072e3c0f"),
+      GitDependency("https://github.com/xdotai/diff.git", "698717469b8dd86e8570b86354892be9c0654caf"),
       MavenResolver(context.cbtHasChanged,context.paths.mavenCache,MavenResolver.central).resolve(
         ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
         MavenDependency("joda-time", "joda-time", "2.9.2"),

@@ -11,7 +11,5 @@ case class CbtPaths(private val cbtHome: File, private val cache: File){
   val stage2Target: File = stage2 ++ ("/" ++ target)
   val stage2StatusFile: File = stage2Target ++ ".last-success"
   val compatibility: File = cbtHome ++ "/compatibility"
-  val compatibilityTarget: File = compatibility ++ ("/" ++ target)
-  val compatibilityStatusFile: File = compatibilityTarget ++ ".last-success"
   val nailgunTarget: File = nailgun ++ ("/" ++ target)
 }

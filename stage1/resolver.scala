@@ -144,8 +144,9 @@ case class Stage1Dependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTar
   override def needsUpdate = cbtHasChanged
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(nailgunTarget, stage1Target) )
+  val compatibilityDependency = CompatibilityDependency(cbtHasChanged, compatibilityTarget)
   override def dependencies = Seq(
-    CompatibilityDependency(cbtHasChanged, compatibilityTarget),
+    compatibilityDependency,
     MavenResolver(cbtHasChanged,mavenCache,MavenResolver.central).resolve(
       MavenDependency("org.scala-lang","scala-library",constants.scalaVersion),
       MavenDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
@@ -162,8 +163,9 @@ case class CbtDependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTarget
   override def needsUpdate = cbtHasChanged
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq( stage2Target ) )
+  val stage1Dependency = Stage1Dependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, compatibilityTarget)
   override def dependencies = Seq(
-    Stage1Dependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, compatibilityTarget),
+    stage1Dependency,
     MavenResolver(cbtHasChanged, mavenCache,MavenResolver.central).resolve(
       MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
       MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")

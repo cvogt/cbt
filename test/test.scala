@@ -151,6 +151,8 @@ object Main{
     compile("multi-build")
     usage("simple")
     compile("simple")
+    usage("simple-fixed")
+    compile("simple-fixed")
     
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )

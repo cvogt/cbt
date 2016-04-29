@@ -29,8 +29,8 @@ public class NailgunLauncher{
   @SuppressWarnings("unchecked")
   public static Object getBuild( Object context ) throws Exception{
     BuildStage1Result res = buildStage1(
-      (Boolean) get(context, "cbtHasChanged"),
-      (Long) get(context, "start"),
+      (Boolean) get(context, "cbtHasChangedCompat"),
+      (Long) get(context, "startCompat"),
       ((File) get(context, "cache")).toString() + "/",
       ((File) get(context, "cbtHome")).toString(),
       ((File) get(context, "compatibilityTarget")).toString() + "/",
@@ -60,8 +60,9 @@ public class NailgunLauncher{
     _assert(System.getenv("CBT_HOME") != null, "environment variable CBT_HOME not defined");
     String CBT_HOME = System.getenv("CBT_HOME");
     String cache = CBT_HOME + "/cache/";
+    String compatibilityTarget = CBT_HOME + "/compatibility/" + TARGET;
     BuildStage1Result res = buildStage1(
-      false, start, cache, CBT_HOME, CBT_HOME + "/compatibility/" + TARGET, classLoaderCache
+      false, start, cache, CBT_HOME, compatibilityTarget, classLoaderCache
     );
 
     System.exit(
@@ -71,12 +72,12 @@ public class NailgunLauncher{
         .getMethod(
           "run",
           String[].class, File.class, File.class, Boolean.class,
-          Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
+          File.class, Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
         )
         .invoke(
           null,
           (Object) args, new File(cache), new File(CBT_HOME), res.changed,
-          start, classLoaderCache.keys, classLoaderCache.values
+          new File(compatibilityTarget), start, classLoaderCache.keys, classLoaderCache.values
         )
     );
   }
@@ -95,19 +96,23 @@ public class NailgunLauncher{
     ClassLoader rootClassLoader = new CbtURLClassLoader( new URL[]{}, ClassLoader.getSystemClassLoader().getParent() ); // wrap for caching
     EarlyDependencies earlyDeps = new EarlyDependencies(mavenCache, mavenUrl, classLoaderCache, rootClassLoader);
 
-    List<File> compatibilitySourceFiles = new ArrayList<File>();
-    for( File f: compatibilitySources.listFiles() ){
-      if( f.isFile() && (f.toString().endsWith(".scala") || f.toString().endsWith(".java")) ){
-        compatibilitySourceFiles.add(f);
-      }
-    }
-    changed = compile(changed, start, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles, defaultSecurityManager);
-    
     ClassLoader compatibilityClassLoader;
-    if( classLoaderCache.contains( compatibilityTarget ) ){
+    if(!compatibilityTarget.startsWith(cbtHome)){
       compatibilityClassLoader = classLoaderCache.get( compatibilityTarget );
     } else {
-      compatibilityClassLoader = classLoaderCache.put( classLoader(compatibilityTarget, rootClassLoader), compatibilityTarget );
+      List<File> compatibilitySourceFiles = new ArrayList<File>();
+      for( File f: compatibilitySources.listFiles() ){
+        if( f.isFile() && (f.toString().endsWith(".scala") || f.toString().endsWith(".java")) ){
+          compatibilitySourceFiles.add(f);
+        }
+      }
+      changed = compile(changed, start, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles, defaultSecurityManager);
+      
+      if( classLoaderCache.contains( compatibilityTarget ) ){
+        compatibilityClassLoader = classLoaderCache.get( compatibilityTarget );
+      } else {
+        compatibilityClassLoader = classLoaderCache.put( classLoader(compatibilityTarget, rootClassLoader), compatibilityTarget );
+      }
     }
 
     String[] nailgunClasspathArray = append( earlyDeps.classpathArray, nailgunTarget );
