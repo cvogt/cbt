@@ -22,9 +22,14 @@ import java.io.File
 import scala.collection.immutable.Seq
 
 class Build(context: Context) extends BasicBuild(context){
-  override def dependencies = super.dependencies ++ Seq(  // don't forget super.dependencies here
-    // "org.cvogt" %% "scala-extensions" % "0.4.1"
-  )
+  override def dependencies = {  // don't forget super.dependencies here
+    super.dependencies :+ MavenResolver(context.cbtHasChanged,context.paths.mavenCache,MavenResolver.central).resolve(
+      MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+      MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
+      MavenDependency("com.typesafe.zinc","zinc","0.3.9"),
+      ScalaDependency("org.scala-lang.modules","scala-xml","1.0.5")
+    )
+  }
 }
 """
     )

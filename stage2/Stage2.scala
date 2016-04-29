@@ -19,7 +19,7 @@ object Stage2 extends Stage2Base{
 
   def run( args: Stage2Args ): Unit = {
     import args.logger
-    val paths = Paths(args.cbtHome,args.cache)
+    val paths = CbtPaths(args.cbtHome,args.cache)
     import paths._
     val lib = new Lib(args.logger)
 

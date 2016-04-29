@@ -1,6 +1,6 @@
 package cbt
 import java.io._
-case class Paths(private val cbtHome: File, private val cache: File){
+case class CbtPaths(private val cbtHome: File, private val cache: File){
   val userHome: File = new File(Option(System.getProperty("user.home")).get)
   val nailgun: File = cbtHome ++ "/nailgun_launcher"
   val stage1: File = cbtHome ++ "/stage1"

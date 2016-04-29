@@ -11,7 +11,7 @@ class AdminTasks(
   cbtHome: File,
   cbtHasChanged: Boolean
 ){
-  private val paths = Paths(cbtHome, cache)
+  private val paths = CbtPaths(cbtHome, cache)
   import paths._
   private val mavenCentral = MavenResolver(cbtHasChanged,mavenCache,MavenResolver.central)
   implicit val logger: Logger = lib.logger
