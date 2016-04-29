@@ -2,7 +2,7 @@ import cbt._
 import scala.collection.immutable.Seq
 import java.io.File
 
-// cbt:file:///Users/chris/code/cbt/#bdd6d905807a8cee7655d436401e76196ec4fe67
+// cbt:https://github.com/cvogt/cbt.git#bdd6d905807a8cee7655d436401e76196ec4fe67
 class Build(context: cbt.Context) extends BasicBuild(context){
   override def dependencies = (
     super.dependencies
