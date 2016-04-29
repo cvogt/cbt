@@ -29,8 +29,8 @@ public class NailgunLauncher{
   @SuppressWarnings("unchecked")
   public static Object getBuild( Object context ) throws Exception{
     BuildStage1Result res = buildStage1(
-      (Boolean) get(context, "cbtHasChanged"),
-      (Long) get(context, "start"),
+      (Boolean) get(context, "cbtHasChangedCompat"),
+      (Long) get(context, "startCompat"),
       ((File) get(context, "cache")).toString() + "/",
       ((File) get(context, "cbtHome")).toString(),
       ((File) get(context, "compatibilityTarget")).toString() + "/",
