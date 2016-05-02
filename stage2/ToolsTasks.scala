@@ -2,7 +2,7 @@ package cbt
 import scala.collection.immutable.Seq
 import java.io.{Console=>_,_}
 import java.nio.file._
-class AdminTasks(
+class ToolsTasks(
   lib: Lib,
   args: Seq[String],
   cwd: File,
@@ -100,7 +100,7 @@ class AdminTasks(
     val assignments = codeEach(zinc) ++ codeEach(scalaXml)
     val files = scalaDeps ++ transitive(scalaXml) ++ transitive(zinc)
     //{ case (name, dep) => s"$name =\n      ${tree(dep, 4)};" }.mkString("\n\n    ")
-    val code = s"""// This file was auto-generated using `cbt admin cbtEarlyDependencies`
+    val code = s"""// This file was auto-generated using `cbt tools cbtEarlyDependencies`
 package cbt;
 import java.io.*;
 import java.nio.file.*;
