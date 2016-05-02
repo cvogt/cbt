@@ -21,6 +21,8 @@ class Build(context: cbt.Context) extends BasicBuild(context){
         // the dependency below uses a maven version range. Currently not supported.
         // TODO: put in a proper error message for version range not supported
         //MavenDependency("com.github.nikita-volkov", "sext", "0.2.4")
+        // currently breaks with can't find https://repo1.maven.org/maven2/org/apache/avro/avro-mapred/1.7.7/avro-mapred-1.7.7-hadoop2.pom.sha1
+        // org.apache.spark:spark-sql_2.11:1.6.1
       ),
       MavenResolver(
         context.cbtHasChanged,
