@@ -109,9 +109,9 @@ abstract class DependencyImplementation extends Dependency{
 }
 
 // TODO: all this hard codes the scala version, needs more flexibility
-class ScalaCompilerDependency(cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-compiler",version, Classifier.none), Seq(MavenResolver.central))
-class ScalaLibraryDependency (cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-library",version, Classifier.none), Seq(MavenResolver.central))
-class ScalaReflectDependency (cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-reflect",version, Classifier.none), Seq(MavenResolver.central))
+class ScalaCompilerDependency(cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-compiler",version, Classifier.none), Seq(mavenCentral))
+class ScalaLibraryDependency (cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-library",version, Classifier.none), Seq(mavenCentral))
+class ScalaReflectDependency (cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-reflect",version, Classifier.none), Seq(mavenCentral))
 
 case class ScalaDependencies(cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit val logger: Logger) extends DependencyImplementation{ sd =>
   override final val needsUpdate = false
@@ -146,11 +146,11 @@ case class Stage1Dependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTar
   override def exportedClasspath = ClassPath( Seq(nailgunTarget, stage1Target) )
   val compatibilityDependency = CompatibilityDependency(cbtHasChanged, compatibilityTarget)
   override def dependencies = Seq(
-    compatibilityDependency,
-    MavenResolver(cbtHasChanged,mavenCache,MavenResolver.central).resolve(
-      MavenDependency("org.scala-lang","scala-library",constants.scalaVersion),
-      MavenDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
-    )
+    compatibilityDependency
+  ) ++
+  MavenResolver(cbtHasChanged,mavenCache,mavenCentral).bind(
+    MavenDependency("org.scala-lang","scala-library",constants.scalaVersion),
+    MavenDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
   )
 }
 case class CompatibilityDependency(cbtHasChanged: Boolean, compatibilityTarget: File)(implicit val logger: Logger) extends DependencyImplementation{
@@ -165,11 +165,11 @@ case class CbtDependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTarget
   override def exportedClasspath = ClassPath( Seq( stage2Target ) )
   val stage1Dependency = Stage1Dependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, compatibilityTarget)
   override def dependencies = Seq(
-    stage1Dependency,
-    MavenResolver(cbtHasChanged, mavenCache,MavenResolver.central).resolve(
-      MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
-      MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
-    )
+    stage1Dependency
+  ) ++ 
+  MavenResolver(cbtHasChanged, mavenCache,mavenCentral).bind(
+    MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+    MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
   )
 }
 

@@ -47,12 +47,11 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
   def copy(context: Context): BuildInterface = lib.copy(this.getClass, context).asInstanceOf[BuildInterface]
   def zincVersion = "0.3.9"
 
-  def dependencies: Seq[Dependency] = Seq(
+  def dependencies: Seq[Dependency] =
     // FIXME: this should probably be removed
-    MavenResolver(context.cbtHasChanged, context.paths.mavenCache, MavenResolver.central).resolve(
+    Resolver( mavenCentral ).bind(
       "org.scala-lang" % "scala-library" % scalaVersion
     )
-  )
 
   // ========== paths ==========
   final private val defaultSourceDirectory = projectDirectory ++ "/src"
@@ -91,6 +90,8 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
     )
   }
   assertSourceDirectories()
+
+  def Resolver( urls: URL* ) = MavenResolver( context.cbtHasChanged, context.paths.mavenCache, urls: _* )
 
   def ScalaDependency(
     groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,

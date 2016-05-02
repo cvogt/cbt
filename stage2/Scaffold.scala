@@ -13,7 +13,7 @@ trait Scaffold{
     println( GREEN ++ "Created " ++ fileName ++ RESET )
   }
 
-  def scaffoldBasicBuild(
+  def createBasicBuild(
     projectDirectory: File
   ): Unit = { 
     createFile(projectDirectory, "build/build.scala", s"""import cbt._
@@ -23,11 +23,17 @@ import scala.collection.immutable.Seq
 
 class Build(context: Context) extends BasicBuild(context){
   override def dependencies = {  // don't forget super.dependencies here
-    super.dependencies :+ MavenResolver(context.cbtHasChanged,context.paths.mavenCache,MavenResolver.central).resolve(
-      MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
-      MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
-      MavenDependency("com.typesafe.zinc","zinc","0.3.9"),
-      ScalaDependency("org.scala-lang.modules","scala-xml","1.0.5")
+    super.dependencies ++ Resolver( mavenCentral ).bind(
+      /*
+      // Scala dependency automatically adding Scala major version to artifact id
+      ScalaDependency("com.lihaoyi", "ammonite-ops", "0.5.5")
+      // SBT-style Scala dependency
+      "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
+      // Java dependency directly corresponding to maven artifact id
+      MavenDependency("com.lihaoyi", "ammonite-ops_2.11", "0.5.5")
+      // SBT-style Java dependency
+      "com.lihaoyi" % "ammonite-ops_2.11" % "0.5.5"
+      */
     )
   }
 }
@@ -36,7 +42,7 @@ class Build(context: Context) extends BasicBuild(context){
 
   }
 
-  def scaffoldBuildBuild(
+  def createBuildBuild(
     projectDirectory: File
   ): Unit = { 
     createFile(projectDirectory, "build/build/build.scala", s"""import cbt._
@@ -45,9 +51,20 @@ import java.io.File
 import scala.collection.immutable.Seq
 
 class Build(context: Context) extends BuildBuild(context){
-  override def dependencies = super.dependencies ++ Seq(
-    // , "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
-  )
+  override def dependencies = {  // don't forget super.dependencies here
+    super.dependencies ++ Resolver( mavenCentral ).bind(
+      /*
+      // Scala dependency automatically adding Scala major version to artifact id
+      ScalaDependency("com.lihaoyi", "ammonite-ops", "0.5.5")
+      // SBT-style Scala dependency
+      "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
+      // Java dependency directly corresponding to maven artifact id
+      MavenDependency("com.lihaoyi", "ammonite-ops_2.11", "0.5.5")
+      // SBT-style Java dependency
+      "com.lihaoyi" % "ammonite-ops_2.11" % "0.5.5"
+      */
+    )
+  }
 }
 """
     )

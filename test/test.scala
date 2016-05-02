@@ -2,6 +2,7 @@ import cbt._
 import scala.collection.immutable.Seq
 import java.util.concurrent.ConcurrentHashMap
 import java.io.File
+import java.net.URL
 
 // micro framework
 object Main{
@@ -76,7 +77,7 @@ object Main{
     val cache = cbtHome ++ "/cache"
     val mavenCache = cache ++ "/maven"
     val cbtHasChanged = true
-    val mavenCentral = MavenResolver(cbtHasChanged, mavenCache, MavenResolver.central)
+    def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
 
     {
       val noContext = ContextImplementation(
@@ -97,12 +98,11 @@ object Main{
       )
 
       val b = new BasicBuild(noContext){
-        override def dependencies = Seq(
-          mavenCentral.resolve(
+        override def dependencies =
+          Resolver(mavenCentral).bind(
             MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
             MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")
           )
-        )
       }
       val cp = b.classpath
       assert(cp.strings.distinct == cp.strings, "duplicates in classpath: " ++ cp.string)
@@ -110,36 +110,38 @@ object Main{
 
     // test that messed up artifacts crash with an assertion (which should tell the user what's up)
     assertException[AssertionError](){
-      mavenCentral.resolveOne( MavenDependency("com.jcraft", "jsch", " 0.1.53") ).classpath
+      Resolver(mavenCentral).bindOne( MavenDependency("com.jcraft", "jsch", " 0.1.53") ).classpath
     }
     assertException[AssertionError](){
-      mavenCentral.resolveOne( MavenDependency("com.jcraft", null, "0.1.53") ).classpath
+      Resolver(mavenCentral).bindOne( MavenDependency("com.jcraft", null, "0.1.53") ).classpath
     }
     assertException[AssertionError](){
-      mavenCentral.resolveOne( MavenDependency("com.jcraft", "", " 0.1.53") ).classpath
+      Resolver(mavenCentral).bindOne( MavenDependency("com.jcraft", "", " 0.1.53") ).classpath
     }
     assertException[AssertionError](){
-      mavenCentral.resolveOne( MavenDependency("com.jcraft%", "jsch", " 0.1.53") ).classpath
+      Resolver(mavenCentral).bindOne( MavenDependency("com.jcraft%", "jsch", " 0.1.53") ).classpath
     }
     assertException[AssertionError](){
-      mavenCentral.resolveOne( MavenDependency("", "jsch", " 0.1.53") ).classpath
+      Resolver(mavenCentral).bindOne( MavenDependency("", "jsch", " 0.1.53") ).classpath
     }
 
     (
-      MavenResolver(
-        cbtHasChanged, mavenCache, MavenResolver.central, MavenResolver.bintray("tpolecat")
-      ).resolve(
-        lib.ScalaDependency("org.tpolecat","tut-core","0.4.2", scalaMajorVersion="2.11")
+      Dependencies(
+        Resolver( mavenCentral, bintray("tpolecat") ).bind(
+          lib.ScalaDependency("org.tpolecat","tut-core","0.4.2", scalaMajorVersion="2.11")
+        )
       ).classpath.strings
       ++
-      MavenResolver(cbtHasChanged, mavenCache,MavenResolver.sonatype).resolve(
+     Dependencies(
+      Resolver(sonatypeReleases).bind(
         MavenDependency("org.cvogt","play-json-extensions_2.11","0.8.0")
-      ).classpath.strings
+      )
+    ).classpath.strings
       ++
-      MavenResolver(
-        cbtHasChanged, mavenCache, MavenResolver.central, MavenResolver.sonatypeSnapshots
-      ).resolve(
-        MavenDependency("ai.x","lens_2.11","1.0.0-SNAPSHOT")
+      Dependencies(
+        Resolver( mavenCentral, sonatypeSnapshots ).bind(
+          MavenDependency("ai.x","lens_2.11","1.0.0-SNAPSHOT")
+        )
       ).classpath.strings
     ).foreach{
       path => assert(new File(path).exists, path)
