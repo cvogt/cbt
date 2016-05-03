@@ -190,6 +190,7 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
 
   def c = compile
   def t = test
+  def r = run
   def rt = recursiveUnsafe(Some("test"))
 
   /*
