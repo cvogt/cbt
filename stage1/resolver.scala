@@ -190,7 +190,7 @@ class BoundMavenDependencies(
 case class MavenDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
 ){
-  private[cbt] def serialize = groupId ++ ":" ++ artifactId ++ ":"++ version ++ ":" ++ classifier.name.getOrElse("")
+  private[cbt] def serialize = groupId ++ ":" ++ artifactId ++ ":"++ version ++ classifier.name.map(":" ++ _).getOrElse("")
 }
 object MavenDependency{
   private[cbt] def deserialize = (_:String).split(":") match {
@@ -218,6 +218,7 @@ case class BoundMavenDependency(
     version != "" && version != null && !version.startsWith(" ") && !version.endsWith(" "),
     s"not a valid version: '$version'"
   )
+    override def show: String = this.getClass.getSimpleName ++ "(" ++ mavenDependency.serialize ++ ")"
 
   override def needsUpdate = false
 
