@@ -34,20 +34,25 @@ import java.io.File
 import scala.collection.immutable.Seq
 
 class Build( context: Context ) extends BasicBuild( context ){
-  override def dependencies = {  // don't forget super.dependencies here
-    super.dependencies ++ Resolver( mavenCentral ).bind(
-      /*
-      // Scala dependency automatically adding Scala major version to artifact id
+  /*
+  override def dependencies = (
+    super.dependencies // don't forget super.dependencies here
+    ++
+    Resolver( mavenCentral ).bind(
+      // automatically add Scala major version to artifact id
+      // CBT-style Scala dependency 
       ScalaDependency( "com.lihaoyi", "ammonite-ops", "0.5.5" )
-      // SBT-style Scala dependency
+      // or SBT-style Scala dependency
       "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
-      // Java dependency directly corresponding to maven artifact id
+
+      // don't mess with the artifact id
+      // CBT-Style Java dependency 
       MavenDependency( "com.lihaoyi", "ammonite-ops_2.11", "0.5.5" )
-      // SBT-style Java dependency
+      // or SBT-style Java dependency
       "com.lihaoyi" % "ammonite-ops_2.11" % "0.5.5"
-      */
     )
-  }
+  )
+  */
 }
 """
     )
@@ -62,20 +67,25 @@ import java.io.File
 import scala.collection.immutable.Seq
 
 class Build( context: Context ) extends BuildBuild( context ){
-  override def dependencies = {  // don't forget super.dependencies here
-    super.dependencies ++ Resolver( mavenCentral ).bind(
-      /*
-      // Scala dependency automatically adding Scala major version to artifact id
+/*
+  override def dependencies = (
+    super.dependencies // don't forget super.dependencies here
+    ++
+    Resolver( mavenCentral ).bind(
+      // automatically add Scala major version to artifact id
+      // CBT-style Scala dependency 
       ScalaDependency( "com.lihaoyi", "ammonite-ops", "0.5.5" )
-      // SBT-style Scala dependency
+      // or SBT-style Scala dependency
       "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
-      // Java dependency directly corresponding to maven artifact id
+
+      // don't mess with the artifact id
+      // CBT-Style Java dependency 
       MavenDependency( "com.lihaoyi", "ammonite-ops_2.11", "0.5.5" )
-      // SBT-style Java dependency
+      // or SBT-style Java dependency
       "com.lihaoyi" % "ammonite-ops_2.11" % "0.5.5"
-      */
     )
-  }
+  )
+  */
 }
 """
     )
