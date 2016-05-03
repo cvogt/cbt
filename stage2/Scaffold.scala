@@ -13,6 +13,18 @@ trait Scaffold{
     println( GREEN ++ "Created " ++ fileName ++ RESET )
   }
 
+  def createMain(
+    projectDirectory: File
+  ): Unit = { 
+    createFile(projectDirectory, "Main.scala", s"""object Main{
+  def main( args: Array[String] ) = {
+    println( Console.GREEN ++ "Hello World" ++ Console.RESET )
+  }
+}
+"""
+    )
+  }
+
   def createBasicBuild(
     projectDirectory: File
   ): Unit = { 
@@ -39,7 +51,6 @@ class Build(context: Context) extends BasicBuild(context){
 }
 """
     )
-
   }
 
   def createBuildBuild(
@@ -68,7 +79,6 @@ class Build(context: Context) extends BuildBuild(context){
 }
 """
     )
-
   }
 
 /*,

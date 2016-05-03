@@ -16,6 +16,7 @@ class ToolsTasks(
   import paths._
   private def Resolver( urls: URL* ) = MavenResolver(cbtHasChanged,mavenCache,urls: _*)
   implicit val logger: Logger = lib.logger
+  def createMain: Unit = lib.createMain( cwd )
   def createBasicBuild: Unit = lib.createBasicBuild( cwd )
   def createBuildBuild: Unit = lib.createBuildBuild( cwd )
   def resolve = {
