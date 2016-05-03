@@ -1,8 +1,9 @@
 package cbt
 import scala.collection.immutable.Seq
+import java.net._
 import java.io.{Console=>_,_}
 import java.nio.file._
-class AdminTasks(
+class ToolsTasks(
   lib: Lib,
   args: Seq[String],
   cwd: File,
@@ -13,14 +14,17 @@ class AdminTasks(
 ){
   private val paths = CbtPaths(cbtHome, cache)
   import paths._
-  private val mavenCentral = MavenResolver(cbtHasChanged,mavenCache,MavenResolver.central)
+  private def Resolver( urls: URL* ) = MavenResolver(cbtHasChanged,mavenCache,urls: _*)
   implicit val logger: Logger = lib.logger
+  def createMain: Unit = lib.createMain( cwd )
+  def createBasicBuild: Unit = lib.createBasicBuild( cwd )
+  def createBuildBuild: Unit = lib.createBuildBuild( cwd )
   def resolve = {
     ClassPath.flatten(
       args(1).split(",").toVector.map{
         d =>
           val v = d.split(":")
-          mavenCentral.resolveOne(MavenDependency(v(0),v(1),v(2))).classpath
+          Resolver(mavenCentral).bindOne(MavenDependency(v(0),v(1),v(2))).classpath
       }
     )
   }
@@ -28,14 +32,14 @@ class AdminTasks(
     args(1).split(",").toVector.map{
       d =>
         val v = d.split(":")
-        mavenCentral.resolveOne(MavenDependency(v(0),v(1),v(2))).dependencyTree
+        Resolver(mavenCentral).bindOne(MavenDependency(v(0),v(1),v(2))).dependencyTree
     }.mkString("\n\n")
   }
   def amm = ammonite
   def ammonite = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val scalac = new ScalaCompilerDependency( cbtHasChanged,mavenCache, version )
-    val d = mavenCentral.resolveOne(
+    val d = Resolver(mavenCentral).bindOne(
       MavenDependency(
         "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.7")
       )
@@ -52,24 +56,22 @@ class AdminTasks(
       "scala.tools.nsc.MainGenericRunner", Seq("-cp", scalac.classpath.string), scalac.classLoader(classLoaderCache)
     )
   }
-  def scaffoldBasicBuild: Unit = lib.scaffoldBasicBuild( cwd )
-  def scaffoldBuildBuild: Unit = lib.scaffoldBuildBuild( cwd )
   def cbtEarlyDependencies = {
     val scalaVersion = args.lift(1).getOrElse(constants.scalaVersion)
     val scalaMajorVersion = scalaVersion.split("\\.").take(2).mkString(".")
     val scalaXmlVersion = args.lift(2).getOrElse(constants.scalaXmlVersion)
     val zincVersion = args.lift(3).getOrElse(constants.zincVersion)
     val scalaDeps = Seq(
-      mavenCentral.resolveOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)),
-      mavenCentral.resolveOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion))
+      Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)),
+      Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion))
     )
     
     val scalaXml = Dependencies(
-      mavenCentral.resolveOne(MavenDependency("org.scala-lang.modules","scala-xml_"+scalaMajorVersion,scalaXmlVersion)),
-      mavenCentral.resolveOne(MavenDependency("org.scala-lang","scala-library",scalaVersion))
+      Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang.modules","scala-xml_"+scalaMajorVersion,scalaXmlVersion)),
+      Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-library",scalaVersion))
     )
 
-    val zinc = mavenCentral.resolveOne(MavenDependency("com.typesafe.zinc","zinc",zincVersion))
+    val zinc = Resolver(mavenCentral).bindOne(MavenDependency("com.typesafe.zinc","zinc",zincVersion))
 
     def valName(dep: BoundMavenDependency) = {
       val words = dep.artifactId.split("_").head.split("-")
@@ -100,7 +102,7 @@ class AdminTasks(
     val assignments = codeEach(zinc) ++ codeEach(scalaXml)
     val files = scalaDeps ++ transitive(scalaXml) ++ transitive(zinc)
     //{ case (name, dep) => s"$name =\n      ${tree(dep, 4)};" }.mkString("\n\n    ")
-    val code = s"""// This file was auto-generated using `cbt admin cbtEarlyDependencies`
+    val code = s"""// This file was auto-generated using `cbt tools cbtEarlyDependencies`
 package cbt;
 import java.io.*;
 import java.nio.file.*;

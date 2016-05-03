@@ -150,8 +150,8 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       None
     }else{
       if( needsRecompile ){
-        val central = MavenResolver(cbtHasChanged, mavenCache,MavenResolver.central)
-        val zinc = central.resolveOne(MavenDependency("com.typesafe.zinc","zinc", zincVersion))
+        def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
+        val zinc = Resolver(mavenCentral).bindOne(MavenDependency("com.typesafe.zinc","zinc", zincVersion))
         val zincDeps = zinc.transitiveDependencies
         
         val sbtInterface =
@@ -176,9 +176,9 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
             .getOrElse( throw new Exception(s"cannot find compiler-interface in zinc $zincVersion dependencies: "++zincDeps.toString) )
             .jar
 
-        val scalaLibrary = central.resolveOne(MavenDependency("org.scala-lang","scala-library",scalaVersion)).jar
-        val scalaReflect = central.resolveOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)).jar
-        val scalaCompiler = central.resolveOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion)).jar
+        val scalaLibrary = Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-library",scalaVersion)).jar
+        val scalaReflect = Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)).jar
+        val scalaCompiler = Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion)).jar
 
         val start = System.currentTimeMillis
 

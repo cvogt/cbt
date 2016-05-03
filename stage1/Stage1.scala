@@ -29,7 +29,7 @@ final case class Stage1ArgsParser(__args: Seq[String]) {
 
   val enabledLoggers = props.get("log")
 
-  val admin = _args contains "admin"
+  val tools = _args contains "tools"
 }
 
 
@@ -176,7 +176,7 @@ object Stage1{
     val exitCode = (
       classLoader
       .loadClass(
-        if(args.admin) "cbt.AdminStage2" else "cbt.Stage2"
+        if(args.tools) "cbt.ToolsStage2" else "cbt.Stage2"
       )
       .getMethod( "run", classOf[Stage2Args] )
       .invoke(

@@ -1,4 +1,4 @@
-// This file was auto-generated using `cbt admin cbtEarlyDependencies`
+// This file was auto-generated using `cbt tools cbtEarlyDependencies`
 package cbt;
 import java.io.*;
 import java.nio.file.*;
