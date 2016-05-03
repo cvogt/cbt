@@ -24,6 +24,8 @@ class Build(context: cbt.Context) extends BasicBuild(context){
       //MavenDependency("com.github.nikita-volkov", "sext", "0.2.4")
       // currently breaks with can't find https://repo1.maven.org/maven2/org/apache/avro/avro-mapred/1.7.7/avro-mapred-1.7.7-hadoop2.pom.sha1
       // org.apache.spark:spark-sql_2.11:1.6.1
+      // currently fails, let's see if because of a bug
+      // io.spray:spray-http:1.3.3
     ) ++
     Resolver(
       mavenCentral,
