@@ -165,15 +165,16 @@ fi
 stage1 () {	
 	log "Checking for changes in cbt/nailgun_launcher" $*
 	NAILGUN_INDICATOR=$NAILGUN$TARGET/cbt/NailgunLauncher.class
+	NAILGUN_SORCES=`find nailgun_launcher -name '*.java'`
 	changed=0
-	for file in `ls $NAILGUN/*.java`; do
+	for file in $NAILGUN_SORCES; do
 		if [ $file -nt $NAILGUN_INDICATOR ]; then changed=1; fi
 	done
 	compiles=0
 	if [ $changed -eq 1 ]; then
 		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
-		javac -Xlint:deprecation -Xlint:unchecked -d $NAILGUN$TARGET `ls $NAILGUN*.java`
+		javac -Xlint:deprecation -Xlint:unchecked -d $NAILGUN$TARGET $NAILGUN_SORCES
 		compiles=$?
 		if [ $compiles -ne 0 ]; then
 			rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # triggers recompilation next time.

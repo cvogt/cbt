@@ -7,3 +7,4 @@ scala_classes
 target/
 *.login
 cache_
+.idea

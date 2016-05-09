@@ -89,7 +89,7 @@ public class NailgunLauncher{
     String nailgunTarget = cbtHome + "/" + NAILGUN + TARGET;
     String stage1Sources = cbtHome + "/" + STAGE1;
     String stage1Target = stage1Sources + TARGET;
-    File compatibilitySources = new File(cbtHome + "/compatibility");
+    File compatibilitySources = new File(cbtHome + "/compatibility/cbt");//TODO: change search for sources to be recursive and remove 'cbt'
     String mavenCache = cache + "maven";
     String mavenUrl = "https://repo1.maven.org/maven2";
 

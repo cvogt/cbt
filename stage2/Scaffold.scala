@@ -2,6 +2,7 @@ package cbt
 import java.io._
 import java.nio.file._
 import java.net._
+
 trait Scaffold{
   def logger: Logger
 
@@ -54,6 +55,24 @@ class Build(context: Context) extends BuildBuild(context){
 
   }
 
+  def scaffoldSjsBuild(projectDirectory: File): Unit = {
+    createFile(projectDirectory, "build/build.scala", s"""import cbt._
+import java.net.URL
+import java.io.File
+import scala.collection.immutable.Seq
+
+class Build(context: Context) extends SjsBuild(context){
+  override val projectName = "my-project"
+  override def dependencies = super.dependencies ++ Seq(  // don't forget super.dependencies here
+    MavenResolver(context.cbtHasChanged, context.paths.mavenCache, MavenResolver.central).resolve(
+      "org.scala-js" %% "scalajs-dom_sjs0.6" % "0.9.0", // for example
+      "com.github.japgolly.scalajs-react" %%% "core" % "0.10.4" // for another example
+    )
+  )
+}
+"""
+    )
+  }
 /*,
 
       "build/build/build.scala" -> s"""import cbt._
@@ -83,7 +102,7 @@ import scala.collection.immutable.Seq
 
 class Build(context: cbt.Context) extends BasicBuild(context) with BuildShared/* with cbt.mixins.ScalaTest*/{
   // def scalaTestVersion = "2.2.6"
-  
+
   override def dependencies = super.dependencies ++ Seq(
     // , "org.scalacheck" %% "scalacheck" % "1.13.0"
   )
@@ -97,7 +116,7 @@ import scala.collection.immutable.Seq
 
 class Build(context: Context) extends BuildBuild(context){
   override def scalaVersion: String = "2.11.8"
-  
+
   override def dependencies = super.dependencies ++ Seq(
     BuildDependency( projectDirectory.parent.parent ++ "/build-shared")
     // , "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
@@ -138,7 +157,7 @@ trait BuildShared extends BasicBuild{
   override def licenses    : Seq[License] = lib.requiredForPom("licenses")
   override def scmUrl            : String = lib.requiredForPom("scmUrl")
   override def scmConnection: String = lib.requiredForPom("scmConnection")
-  override def pomExtra: Seq[scala.xml.Node] = Seq() 
+  override def pomExtra: Seq[scala.xml.Node] = Seq()
 }
 """*/
 

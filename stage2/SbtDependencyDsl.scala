@@ -1,4 +1,5 @@
 package cbt
+
 trait SbtDependencyDsl{ self: BasicBuild =>
   /** SBT-like dependency builder DSL for syntax compatibility */
   class DependencyBuilder2( groupId: String, artifactId: String, scalaVersion: Option[String] ){

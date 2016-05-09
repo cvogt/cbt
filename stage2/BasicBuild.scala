@@ -39,9 +39,10 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
 
   def defaultScalaVersion: String = constants.scalaVersion
   final def scalaVersion = context.scalaVersion getOrElse defaultScalaVersion
-  final def scalaMajorVersion: String = lib.scalaMajorVersion(scalaVersion)
+  final def scalaMajorVersion: String = lib.libMajorVersion(scalaVersion)
   def crossScalaVersions: Seq[String] = Seq(scalaVersion, "2.10.6")
   final def crossScalaVersionsArray: Array[String] = crossScalaVersions.to
+  def projectName = "default"
 
   // TODO: this should probably provide a nice error message if class has constructor signature
   def copy(context: Context): BuildInterface = lib.copy(this.getClass, context).asInstanceOf[BuildInterface]
@@ -57,9 +58,9 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
   // ========== paths ==========
   final private val defaultSourceDirectory = projectDirectory ++ "/src"
 
-  /** base directory where stuff should be generated */
-  def target: File = projectDirectory ++ "/target"
-  /** base directory where stuff should be generated for this scala version*/
+ /** @inheritdoc */
+  override def target: File = projectDirectory ++ "/target"
+/** target directory where stuff should be generated for this scala version */
   def scalaTarget: File = target ++ s"/scala-$scalaMajorVersion"
   /** directory where jars (and the pom file) should be put */
   def jarTarget: File = scalaTarget

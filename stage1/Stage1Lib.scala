@@ -39,7 +39,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   lib =>
   implicit val implicitLogger: Logger = logger
 
-  def scalaMajorVersion(scalaMinorVersion: String) = scalaMinorVersion.split("\\.").take(2).mkString(".")
+  def libMajorVersion(libFullVersion: String) = libFullVersion.split("\\.").take(2).mkString(".")
 
   // ========== file system / net ==========
 
@@ -190,10 +190,10 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
             "-sbt-interface", sbtInterface.toString,
             "-compiler-interface", compilerInterface.toString,
             "-scala-extra", scalaReflect.toString,
+            // "-log-level", "debug",
             "-d", compileTarget.toString
           )
         val singleArgs = scalacOptions.map( "-S" ++ _ )
-
         val code = 
           try{
             System.err.println("Compiling to " ++ compileTarget.toString)
