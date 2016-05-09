@@ -121,6 +121,21 @@ Build scripts also have access to a small unsurprising library for
 - packaging jars
 - signing / publishing to sonatype/maven
 
+Scala.js support
+----------------
+
+CBT supports basic (fastopt only) Scala.js build.
+
+ 1. `$CBT_HOME/cbt admin scaffoldSjsBuild`
+    Will create build/build.scala, where you can change project name ('my-project' is default one)
+    and add dependencies.
+ 2. `$CBT_HOME/cbt compile`
+    Will compile sources
+ 3. `$CBT_HOME/cbt sjsLink`
+    Will link sources into `target/$projectName-fastopt.js` file that can be used as regular javascript.
+
+ Note: Scala.js support is under ongoing development.
+
 Missing features in comparison with SBT
 ---------------------------------------
 
