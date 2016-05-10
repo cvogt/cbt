@@ -57,8 +57,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-<<<<<<< HEAD
-
   def run( mainClass: Option[String], classLoader: ClassLoader ) : ExitCode = {
     mainClass.map( runMain( _, Seq(), classLoader ) ).getOrElse( ExitCode.Failure )
   }
@@ -101,10 +99,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     hasMain.map(className(_))
   }
 
-  def srcJar(sourceFiles: Seq[File], artifactId: String, version: String, jarTarget: File): Option[File] = {
-=======
   def srcJar(sourceFiles: Seq[File], artifactId: String, scalaMajorVersion: String, version: String, jarTarget: File): Option[File] = {
->>>>>>> master
     lib.jarFile(
       jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-sources.jar"),
       sourceFiles
