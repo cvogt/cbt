@@ -1,13 +1,13 @@
 package cbt
 
 import java.io._
+import java.util.concurrent.ConcurrentHashMap
 
 import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
 
-import paths._
-
-final case class Stage1ArgsParser(_args: Seq[String]) {
+final case class Stage1ArgsParser(__args: Seq[String]) {
+  val _args = __args.drop(1)
   /**
    * Raw parameters including their `-D` flag.
   **/
@@ -29,7 +29,7 @@ final case class Stage1ArgsParser(_args: Seq[String]) {
 
   val enabledLoggers = props.get("log")
 
-  val admin = _args contains "admin"
+  val tools = _args contains "tools"
 }
 
 
@@ -41,54 +41,147 @@ case class Stage2Args(
   cwd: File,
   args: Seq[String],
   cbtHasChanged: Boolean,
-  logger: Logger
-)
-
+  classLoaderCache: ClassLoaderCache,
+  cache: File,
+  cbtHome: File,
+  compatibilityTarget: File
+){
+  val ClassLoaderCache(
+    logger,
+    permanentKeys,
+    permanentClassLoaders
+  ) = classLoaderCache  
+}
 object Stage1{
   protected def newerThan( a: File, b: File ) ={
     a.lastModified > b.lastModified
   }
 
-  def run(_args: Array[String], classLoader: ClassLoader, _cbtChanged: java.lang.Boolean, start: java.lang.Long): Int = {
-    val args = Stage1ArgsParser(_args.toVector)
-    val logger = new Logger(args.enabledLoggers, start)
-    logger.stage1(s"Stage1 start")
+  def getBuild( _context: java.lang.Object, _cbtChanged: java.lang.Boolean ) = {
+    val context = _context.asInstanceOf[Context]
+    val logger = new Logger( context.enabledLoggers, context.start )
+    val (changed, classLoader) = buildStage2(
+      context.compatibilityTarget,
+      ClassLoaderCache(
+        logger,
+        context.permanentKeys,
+        context.permanentClassLoaders
+      ),
+      _cbtChanged,
+      context.cbtHome,
+      context.cache
+    )
+
+    classLoader
+      .loadClass("cbt.Stage2")
+      .getMethod( "getBuild", classOf[java.lang.Object], classOf[java.lang.Boolean] )
+      .invoke(null, context, (_cbtChanged || changed): java.lang.Boolean)
+  }
+
+  def buildStage2(
+    compatibilityTarget: File, classLoaderCache: ClassLoaderCache, _cbtChanged: Boolean, cbtHome: File, cache: File
+  ): (Boolean, ClassLoader) = {
+    import classLoaderCache.logger
 
     val lib = new Stage1Lib(logger)
     import lib._
-    val classLoaderCache = new ClassLoaderCache(logger)
+    val paths = CbtPaths(cbtHome, cache)
+    import paths._
 
-    val sourceFiles = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
-    val cbtHasChanged = _cbtChanged || lib.needsUpdate(sourceFiles, stage2StatusFile)
+    val stage2sourceFiles = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
+    val cbtHasChanged = _cbtChanged || lib.needsUpdate(stage2sourceFiles, stage2StatusFile)
+
+    val cls = this.getClass.getClassLoader.loadClass("cbt.NailgunLauncher")
+    
+    val cbtDependency = CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)
+
     logger.stage1("Compiling stage2 if necessary")
     compile(
       cbtHasChanged,
-      sourceFiles, stage2Target, stage2StatusFile,
-      CbtDependency().dependencyClasspath,
+      cbtHasChanged,
+      stage2sourceFiles, stage2Target, stage2StatusFile,
+      cbtDependency.dependencyClasspath,
+      mavenCache,
       Seq("-deprecation"), classLoaderCache,
       zincVersion = "0.3.9", scalaVersion = constants.scalaVersion
     )
 
     logger.stage1(s"calling CbtDependency.classLoader")
-    if(cbtHasChanged){
-      NailgunLauncher.stage2classLoader = CbtDependency().classLoader(classLoaderCache)
+    if( cbtHasChanged && classLoaderCache.persistent.containsKey( cbtDependency.classpath.string ) ) {
+      classLoaderCache.persistent.remove( cbtDependency.classpath.string )
     }
+
+    val stage2ClassLoader = cbtDependency.classLoader(classLoaderCache)
+
+    {
+      // a few classloader sanity checks
+      val compatibilityClassLoader =
+        cbtDependency.stage1Dependency.compatibilityDependency.classLoader(classLoaderCache)
+      assert(
+        classOf[BuildInterface].getClassLoader == compatibilityClassLoader,
+        classOf[BuildInterface].getClassLoader.toString ++ "\n\nis not the same as\n\n" ++ compatibilityClassLoader.toString
+      )
+      //-------------
+      val stage1ClassLoader =
+        cbtDependency.stage1Dependency.classLoader(classLoaderCache)
+      assert(
+        classOf[Stage1Dependency].getClassLoader == stage1ClassLoader,
+        classOf[Stage1Dependency].getClassLoader.toString ++ "\n\nis not the same as\n\n" ++ stage1ClassLoader.toString
+      )
+      //-------------
+      assert(
+        Stage0Lib.get(stage2ClassLoader.getParent,"parents").asInstanceOf[Seq[ClassLoader]].contains(stage1ClassLoader),
+        stage1ClassLoader.toString ++ "\n\nis not contained in parents of\n\n" ++ stage2ClassLoader.toString
+      )
+    }
+
+    ( cbtHasChanged, stage2ClassLoader )
+  }
+
+  def run(
+    _args: Array[String],
+    cache: File,
+    cbtHome: File,
+    _cbtChanged: java.lang.Boolean,
+    compatibilityTarget: File,
+    start: java.lang.Long,
+    classLoaderCacheKeys: ConcurrentHashMap[String,AnyRef],
+    classLoaderCacheValues: ConcurrentHashMap[AnyRef,ClassLoader]
+  ): Int = {
+    val args = Stage1ArgsParser(_args.toVector)
+    val logger = new Logger(args.enabledLoggers, start)
+    logger.stage1(s"Stage1 start")
+
+    val classLoaderCache = ClassLoaderCache(
+      logger,
+      classLoaderCacheKeys,
+      classLoaderCacheValues
+    )
+    
+
+    val (cbtHasChanged, classLoader) = buildStage2( compatibilityTarget, classLoaderCache, _cbtChanged, cbtHome, cache )
+
+    val stage2Args = Stage2Args(
+      new File( args.args(0) ),
+      args.args.drop(1).toVector,
+      // launcher changes cause entire nailgun restart, so no need for them here
+      cbtHasChanged = cbtHasChanged,
+      classLoaderCache = classLoaderCache,
+      cache,
+      cbtHome,
+      compatibilityTarget
+    )
 
     logger.stage1(s"Run Stage2")
     val exitCode = (
-      NailgunLauncher.stage2classLoader.loadClass(
-        if(args.admin) "cbt.AdminStage2" else "cbt.Stage2"
+      classLoader
+      .loadClass(
+        if(args.tools) "cbt.ToolsStage2" else "cbt.Stage2"
       )
       .getMethod( "run", classOf[Stage2Args] )
       .invoke(
         null,
-        Stage2Args(
-          new File( args.args(0) ),
-          args.args.drop(1).toVector,
-          // launcher changes cause entire nailgun restart, so no need for them here
-          cbtHasChanged = cbtHasChanged,
-          logger
-        )
+        stage2Args
       ) match {
         case code: ExitCode => code
         case _ => ExitCode.Success

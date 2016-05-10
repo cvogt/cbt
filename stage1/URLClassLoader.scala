@@ -17,8 +17,8 @@ class URLClassLoader( classPath: ClassPath, parent: ClassLoader )( implicit val 
       ++ (
         getURLs.map(_.toString).sorted.mkString(",\n")
         ++ (
-          if(getParent() != ClassLoader.getSystemClassLoader())
-            ",\n" ++ getParent().toString
+          if(getParent() != ClassLoader.getSystemClassLoader().getParent())
+            ",\n" ++ Option(getParent()).map(_.toString).getOrElse("null")
           else ""
         )
       ).split("\n").map("  "++_).mkString("\n")

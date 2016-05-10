@@ -8,6 +8,34 @@
 # - reduction of dependencies
 # - performance improvements
 
+seconds() {
+	date +"%s"
+}
+
+nanos() {
+	n=$(date +"%N")
+	if [ "$n" = "N" ]; then
+		n=$(gdate +"%N" 2>/dev/null)
+	fi
+	if [ "$n" = "" ]; then
+		n="0"
+	fi
+	echo $n
+}
+
+start_seconds=$(seconds)
+start_nanos=1$(nanos)
+
+time_taken() {
+	i=$(( $(seconds) - start_seconds ))
+	n=$(( $(( 1$(nanos) - start_nanos )) / 1000000 ))
+	if [[ ( "$n" < 0 ) ]]; then
+		i=$(( i-1 ))
+		n=$(( n+1000 ))
+	fi
+	echo "$i.$n"
+}
+
 # utility function to log message to stderr with stating the time
 log () {
 	msg=$1
@@ -20,12 +48,8 @@ log () {
 		shift
 	done
 	if [ $enabled -eq 0 ]; then
-		which gdate 2>&1 > /dev/null
-		gdate_installed=$?
-		if [ $gdate_installed -eq 0 ]; then
-			i=`gdate +"%S.%N"`
-			echo "[$i] $msg" 1>&2
-		fi
+		delta=$(time_taken)
+		echo "[$delta] $msg" 1>&2
 	fi
 }
 
@@ -34,16 +58,22 @@ log "Checking for dependencies" $*
 which javac 2>&1 > /dev/null
 javac_installed=$?
 if [ ! $javac_installed -eq 0 ]; then
-	echo "You need to install javac! CBT needs it to bootstrap from Java sources into Scala." 1>&2
+	echo "You need to install javac 1.7 or later! CBT needs it to bootstrap from Java sources into Scala." 1>&2
 	exit 1
 fi
-javac_version=$(javac -version 2>&1 | cut -d ' ' -f 2)
-javac_version_minor=$(echo -n $javac_version | cut -d '.' -f 2)
-if [ ! "$javac_version_minor" -ge "7" ]; then
-	echo "You need to install javac version 1.7 or greater!" 2>&1
-	echo "Current javac version is $javac_version" 2>&1
-	exit 1
-fi
+
+# log "cutting javac version" $*
+# javac_version=$(javac -version 2>&1) # e.g. "javac 1.8.0_u60"
+# javac_version_update=${javac_version/javac 1./} # e.g. "8.0_u60"
+# javac_version_minor_pointed=${javac_version_update%_*} # e.g. "8.0"
+# javac_version_minor=${javac_version_minor_pointed%.*} # e.g. "8"
+# log "cutting javac version done" $*
+# if [ ! "$javac_version_minor" -ge "7" ]; then
+# 	echo "You need to install javac version 1.7 or greater!" 2>&1
+# 	echo "Current javac version is $javac_version" 2>&1
+# 	exit 1
+# fi
+
 which ng 2>&1 > /dev/null
 ng_installed=$?
 which ng-server 2>&1 > /dev/null
@@ -152,8 +182,10 @@ stage1 () {
 		if [ $use_nailgun -eq 0 ]; then
 			echo "Stopping nailgun" 1>&2
 			$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
+			sleep 1
 			echo "Restarting nailgun" 1>&2
 			ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
+			sleep 1
 		fi
 	fi
 
@@ -163,7 +195,7 @@ stage1 () {
 	then
 		log "Running JVM directly" $*
 		# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
-		java -cp $NAILGUN$TARGET cbt.NailgunLauncher "$CWD" $*
+		java -Xmx6072m -Xss10M -cp $NAILGUN$TARGET cbt.NailgunLauncher $(time_taken) "$CWD" $*
 	else
 		log "Running via nailgun." $*
 		for i in 0 1 2 3 4 5 6 7 8 9; do
@@ -186,7 +218,7 @@ stage1 () {
 			sleep 0.3
 		done
 		log "Running CBT via Nailgun." $*
-		$NG cbt.NailgunLauncher "$CWD" $*
+		$NG cbt.NailgunLauncher $(time_taken) "$CWD" $*
 	fi
 	exitCode=$?
 	log "Done running CBT." $*

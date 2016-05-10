@@ -1,21 +1,19 @@
 package cbt
 import java.net._
-import scala.util.Try
 import scala.collection.immutable.Seq
 
 // do not make this a case class, required object identity equality
-class MultiClassLoader(parents: Seq[ClassLoader])(implicit val logger: Logger) extends ClassLoader with CachingClassLoader{
+class MultiClassLoader(final val parents: Seq[ClassLoader])(implicit val logger: Logger) extends ClassLoader(null) with CachingClassLoader{
   override def findClass(name: String) = {
     parents.find( parent =>
       try{
-        parent.loadClass(name)
-        true
+        null != parent.loadClass(name) // FIXME: is it correct to just ignore the resolve argument here?
       } catch {
         case _:ClassNotFoundException => false
       }
     ).map(
       _.loadClass(name)
-    ).getOrElse( throw new ClassNotFoundException(name) )
+    ).getOrElse( null )
   }
   override def toString = (
     scala.Console.BLUE

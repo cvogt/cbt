@@ -1,5 +1,4 @@
 package cbt
-import cbt.paths._
 
 import java.io._
 import java.net._
@@ -24,8 +23,13 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   val buildClassName = "Build"
   val buildBuildClassName = "BuildBuild"
 
+  def copy(cls: Class[_], context: Context) = 
+    cls
+    .getConstructor(classOf[Context])
+    .newInstance(context)
+
   /** Loads Build for given Context */
-  def loadDynamic(context: Context, default: Context => Build = new Build(_)): Build = {
+  def loadDynamic(context: Context, default: Context => BuildInterface = new BasicBuild(_)): BuildInterface = {
     context.logger.composition( context.logger.showInvocation("Build.loadDynamic",context) )
     loadRoot(context, default).finalBuild
   }
@@ -33,50 +37,53 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   Loads whatever Build needs to be executed first in order to eventually build the build for the given context.
   This can either the Build itself, of if exists a BuildBuild or a BuildBuild for a BuildBuild and so on.
   */
-  def loadRoot(context: Context, default: Context => Build = new Build(_)): Build = {
-    context.logger.composition( context.logger.showInvocation("Build.loadRoot",context) )
-    def findStartDir(cwd: File): File = {
-      val buildDir = realpath( cwd ++ "/build" )
-      if(buildDir.exists) findStartDir(buildDir) else cwd
+  def loadRoot(context: Context, default: Context => BuildInterface = new BasicBuild(_)): BuildInterface = {
+    context.logger.composition( context.logger.showInvocation("Build.loadRoot",context.projectDirectory) )
+    def findStartDir(projectDirectory: File): File = {
+      val buildDir = realpath( projectDirectory ++ "/build" )
+      if(buildDir.exists) findStartDir(buildDir) else projectDirectory
     }
 
-    val start = findStartDir(context.cwd)
+    val start = findStartDir(context.projectDirectory)
 
-    val useBasicBuildBuild = context.cwd == start
+    val useBasicBuildBuild = context.projectDirectory == start
 
     val rootBuildClassName = if( useBasicBuildBuild ) buildBuildClassName else buildClassName
     try{
-      if(useBasicBuildBuild) default( context ) else new cbt.BuildBuild( context.copy( cwd = start ) )
+      if(useBasicBuildBuild) default( context ) else new cbt.BuildBuild( context.copy( projectDirectory = start ) )
     } catch {
       case e:ClassNotFoundException if e.getMessage == rootBuildClassName =>
         throw new Exception(s"no class $rootBuildClassName found in " ++ start.string)
     }
   }
 
-  def srcJar(sourceFiles: Seq[File], artifactId: String, version: String, jarTarget: File): Option[File] = {
+  def srcJar(sourceFiles: Seq[File], artifactId: String, scalaMajorVersion: String, version: String, jarTarget: File): Option[File] = {
     lib.jarFile(
-      jarTarget ++ ("/"++artifactId++"-"++version++"-sources.jar"),
+      jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-sources.jar"),
       sourceFiles
     )
   }
 
-  def jar(artifactId: String, version: String, compileTarget: File, jarTarget: File): Option[File] = {
+  def jar(artifactId: String, scalaMajorVersion: String, version: String, compileTarget: File, jarTarget: File): Option[File] = {
     lib.jarFile(
-      jarTarget ++ ("/"++artifactId++"-"++version++".jar"),
+      jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++".jar"),
       Seq(compileTarget)
     )
   }
 
   def docJar(
+    cbtHasChanged: Boolean,
     scalaVersion: String,
     sourceFiles: Seq[File],
     dependencyClasspath: ClassPath,
     apiTarget: File,
     jarTarget: File,
     artifactId: String,
+    scalaMajorVersion: String,
     version: String,
     compileArgs: Seq[String],
-    classLoaderCache: ClassLoaderCache
+    classLoaderCache: ClassLoaderCache,
+    mavenCache: File
   ): Option[File] = {
     if(sourceFiles.isEmpty){
       None
@@ -92,29 +99,34 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         runMain(
           "scala.tools.nsc.ScalaDoc",
           args,
-          ScalaDependencies(scalaVersion)(logger).classLoader(classLoaderCache)
+          ScalaDependencies(cbtHasChanged,mavenCache,scalaVersion)(logger).classLoader(classLoaderCache)
         )
       }
       lib.jarFile(
-        jarTarget ++ ("/"++artifactId++"-"++version++"-javadoc.jar"),
+        jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-javadoc.jar"),
         Vector(apiTarget)
       )
     }
   }
 
-  def test( context: Context ): ExitCode = {
-    val loggers = logger.enabledLoggers.mkString(",")
-    // FIXME: this is a hack to pass logger args on to the tests.
-    // should probably have a more structured way
-    val loggerArg = if(loggers != "") Some("-Dlog="++loggers) else None
+  def test( context: Context ): Option[ExitCode] = {
+    if((context.projectDirectory ++ "/test").exists){
+      val loggers = logger.enabledLoggers.mkString(",")
+      // FIXME: this is a hack to pass logger args on to the tests.
+      // should probably have a more structured way
+      val loggerArg = if(loggers != "") Some("-Dlog="++loggers) else None
 
-    logger.lib(s"invoke testDefault( $context )")
-    val exitCode: ExitCode = loadDynamic(
-      context.copy( cwd = context.cwd ++ "/test", args = loggerArg.toVector ++ context.args ),
-      new Build(_) with mixins.Test
-    ).run
-    logger.lib(s"return testDefault( $context )")
-    exitCode
+      logger.lib(s"invoke testDefault( $context )")
+      val exitCode: ExitCode =
+        new ReflectBuild(
+          loadDynamic(
+            context.copy( projectDirectory = context.projectDirectory ++ "/test", args = loggerArg.toVector ++ context.args ),
+            new BasicBuild(_) with mixins.Test
+          )
+        ).callNullary( Some("run") )
+      logger.lib(s"return testDefault( $context )")
+      Some(exitCode)
+    } else None
   }
 
   // task reflection helpers
@@ -139,13 +151,18 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
   def taskNames(cls: Class[_]): Seq[String] = tasks(cls).keys.toVector.sorted
 
-  def usage(buildClass: Class[_], context: Context): String = {
-    val baseTasks = lib.taskNames(classOf[Build])
+  def usage(buildClass: Class[_], show: String): String = {
+    val baseTasks = Seq(
+      classOf[BasicBuild],
+      classOf[PackageBuild],
+      classOf[PublishBuild],
+      classOf[Recommended]
+    ).flatMap(lib.taskNames).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks
     (
       (
         if( thisTasks.nonEmpty ){
-          s"""Methods provided by Build ${context.cwd}
+          s"""Methods provided by Build ${show}
 
   ${thisTasks.mkString("  ")}
 
@@ -157,12 +174,13 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       ) ++ "\n"
   }
 
-  class ReflectBuild[T:scala.reflect.ClassTag](build: Build) extends ReflectObject(build){
-    def usage = lib.usage(build.getClass, build.context)
+  class ReflectBuild[T:scala.reflect.ClassTag](build: BuildInterface) extends ReflectObject(build){
+    def usage = lib.usage(build.getClass, build.show)
   }
-  abstract class ReflectObject[T:scala.reflect.ClassTag](obj: T){
+  abstract class ReflectObject[T](obj: T){
     def usage: String
-    def callNullary( taskName: Option[String] ): Unit = {
+    def callNullary( taskName: Option[String] ): ExitCode = {
+      logger.lib("Calling task " ++ taskName.toString)
       val ts = tasks(obj.getClass)
       taskName.map( NameTransformer.encode ).flatMap(ts.get).map{ method =>
         val result: Option[Any] = Option(method.invoke(obj)) // null in case of Unit
@@ -175,26 +193,30 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           scala.util.Try( value.getClass.getDeclaredMethod("toConsole") ) match {
             case scala.util.Success(toConsole) =>
               println(toConsole.invoke(value))
+              ExitCode.Success
 
             case scala.util.Failure(e) if Option(e.getMessage).getOrElse("") contains "toConsole" =>
               value match {
-                case ExitCode(code) => System.exit(code)
-                case other => println( other.toString ) // no method .toConsole, using to String
+                case code:ExitCode =>
+                  code
+                case other =>
+                  println( other.toString ) // no method .toConsole, using to String
+                  ExitCode.Success
               }
 
             case scala.util.Failure(e) =>
               throw e
           }
-        }.getOrElse("")
+        }.getOrElse(ExitCode.Success)
       }.getOrElse{
         taskName.foreach{ n =>
           System.err.println(s"Method not found: $n")
           System.err.println("")
         }
         System.err.println(usage)
-        taskName.foreach{ _ =>
+        taskName.map{ _ =>
           ExitCode.Failure
-        }
+        }.getOrElse( ExitCode.Success )
       }
     }
   }
@@ -202,7 +224,17 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   // file system helpers
   def basename(path: File): String = path.toString.stripSuffix("/").split("/").last
   def dirname(path: File): File = new File(realpath(path).string.stripSuffix("/").split("/").dropRight(1).mkString("/"))
-  def nameAndContents(file: File) = basename(file) -> readAllBytes(Paths.get(file.toString))
+  def nameAndContents(file: File) = basename(file) -> readAllBytes(file.toPath)
+
+  /** Which file endings to consider being source files. */
+  def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
+
+  def sourceFiles( sources: Seq[File], sourceFileFilter: File => Boolean = sourceFileFilter ): Seq[File] = {
+    for {
+      base <- sources.filter(_.exists).map(lib.realpath)
+      file <- lib.listFilesRecursive(base) if file.isFile && sourceFileFilter(file)
+    } yield file    
+  }
 
   def jarFile( jarFile: File, files: Seq[File] ): Option[File] = {
     if( files.isEmpty ){
@@ -223,7 +255,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           val entry = new JarEntry( name )
           entry.setTime(file.lastModified)
           jar.putNextEntry(entry)
-          jar.write( readAllBytes( Paths.get(file.toString) ) )
+          jar.write( readAllBytes( file.toPath ) )
           jar.closeEntry
           name
       }
@@ -334,14 +366,14 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     else items.map(projection)
   }
 
-  def publishSnapshot( sourceFiles: Seq[File], artifacts: Seq[File], url: URL ): Unit = {
+  def publishSnapshot( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
     if(sourceFiles.nonEmpty){
       val files = artifacts.map(nameAndContents)
-      uploadAll(url, files)
+      uploadAll(url, files, credentials)
     }
   }
 
-  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL ): Unit = {
+  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
     // TODO: make concurrency configurable here
     if(sourceFiles.nonEmpty){
       val files = (artifacts ++ artifacts.map(sign)).map(nameAndContents)
@@ -352,15 +384,15 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         )
       }
       val all = (files ++ checksums)
-      uploadAll(url, all)
+      uploadAll(url, all, credentials)
     }
   }
 
 
-  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])]): Unit =
-    nameAndContents.map{ case(name, content) => upload(name, content, url) }
+  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: String ): Unit =
+    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials: String ) }
 
-  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL): Unit = {
+  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: String): Unit = {
     import java.net._
     import java.io._
     logger.task("uploading "++fileName)
@@ -368,8 +400,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")
-    val userPassword = new String(readAllBytes(sonatypeLogin.toPath)).trim
-    val encoding = new sun.misc.BASE64Encoder().encode(userPassword.getBytes)
+    val encoding = new sun.misc.BASE64Encoder().encode(credentials.getBytes)
     httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
     httpCon.setRequestProperty("Content-Type", "application/binary")
     httpCon.getOutputStream.write(

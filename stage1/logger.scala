@@ -11,8 +11,8 @@ case class Logger(enabledLoggers: Set[String], start: Long) {
   def this(enabledLoggers: Option[String], start: Long) = this( enabledLoggers.toVector.flatMap( _.split(",") ).toSet, start )
 
   def log(name: String, msg: => String) = {
-    val timeTaken = ((start - System.currentTimeMillis) / 1000).toString
-    System.err.println( s"[${" "*(6-timeTaken.size)}$timeTaken][$name] $msg" )
+    val timeTaken = ((System.currentTimeMillis.toDouble - start) / 1000).toString
+    System.err.println( s"[$timeTaken][$name] $msg" )
   }
 
   def showInvocation(method: String, args: Any) = method ++ "( " ++ args.toString ++ " )"
