@@ -7,7 +7,7 @@ object Coursier{
       import coursier._
       val repositories = Seq(
         Cache.ivy2Local,
-        MavenRepository("https://repo1.maven.org/maven2")
+        MavenResolver("https://repo1.maven.org/maven2")
       )
 
       val start = Resolution(

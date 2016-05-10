@@ -47,8 +47,16 @@ final private[cbt] class KeyLockedLazyCache[Key <: AnyRef,Value <: AnyRef](
   def remove( key: Key ) = keys.synchronized{    
     assert(keys containsKey key)
     val lockableKey = keys get key
-    keys.remove( key )
-    assert(values containsKey lockableKey)
-    values.remove( lockableKey )
+    lockableKey.synchronized{
+      if(values containsKey lockableKey){
+        // this is so values in the process of being replaced (which mean they have a key but no value)
+        // are not being removed
+        keys.remove( key )
+        values.remove( lockableKey )  
+      }
+    }
+  }
+  def containsKey( key: Key ) = keys.synchronized{
+    keys containsKey key
   }
 }

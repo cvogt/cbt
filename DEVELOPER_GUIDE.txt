@@ -1,20 +1,34 @@
 Welcome developer.
 
-CBT has a very easy code base that you can fully master it in an afternoon.
+CBT has a very easy code base that's easy to master.
 Don't shy away from submiting PRs :). And because CBT bootstraps from source
 you already have the code there.
+
+The only tricky parts are class loading and cache invalidation. Most changes
+will not need to interfere with this though.
 
 The ./cbt bash script starts the process.
 
 You currently need javac, nailgun, gpg and realpath or gcc installed.
 
+If you have any troubles with class not found, method not found,
+abstract method error, NullPointerException, etc.
+Try `killall -KILL java`. To restart nailgun.
+Or try `cbt direct <taskname>` to circumvent nailgun.
+It can also help to delete all target folders `find .|grep target\$|xargs rm -rf`
+inside of CBT. Or (almost never) the `cache/` directory.
+
+To edit/debug CBT in IntelliJ, add the whole directory as a new scala project.
+Add the source folders manually and exclude the nested target folders.
+
 CBT's directory structure
 
 cbt                 Shell script launching cbt. Can be symlinked.
-bootstrap_scala/    Self-contained downloader for the core Scala jars. Allows bootstrapping from Java into Scala.
+compatibility/      Java interfaces that all CBT versions are source compatible to. For communication
+                    between composed builds of different versions.
 nailgun_launcher/   Self-contained helper that allows using Nailgun with minimal permanent classpath. (Is this actually needed?)
 realpath/           Self-contained realpath source code to correctly figure our CBTs home directory. (Open for replacement ideas.)
-stage1/	            CBT's code that only relies only on Scala/Java built-ins. Contains a Maven resolver to download libs for stage2.
+stage1/             CBT's code that only relies only on Scala/Java built-ins. Contains a Maven resolver to download libs for stage2.
 stage2/             CBT's code that requires additional libs, e.g. barbary watchservice.
 test/               Unit tests that can serve as example builds
 sonatype.login      Sonatype credentials for deployment. Not in git obviously.
@@ -24,3 +38,4 @@ We strongly suggest well polished PRs, but don't want to stall improvements
 by discussions about minor flaws. As long as the PR does not break anything and
 improves the product, we should merge it, polishing remaining things afterwards.
 
+On OSX `brew install coreutils` to have gdate and get nanosecond timings during bash script.

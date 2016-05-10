@@ -11,19 +11,18 @@ sealed abstract class ProjectProxy extends Ha{
   def dependencies = Seq(delegate)
 }
 */
-trait TriggerLoop extends Dependency{
+trait TriggerLoop extends DependencyImplementation{
+  final def triggerLoopFilesArray = triggerLoopFiles.toArray
   def triggerLoopFiles: Seq[File]
 }
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
 case class BuildDependency(context: Context) extends TriggerLoop{
-  override def show = this.getClass.getSimpleName ++ "(" ++ context.cwd.string ++ ")"
+  override def show = this.getClass.getSimpleName ++ "(" ++ context.projectDirectory.string ++ ")"
   final override lazy val logger = context.logger
   final override lazy val lib: Lib = new Lib(logger)
   private val root = lib.loadRoot( context.copy(args=Seq()) )
   lazy val build = root.finalBuild
-  override def canBeCached = build.canBeCached
   def exportedClasspath = ClassPath(Seq())
-  def exportedJars = Seq()
   def dependencies = Seq(build)
   def triggerLoopFiles = root.triggerLoopFiles
   override final val needsUpdate = build.needsUpdate
@@ -31,7 +30,7 @@ case class BuildDependency(context: Context) extends TriggerLoop{
 }
 /*
 case class DependencyOr(first: BuildDependency, second: JavaDependency) extends ProjectProxy with BuildDependencyBase{
-  val isFirst = new File(first.context.cwd).exists
+  val isFirst = new File(first.context.projectDirectory).exists
   def triggerLoopFiles = if(isFirst) first.triggerLoopFiles else Seq()
   protected val delegate = if(isFirst) first else second
 }

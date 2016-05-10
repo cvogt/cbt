@@ -1,7 +1,7 @@
 package cbt
 object constants{
-  val scalaXmlVersion = NailgunLauncher.SCALA_XML_VERSION
-  val scalaVersion = NailgunLauncher.SCALA_VERSION
-  val zincVersion = NailgunLauncher.ZINC_VERSION
+  val scalaXmlVersion = "1.0.5"
+  val scalaVersion = "2.11.8"
+  val zincVersion = "0.3.9"
   val scalaMajorVersion = scalaVersion.split("\\.").take(2).mkString(".")
 }
