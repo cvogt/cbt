@@ -197,8 +197,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
             case scala.util.Failure(e) if Option(e.getMessage).getOrElse("") contains "toConsole" =>
               value match {
-                case code:ExitCode =>
-                  code
+                case code if code.getClass.getSimpleName == "ExitCode" =>
+                  // FIXME: ExitCode needs to be part of the compatibility interfaces
+                  ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])
                 case other =>
                   println( other.toString ) // no method .toConsole, using to String
                   ExitCode.Success
