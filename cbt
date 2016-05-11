@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Launcher bash script that bootstraps CBT from source.
 # (Some of the code for reporting missing dependencies and waiting for nailgun to come up is a bit weird.)
-# This is inentionally kept as small as posible.
+# This is intentionally kept as small as possible.
 # Welcome improvements to this file:
 # - reduce code size through better ideas
 # - reduce code size by moving more of this into type-checked Java/Scala code (if possible without performance loss).
