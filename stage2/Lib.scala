@@ -57,11 +57,54 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
+  def run( mainClass: Option[String], classLoader: ClassLoader ) : ExitCode = {
+    mainClass.map( runMain( _, Seq(), classLoader ) ).getOrElse( ExitCode.Failure )
+  }
+  
+  def mainClasses(compileTarget : File, classLoader : ClassLoader): Seq[String] = {
+    val targetLength = compileTarget.toString.length + 1 // compile target and slash
+
+    def className(file : File) : String = {
+      file.toString.dropRight(".class".length).drop(targetLength).replace(File.separator, ".")
+    }
+
+    /* for packaged applications */
+    def retrieveFiles(file : File) : Array[File] = {
+      return file.listFiles.map(currFile => {
+          if (currFile.isDirectory) retrieveFiles(currFile) 
+          else Array(currFile)
+        }
+      ).flatten
+    } 
+    
+    def classesWithMain(target : File, classLoader : ClassLoader) : List[File]  = { 
+      def hasMainClass(file : File) : Boolean = {
+        
+        val name = className(file)
+        val inspectClass = classLoader.loadClass(name)
+        inspectClass.getDeclaredMethods().map(_.getName).contains("main")
+      }
+
+      // FIXME: Check if argument list has exactly one element of type Array[String]
+      def isInnerClass(file : File) : Boolean = file.toString.contains("$")
+      val files = retrieveFiles(target)
+
+      val classFiles = files.filter(file => file.toString.endsWith(".class") && !isInnerClass(file)).toList
+
+      classFiles.filter(hasMainClass(_))
+    }
+    
+    val hasMain = classesWithMain(compileTarget, classLoader)
+
+    hasMain.map(className(_))
+  }
+
   def srcJar(sourceFiles: Seq[File], artifactId: String, scalaMajorVersion: String, version: String, jarTarget: File): Option[File] = {
     lib.jarFile(
       jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-sources.jar"),
       sourceFiles
     )
+
   }
 
   def jar(artifactId: String, scalaMajorVersion: String, version: String, compileTarget: File, jarTarget: File): Option[File] = {

@@ -25,7 +25,7 @@ object CatchTrappedExitCode{
   def unapply(e: Throwable): Option[ExitCode] = {
     Option(e) flatMap {
       case i: InvocationTargetException => unapply(i.getTargetException)
-      case e: TrappedExitCode => Some( ExitCode(e.exitCode) )
+      case e: TrappedExitCode => None// Some( ExitCode(e.exitCode) )
       case _ => None
     }
   }

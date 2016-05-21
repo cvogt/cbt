@@ -85,6 +85,7 @@ object Stage1{
 
     val lib = new Stage1Lib(logger)
     import lib._
+
     val paths = CbtPaths(cbtHome, cache)
     import paths._
 

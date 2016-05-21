@@ -55,7 +55,7 @@ log () {
 
 log "Checking for dependencies" $*
 
-which javac 2>&1 > /dev/null
+which javac > /dev/null 2>&1 
 javac_installed=$?
 if [ ! $javac_installed -eq 0 ]; then
 	echo "You need to install javac 1.7 or later! CBT needs it to bootstrap from Java sources into Scala." 1>&2
@@ -75,24 +75,25 @@ fi
 # fi
 
 which ng 2>&1 > /dev/null
+
 ng_installed=$?
-which ng-server 2>&1 > /dev/null
+which ng-server > /dev/null 2>&1 
 ng_server_installed=$?
 nailgun_installed=0
 if [ ! $ng_installed -eq 0 ] || [ ! $ng_server_installed -eq 0 ]; then
 	nailgun_installed=1
 	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun'.)" 1>&2
 fi
-which realpath 2>&1 > /dev/null
+which realpath > /dev/null 2>&1 
 realpath_installed=$?
-which gcc 2>&1 > /dev/null
+which gcc > /dev/null 2>&1 
 gcc_installed=$?
 if [ ! $realpath_installed -eq 0 ] && [ ! $gcc_installed -eq 0 ]; then
 	echo "You need realpath or gcc installed! CBT needs it to locate itself reliably." 1>&2
 	exit 1
 fi
 
-which gpg 2>&1 > /dev/null
+which gpg > /dev/null 2>&1 
 gpg_installed=$?
 if [ ! $gpg_installed -eq 0 ]; then
 	echo "(Note: gpg not found. In order to use publishSigned you'll need it.)" 1>&2
@@ -138,7 +139,7 @@ if [ "$1" = "kill" ]; then
 	exit 1
 fi
 
-which nc 2>&1 > /dev/null
+which nc > /dev/null 2>&1 
 nc_installed=$?
 
 log "Check for running nailgun with nc." $*

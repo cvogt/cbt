@@ -18,7 +18,6 @@ case class GitDependency(
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
   private val GitUrl( _, domain, path ) = url  
 
-
   def checkout: File = {
     val checkoutDirectory = context.cache ++ s"/git/$domain/$path/$ref"
     if(checkoutDirectory.exists){

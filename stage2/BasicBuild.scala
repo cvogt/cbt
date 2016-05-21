@@ -137,8 +137,15 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
     )
   }
 
-  def runClass: String = "Main"
-  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
+  //def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
+  def run: ExitCode = lib.run( discoveredRunClass, classLoader(context.classLoaderCache) )
+  def runClass: String = discoveredRunClass match {
+    case Some (classToRun) => classToRun
+    case None              => "Main"
+  }
+  
+  private def discoveredRunClass : Option[String] = mainClasses.headOption 
+  private def mainClasses: Seq[String] = lib.mainClasses(compileTarget, classLoader(context.classLoaderCache)) 
 
   def test: Option[ExitCode] = {
     lib.test(context)
