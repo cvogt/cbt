@@ -225,14 +225,32 @@ stage1 () {
 }
 
 while true; do
-	stage1 $*
+	interactive=false
+
+	if [ "$1" = "interactive" ]; then
+		interactive=true
+	else
+		stage1 $*
+	fi
+
+	while [ "$interactive" = true ]; do
+		while IFS="" read -r -e -d $'\n' -p 'cbt> ' options; do
+		  history -s "$options"
+			if [ "$options" = "quit" ]; then
+				interactive=false
+				break
+			else
+				stage1 "$options"
+			fi
+		done
+	done
 	if [ ! "$1" = "loop" ]; then
 		break
 	fi
 	echo "======= Restarting CBT =======" 1>&2
 done
 
-if [ $compiles -ne 0 ]; then
+if [ ! "$compiles" = "0" ]; then
 	exitCode=1
 fi
 
