@@ -2,6 +2,7 @@ package cbt
 import java.io._
 import java.net._
 import org.eclipse.jgit.api._
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.eclipse.jgit.lib.Ref
 
 object GitDependency{
@@ -16,20 +17,34 @@ case class GitDependency(
   // TODO: add support for authentication via ssh and/or https
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
   private val GitUrl( _, domain, path ) = url  
+  case class GitCredentials(
+    username: String,
+    password: String
+  )
 
   private object checkoutCache extends Cache[File]
   def checkout: File = checkoutCache{
+    def authenticate(creds: Option[GitCredentials], git: CloneCommand): CloneCommand = creds match {
+      case Some(credentials) => git.setCredentialsProvider(new UsernamePasswordCredentialsProvider(credentials.username, credentials.password))
+      case None => git
+    }
     val checkoutDirectory = context.cache ++ s"/git/$domain/$path/$ref"
     if(checkoutDirectory.exists){
       logger.git(s"Found existing checkout of $url#$ref in $checkoutDirectory")
     } else {
       logger.git(s"Cloning $url into $checkoutDirectory")
-      val git =
-        Git.cloneRepository()
-          .setURI(url)
+      val credentials = {
+        try {
+          val credentials = scala.io.Source.fromFile(context.projectDirectory + "/git.login").mkString.split("\n")
+          Some(GitCredentials(credentials(0), credentials(1)))
+        } catch {
+          case e: FileNotFoundException => None
+        }
+      }
+      val git = authenticate(credentials, Git.cloneRepository().setURI(url))
           .setDirectory(checkoutDirectory)
           .call()
-      
+
       logger.git(s"Checking out ref $ref")
       git.checkout()
           .setName(ref)
