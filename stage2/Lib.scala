@@ -251,7 +251,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         file <- listFilesRecursive(base) if file.isFile
       } yield {
           val name = if(base.isDirectory){
-            file.toString stripPrefix base.toString
+            file.toString stripPrefix (base.toString ++ File.separator)
           } else file.toString
           val entry = new JarEntry( name )
           entry.setTime(file.lastModified)
