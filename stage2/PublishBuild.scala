@@ -43,7 +43,7 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
 
   protected def sonatypeCredentials = {
     // FIXME: this should probably not use cbtHome, but some reference to the system's host cbt
-    new String(readAllBytes((context.cbtHome ++ "/sonatype.login").toPath)).trim
+    new String(readAllBytes((context.cbtRootHome ++ "/sonatype.login").toPath)).trim
   }
 
   def publishSnapshot: Unit = {
