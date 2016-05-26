@@ -298,6 +298,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     groupId: String,
     artifactId: String,
     version: String,
+    scalaMajorVersion: String,
     name: String,
     description: String,
     url: URL,
@@ -313,7 +314,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
           <modelVersion>4.0.0</modelVersion>
           <groupId>{groupId}</groupId>
-          <artifactId>{artifactId}</artifactId>
+          <artifactId>{artifactId ++ "_" ++ scalaMajorVersion}</artifactId>
           <version>{version}</version>
           <packaging>jar</packaging>
           <name>{name}</name>
@@ -356,7 +357,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           }
           </dependencies>
       </project>
-    val path = jarTarget.toString ++ ( "/" ++ artifactId ++ "-" ++ version ++ ".pom" )
+    // FIXME: do not build this file name including scalaMajorVersion in multiple places
+    val path = jarTarget.toString ++ ( "/" ++ artifactId++ "_" ++ scalaMajorVersion ++ "-" ++ version  ++ ".pom" )
     val file = new File(path)
     Files.write(file.toPath, ("<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString).getBytes)
     file

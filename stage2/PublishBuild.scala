@@ -21,6 +21,7 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
     groupId = groupId,
     artifactId = artifactId,
     version = version,
+    scalaMajorVersion = scalaMajorVersion,
     name = name,
     description = description,
     url = url,
@@ -34,7 +35,7 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
   )
 
   // ========== publish ==========
-  final protected def releaseFolder = s"/${groupId.replace(".","/")}/$artifactId/$version/"
+  final protected def releaseFolder = s"/${groupId.replace(".","/")}/${artifactId}_$scalaMajorVersion/$version/"
   def snapshotUrl = new URL("https://oss.sonatype.org/content/repositories/snapshots")
   def releaseUrl = new URL("https://oss.sonatype.org/service/local/staging/deploy/maven2")
   override def copy(context: Context) = super.copy(context).asInstanceOf[PublishBuild]
