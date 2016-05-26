@@ -369,7 +369,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     else items.map(projection)
   }
 
-  def publishSnapshot( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
+  def publishUnsigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
     if(sourceFiles.nonEmpty){
       val files = artifacts.map(nameAndContents)
       uploadAll(url, files, credentials)
