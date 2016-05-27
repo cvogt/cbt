@@ -17,6 +17,7 @@ case class ContextImplementation(
   permanentClassLoaders: ConcurrentHashMap[AnyRef,ClassLoader],
   cache: File,
   cbtHome: File,
+  cbtRootHome: File,
   compatibilityTarget: File,
   parentBuildOrNull: BuildInterface
 ) extends Context

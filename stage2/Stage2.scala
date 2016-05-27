@@ -46,6 +46,7 @@ object Stage2 extends Stage2Base{
       args.permanentClassLoaders,
       args.cache,
       args.cbtHome,
+      args.cbtHome,
       args.compatibilityTarget,
       null
     )
