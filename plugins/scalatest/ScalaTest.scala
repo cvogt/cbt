@@ -16,8 +16,9 @@ trait SbtLayout extends BasicBuild{
   override def sources = Seq( projectDirectory ++ "/src/main/scala" )
   def testSources = projectDirectory ++ "/src/test/scala"
   def testDependencies: Seq[Dependency] = Nil
-  lazy val testBuild = 
-    new BasicBuild(context.copy(projectDirectory = testSources)) with ScalaTest{
+  lazy val testBuild =
+    new BasicBuild(context) with ScalaTest{
+      override def sources = Seq(testSources)
       override def target = outer.target
       override def compileTarget = outer.scalaTarget ++ "/test-classes"
       override def dependencies = (outer +: testDependencies) ++ super.dependencies 
