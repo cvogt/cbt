@@ -398,8 +398,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: String): Unit = {
     import java.net._
     import java.io._
-    logger.task("uploading "++fileName)
     val url = baseUrl ++ fileName
+    System.err.println(blue("uploading ") ++ url.toString)
     val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")
