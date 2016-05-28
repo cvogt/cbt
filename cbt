@@ -250,7 +250,7 @@ while true; do
 	echo "======= Restarting CBT =======" 1>&2
 done
 
-if [ ! "$compiles" = "0" ]; then
+if [ $compiles -ne 0 ]; then
 	exitCode=1
 fi
 
