@@ -15,7 +15,7 @@ case class ClassPath(files: Seq[File]){
   )
   private val nonExisting = files.distinct.filterNot(_.exists)
   assert(
-    duplicates.isEmpty,
+    nonExisting.isEmpty,
     "Classpath contains entires that don't exist on disk:\n" ++ nonExisting.mkString("\n") ++ "\nin classpath:\n"++string
   )
   
