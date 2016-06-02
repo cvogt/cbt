@@ -40,7 +40,7 @@ class ToolsTasks(
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val d = Resolver(mavenCentral).bindOne(
       MavenDependency(
-        "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.7")
+        "com.lihaoyi","ammonite-repl_2.11.8",args.lift(1).getOrElse("0.5.8")
       )
     )
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
