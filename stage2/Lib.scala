@@ -371,26 +371,28 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
   def publishUnsigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
     if(sourceFiles.nonEmpty){
-      val files = artifacts.map(nameAndContents)
-      uploadAll(url, files, credentials)
+      publish( artifacts, url, credentials )
     }
   }
 
   def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
     // TODO: make concurrency configurable here
     if(sourceFiles.nonEmpty){
-      val files = (artifacts ++ artifacts.map(sign)).map(nameAndContents)
-      lazy val checksums = files.flatMap{
-        case (name, content) => Seq(
-          name++".md5" -> md5(content).toArray.map(_.toByte),
-          name++".sha1" -> sha1(content).toArray.map(_.toByte)
-        )
-      }
-      val all = (files ++ checksums)
-      uploadAll(url, all, credentials)
+      publish( artifacts ++ artifacts.map(sign), url, credentials )
     }
   }
 
+  private def publish(artifacts: Seq[File], url: URL, credentials: String): Unit = {
+    val files = artifacts.map(nameAndContents)
+    lazy val checksums = files.flatMap{
+      case (name, content) => Seq(
+        name++".md5" -> md5(content).toArray.map(_.toByte),
+        name++".sha1" -> sha1(content).toArray.map(_.toByte)
+      )
+    }
+    val all = (files ++ checksums)
+    uploadAll(url, all, credentials)
+  }
 
   def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: String ): Unit =
     nameAndContents.map{ case(name, content) => upload(name, content, url, credentials ) }
