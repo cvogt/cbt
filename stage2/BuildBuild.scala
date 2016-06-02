@@ -28,24 +28,25 @@ trait BuildBuild extends BaseBuild{
               if(context.cbtHome.string.contains(hash))
                 None
               else Some{
-                val checkoutDirectory = new GitDependency(base, hash).checkout
-                val build = new BasicBuild( context.copy( projectDirectory = checkoutDirectory ++ "/nailgun_launcher" ) )
-                val cl = build
-                  .classLoader(classLoaderCache)
                 // Note: cbt can't use an old version of itself for building,
                 // otherwise we'd have to recursively build all versions since
                 // the beginning. Instead CBT always needs to build the pure Java
                 // Launcher in the checkout with itself and then run it via reflection.
-                cl
+                val dep = new GitDependency(base, hash, Some("nailgun_launcher"))
+                val ctx = managedContext.copy( cbtHome = dep.checkout )
+                dep.classLoader(classLoaderCache)
                   .loadClass( "cbt.NailgunLauncher" )
                   .getMethod( "getBuild", classOf[AnyRef] )
-                  .invoke( null, managedContext.copy(cbtHome=checkoutDirectory) )
+                  .invoke( null, ctx )
               }
             }.getOrElse{
+              //new BasicBuild(managedContext)
+              ///*
               classLoader(context.classLoaderCache)
                 .loadClass(lib.buildClassName)
                 .getConstructors.head
                 .newInstance(managedContext)
+              //*/
             }
         } else {
           new BasicBuild(managedContext)
