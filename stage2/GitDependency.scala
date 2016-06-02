@@ -3,6 +3,7 @@ import java.io._
 import java.net._
 import scala.collection.immutable.Seq
 import org.eclipse.jgit.api._
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.eclipse.jgit.lib.Ref
 
 object GitDependency{
@@ -20,17 +21,34 @@ case class GitDependency(
 
 
   def checkout: File = {
+    def mkCredentials(creds: Option[Array[String]]): UsernamePasswordCredentialsProvider = creds match {
+      case Some(credential) => {
+        val username = credential(0)
+        val password = credential(1)
+        new UsernamePasswordCredentialsProvider(username, password)
+      }
+      case None => new UsernamePasswordCredentialsProvider("dummy", "dummy")
+    }
     val checkoutDirectory = context.cache ++ s"/git/$domain/$path/$ref"
     if(checkoutDirectory.exists){
       logger.git(s"Found existing checkout of $url#$ref in $checkoutDirectory")
     } else {
       logger.git(s"Cloning $url into $checkoutDirectory")
+      val authList = {
+        try {
+          val userNameAndPassword = scala.io.Source.fromFile(context.projectDirectory + "/git.login").mkString.split("\n")
+          Some(userNameAndPassword)
+        } catch {
+          case e: FileNotFoundException => None
+        }
+      }
       val git =
         Git.cloneRepository()
           .setURI(url)
+          .setCredentialsProvider( mkCredentials( authList ) )
           .setDirectory(checkoutDirectory)
           .call()
-      
+
       logger.git(s"Checking out ref $ref")
       git.checkout()
           .setName(ref)
