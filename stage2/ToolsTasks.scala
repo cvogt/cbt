@@ -38,7 +38,6 @@ class ToolsTasks(
   def amm = ammonite
   def ammonite = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
-    val scalac = new ScalaCompilerDependency( cbtHasChanged,mavenCache, version )
     val d = Resolver(mavenCentral).bindOne(
       MavenDependency(
         "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.7")

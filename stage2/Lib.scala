@@ -393,7 +393,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
 
   def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: String ): Unit =
-    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials: String ) }
+    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials ) }
 
   def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: String): Unit = {
     import java.net._
