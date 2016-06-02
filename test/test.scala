@@ -93,6 +93,7 @@ object Main{
         new ConcurrentHashMap[AnyRef,ClassLoader],
         cache,
         cbtHome,
+        cbtHome,
         cbtHome ++ "/compatibilityTarget",
         null
       )
