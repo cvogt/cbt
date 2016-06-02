@@ -65,7 +65,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         logger.resolver(blue("not found: ") ++ url.string)
         false
       } else {
-        logger.resolver(blue("downloading ") ++ url.string)
+        System.err.println(blue("downloading ") ++ url.string)
         logger.resolver(blue("to ") ++ target.string)
         target.getParentFile.mkdirs
         val stream = connection.getInputStream
