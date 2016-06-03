@@ -1,8 +1,5 @@
 package cbt
-import java.io.File
-import java.net.URL
 import java.nio.file.Files.readAllBytes
-import scala.collection.immutable.Seq
 
 abstract class PublishBuild(context: Context) extends PackageBuild(context){
   def name = artifactId
