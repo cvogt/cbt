@@ -22,6 +22,11 @@ trait Recommended extends BasicBuild{
   )
 }
 class BasicBuild(val context: Context) extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
+  type URL = java.net.URL
+  type File = java.io.File
+  type Seq[A] = scala.collection.immutable.Seq[A]
+  val Seq = scala.collection.immutable.Seq
+
   // library available to builds
   implicit protected final val logger: Logger = context.logger
   implicit protected final val classLoaderCache: ClassLoaderCache = context.classLoaderCache

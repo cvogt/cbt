@@ -1,6 +1,4 @@
 package cbt
-import java.io.File
-import scala.collection.immutable.Seq
 abstract class PackageBuild(context: Context) extends BasicBuild(context) with ArtifactInfo{
   def defaultVersion: String
   final def version = context.version getOrElse defaultVersion
