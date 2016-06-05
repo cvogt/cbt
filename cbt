@@ -240,13 +240,25 @@ while true; do
 				interactive=false
 				break
 			else
-				stage1 "$options"
+        curr_command=$(grep -o "^\S*" $options)
+        echo $curr_command
+        which $curr_command 2>&1 > /dev/null
+        option_available=$?
+        if [ ! $option_available -eq 0 ]; then
+          cbt "$options"
+        else
+          eval $options
+        fi
+				
 			fi
 		done
 	done
 	if [ ! "$1" = "loop" ]; then
 		break
 	fi
+  if [ "$1" = "quit" ]; then
+    break
+  fi
 	echo "======= Restarting CBT =======" 1>&2
 done
 
