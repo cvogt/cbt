@@ -2,6 +2,9 @@ import collection.mutable.Stack
 import org.scalatest._
 
 class Test extends FlatSpec with Matchers {
+  "square" should "return double" in {
+    Main.square(2) should be (4)
+  }
 
   "A Stack" should "pop values in last-in-first-out order" in {
     val stack = new Stack[Int]
@@ -16,9 +19,5 @@ class Test extends FlatSpec with Matchers {
     a [NoSuchElementException] should be thrownBy {
       emptyStack.pop()
     }
-  }
-
-  "square" should "return double" in {
-    Main.square(2) should be (4)
   }
 }

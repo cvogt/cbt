@@ -1,29 +1,6 @@
-import cbt._
+package cbt
 import org.scalatest._
-import org.scalatest
 
-/* FIXME:
- - Separate out SbtLayout
- - Allow depending on this via a git dependency.
-   Probably by adding support for subfolders to "GitDependency"
-*/
-
-trait SbtLayout extends BaseBuild{
-  outer =>
-  override def sources = Seq( projectDirectory ++ "/src/main/scala" )
-  def testSources = projectDirectory ++ "/src/test/scala"
-  def testDependencies: Seq[Dependency] = Nil
-  lazy val testBuild =
-    new BasicBuild(context) with ScalaTest{
-      override def sources = Seq(testSources)
-      override def target = outer.target
-      override def compileTarget = outer.scalaTarget ++ "/test-classes"
-      override def dependencies = (outer +: testDependencies) ++ super.dependencies 
-    }
-  override def test: Option[ExitCode] =
-    if(testSources.exists) Some( testBuild.run )
-    else None
-}
 
 trait ScalaTest extends BaseBuild{
   override def run: ExitCode = {
@@ -33,9 +10,11 @@ trait ScalaTest extends BaseBuild{
     runSuites( suiteNames.map( loadSuite( _, _classLoader ) ) )
     ExitCode.Success
   }
+  override def dependencies = super.dependencies ++ Resolver( mavenCentral ).bind( ScalaDependency("org.scalatest","scalatest","2.2.4") )
 }
 
 object ScalaTestLib{
+  import java.io.File
   def runSuites(suites: Seq[Suite]) = {
     def color: Boolean = true
     def durations: Boolean = true

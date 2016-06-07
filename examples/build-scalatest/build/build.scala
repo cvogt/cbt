@@ -1,10 +1,9 @@
 import cbt._
-class Build(val context: Context) extends SbtLayout {
-
-  override def dependencies = (
-    super.dependencies ++
-      Resolver( mavenCentral ).bind(
-        ScalaDependency("org.scalatest","scalatest","2.2.4")
-      )
-  )
+class Build(val context: Context) extends SbtLayoutMain {
+  outer =>
+  override def test: Option[ExitCode] = Some{
+    new BasicBuild(context) with ScalaTest with SbtLayoutTest{
+      override def dependencies = outer +: super.dependencies 
+    }.run
+  }  
 }

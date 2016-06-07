@@ -1,18 +1,23 @@
 package cbt
-import java.io._
 import java.nio.file._
 
 trait BuildBuild extends BaseBuild{
+  private final val managedContext = context.copy(
+    projectDirectory = managedBuildDirectory,
+    parentBuild=Some(this)
+  )
+
+  object plugins{
+    final val scalaTest = BuildDependency( managedContext.cbtHome ++ "/plugins/scalatest" )
+    final val sbtLayout = BuildDependency( managedContext.cbtHome ++ "/plugins/sbt_layout" )
+  }
+
   override def dependencies =
     super.dependencies :+ context.cbtDependency
-  def managedBuildDirectory: File = lib.realpath( projectDirectory.parent )
+  def managedBuildDirectory: java.io.File = lib.realpath( projectDirectory.parent )
   private object managedBuildCache extends Cache[BuildInterface]
   def managedBuild = managedBuildCache{
     try{
-      val managedContext = context.copy(
-        projectDirectory = managedBuildDirectory,
-        parentBuild=Some(this)
-      )
       val managedBuildFile = projectDirectory++"/build.scala"
       logger.composition("Loading build at "++managedContext.projectDirectory.toString)
       (
