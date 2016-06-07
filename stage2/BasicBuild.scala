@@ -112,6 +112,9 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
 
   override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
 
+  protected def compileDependencies: Seq[Dependency] = Nil
+  final def compileClasspath : ClassPath = ClassPath( compileDependencies.flatMap(_.exportedClasspath.files).distinct )
+
   def exportedClasspath   : ClassPath = ClassPath(compile.toSeq)
   def targetClasspath = ClassPath(Seq(compileTarget))
   // ========== compile, run, test ==========
@@ -131,7 +134,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
     lib.compile(
       context.cbtHasChanged,
       needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
-      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath,
+      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath ++ compileClasspath,
       context.paths.mavenCache, scalacOptions, context.classLoaderCache,
       zincVersion = zincVersion, scalaVersion = scalaVersion
     )
