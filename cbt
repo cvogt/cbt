@@ -240,8 +240,7 @@ while true; do
 				interactive=false
 				break
 			else
-        curr_command=$(grep -o "^\S*" $options)
-        echo $curr_command
+        curr_command="$(echo $options | { read first rest ; echo $first ; })"
         which $curr_command 2>&1 > /dev/null
         option_available=$?
         if [ ! $option_available -eq 0 ]; then
