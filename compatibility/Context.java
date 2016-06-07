@@ -16,6 +16,7 @@ public abstract class Context{
   public abstract ConcurrentHashMap<Object,ClassLoader> permanentClassLoaders();
   public abstract File cache();
   public abstract File cbtHome();
+  public abstract File cbtRootHome();
   public abstract File compatibilityTarget();
   public abstract BuildInterface parentBuildOrNull();
 }

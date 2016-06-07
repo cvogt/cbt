@@ -6,12 +6,13 @@ dependencies:
   cache_directories:
     - "cache"
   override:
-    - ./cbt compile -Dlog=all
-    - ./cbt direct -Dlog=all
+    - ./cbt compile
+    - ./cbt direct
     - ./cbt -Dlog=all
-    - cd plugins/scalatest/ && ../../cbt compile -Dlog=all && cd ../../
+    - cd plugins/scalatest/ && ../../cbt compile && cd ../../
 
 test:
   override:
-    - ./cbt direct test -Dlog=all
-    - ./cbt test -Dlog=all
+    - ./cbt direct test
+    - ./cbt test
+    - cd examples/build-scalatest && ../../cbt test && cd ../..

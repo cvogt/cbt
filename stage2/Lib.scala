@@ -251,7 +251,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         file <- listFilesRecursive(base) if file.isFile
       } yield {
           val name = if(base.isDirectory){
-            file.toString stripPrefix base.toString
+            file.toString stripPrefix (base.toString ++ File.separator)
           } else file.toString
           val entry = new JarEntry( name )
           entry.setTime(file.lastModified)
@@ -298,6 +298,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     groupId: String,
     artifactId: String,
     version: String,
+    scalaMajorVersion: String,
     name: String,
     description: String,
     url: URL,
@@ -313,7 +314,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
           <modelVersion>4.0.0</modelVersion>
           <groupId>{groupId}</groupId>
-          <artifactId>{artifactId}</artifactId>
+          <artifactId>{artifactId ++ "_" ++ scalaMajorVersion}</artifactId>
           <version>{version}</version>
           <packaging>jar</packaging>
           <name>{name}</name>
@@ -356,7 +357,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           }
           </dependencies>
       </project>
-    val path = jarTarget.toString ++ ( "/" ++ artifactId ++ "-" ++ version ++ ".pom" )
+    // FIXME: do not build this file name including scalaMajorVersion in multiple places
+    val path = jarTarget.toString ++ ( "/" ++ artifactId++ "_" ++ scalaMajorVersion ++ "-" ++ version  ++ ".pom" )
     val file = new File(path)
     Files.write(file.toPath, ("<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString).getBytes)
     file
@@ -367,37 +369,39 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     else items.map(projection)
   }
 
-  def publishSnapshot( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
+  def publishUnsigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
     if(sourceFiles.nonEmpty){
-      val files = artifacts.map(nameAndContents)
-      uploadAll(url, files, credentials)
+      publish( artifacts, url, credentials )
     }
   }
 
   def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
     // TODO: make concurrency configurable here
     if(sourceFiles.nonEmpty){
-      val files = (artifacts ++ artifacts.map(sign)).map(nameAndContents)
-      lazy val checksums = files.flatMap{
-        case (name, content) => Seq(
-          name++".md5" -> md5(content).toArray.map(_.toByte),
-          name++".sha1" -> sha1(content).toArray.map(_.toByte)
-        )
-      }
-      val all = (files ++ checksums)
-      uploadAll(url, all, credentials)
+      publish( artifacts ++ artifacts.map(sign), url, credentials )
     }
   }
 
+  private def publish(artifacts: Seq[File], url: URL, credentials: String): Unit = {
+    val files = artifacts.map(nameAndContents)
+    lazy val checksums = files.flatMap{
+      case (name, content) => Seq(
+        name++".md5" -> md5(content).toArray.map(_.toByte),
+        name++".sha1" -> sha1(content).toArray.map(_.toByte)
+      )
+    }
+    val all = (files ++ checksums)
+    uploadAll(url, all, credentials)
+  }
 
   def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: String ): Unit =
-    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials: String ) }
+    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials ) }
 
   def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: String): Unit = {
     import java.net._
     import java.io._
-    logger.task("uploading "++fileName)
     val url = baseUrl ++ fileName
+    System.err.println(blue("uploading ") ++ url.toString)
     val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")

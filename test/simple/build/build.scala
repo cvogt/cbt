@@ -7,7 +7,7 @@ class Build(context: cbt.Context) extends BasicBuild(context){
     super.dependencies
     ++
     Seq(
-      GitDependency("https://github.com/xdotai/diff.git", "698717469b8dd86e8570b86354892be9c0654caf")
+      GitDependency("https://github.com/xdotai/diff.git", "05fdac13a177f74952b54171733be01c258594a8")
     ) ++
     // FIXME: make the below less verbose
     Resolver( mavenCentral ).bind(

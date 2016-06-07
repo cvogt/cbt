@@ -38,22 +38,22 @@ class ToolsTasks(
   def amm = ammonite
   def ammonite = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
-    val scalac = new ScalaCompilerDependency( cbtHasChanged,mavenCache, version )
-    val d = Resolver(mavenCentral).bindOne(
+    val classLoader = Resolver(mavenCentral).bindOne(
       MavenDependency(
-        "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.7")
+        "com.lihaoyi","ammonite-repl_2.11.8",args.lift(1).getOrElse("0.5.8")
       )
-    )
+    ).classLoader(classLoaderCache)
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
     lib.runMain(
-      "ammonite.repl.Main", Seq(), d.classLoader(classLoaderCache)
+      "ammonite.repl.Main", args.drop(2), classLoader
     )
   }
   def scala = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val scalac = new ScalaCompilerDependency( cbtHasChanged, mavenCache, version )
+    val _args = Seq("-cp", scalac.classpath.string) ++ args.drop(2)
     lib.runMain(
-      "scala.tools.nsc.MainGenericRunner", Seq("-cp", scalac.classpath.string), scalac.classLoader(classLoaderCache)
+      "scala.tools.nsc.MainGenericRunner", _args, scalac.classLoader(classLoaderCache)
     )
   }
   def cbtEarlyDependencies = {

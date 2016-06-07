@@ -21,6 +21,7 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
     groupId = groupId,
     artifactId = artifactId,
     version = version,
+    scalaMajorVersion = scalaMajorVersion,
     name = name,
     description = description,
     url = url,
@@ -34,26 +35,29 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
   )
 
   // ========== publish ==========
-  final protected def releaseFolder = s"/${groupId.replace(".","/")}/$artifactId/$version/"
-  def snapshotUrl = new URL("https://oss.sonatype.org/content/repositories/snapshots")
-  def releaseUrl = new URL("https://oss.sonatype.org/service/local/staging/deploy/maven2")
+  final protected def releaseFolder = s"/${groupId.replace(".","/")}/${artifactId}_$scalaMajorVersion/$version/"
+  private def snapshotUrl = new URL("https://oss.sonatype.org/content/repositories/snapshots")
+  private def releaseUrl = new URL("https://oss.sonatype.org/service/local/staging/deploy/maven2")
+  def publishUrl = if(version.endsWith("-SNAPSHOT")) snapshotUrl else releaseUrl
   override def copy(context: Context) = super.copy(context).asInstanceOf[PublishBuild]
 
   protected def sonatypeCredentials = {
     // FIXME: this should probably not use cbtHome, but some reference to the system's host cbt
-    new String(readAllBytes((context.cbtHome ++ "/sonatype.login").toPath)).trim
+    new String(readAllBytes((context.cbtRootHome ++ "/sonatype.login").toPath)).trim
   }
 
   def publishSnapshot: Unit = {
-    val snapshotBuild = copy( context.copy(version = Some(version+"-SNAPSHOT")) )
-    val files = snapshotBuild.pom +: snapshotBuild.`package`
-    lib.publishSnapshot(
-      sourceFiles, files, snapshotUrl ++ releaseFolder, sonatypeCredentials
+    copy( context.copy(version = Some(version+"-SNAPSHOT")) ).publishUnsigned
+  }
+
+  def publishUnsigned: Unit = {
+    lib.publishUnsigned(
+      sourceFiles, pom +: `package`, publishUrl ++ releaseFolder, sonatypeCredentials
     )
   }
   def publishSigned: Unit = {
     lib.publishSigned(
-      sourceFiles, pom +: `package`, releaseUrl ++ releaseFolder, sonatypeCredentials
+      sourceFiles, pom +: `package`, publishUrl ++ releaseFolder, sonatypeCredentials
     )
   }
 }
