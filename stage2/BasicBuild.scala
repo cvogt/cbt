@@ -7,7 +7,6 @@ import java.nio.file.Files.readAllBytes
 import java.security.MessageDigest
 import java.util.jar._
 
-import scala.collection.immutable.Seq
 import scala.util._
 
 trait Recommended extends BaseBuild{
@@ -113,7 +112,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
 
   override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
 
-  def exportedClasspath   : ClassPath = ClassPath(compile.toSeq:_*)
+  def exportedClasspath   : ClassPath = ClassPath(compile.toSeq)
   def targetClasspath = ClassPath(Seq(compileTarget))
   // ========== compile, run, test ==========
 

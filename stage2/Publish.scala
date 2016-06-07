@@ -2,7 +2,6 @@ package cbt
 import java.io.File
 import java.net.URL
 import java.nio.file.Files.readAllBytes
-import scala.collection.immutable.Seq
 
 trait Publish extends PackageJars{
   def description: String

@@ -3,7 +3,6 @@ package cbt
 import java.io._
 import java.util.concurrent.ConcurrentHashMap
 
-import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
 
 final case class Stage1ArgsParser(__args: Seq[String]) {

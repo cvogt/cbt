@@ -1,6 +1,4 @@
 import cbt._
-import scala.collection.immutable.Seq
-import java.io.File
 
 // cbt:https://github.com/cvogt/cbt.git#ca412e26d70a6615153136019b7966acb9939446
 class Build(context: cbt.Context) extends BasicBuild(context){

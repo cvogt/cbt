@@ -1,5 +1,4 @@
 package cbt
-import scala.collection.immutable.Seq
 import java.io._
 import java.net._
 case class MavenResolver( cbtHasChanged: Boolean, mavenCache: File, urls: URL* ){

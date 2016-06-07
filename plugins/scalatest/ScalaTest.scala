@@ -1,7 +1,4 @@
 import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
 import org.scalatest._
 import org.scalatest
 

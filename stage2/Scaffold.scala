@@ -28,10 +28,6 @@ trait Scaffold{
     projectDirectory: File
   ): Unit = { 
     createFile(projectDirectory, "build/build.scala", s"""import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
 class Build(val context: Context) extends BaseBuild{
   /*
   override def dependencies = (
@@ -61,10 +57,6 @@ class Build(val context: Context) extends BaseBuild{
     projectDirectory: File
   ): Unit = { 
     createFile(projectDirectory, "build/build/build.scala", s"""import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
 class Build(val context: Context) extends BuildBuild{
 /*
   override def dependencies = (
@@ -93,10 +85,6 @@ class Build(val context: Context) extends BuildBuild{
 /*,
 
       "build/build/build.scala" -> s"""import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
 class Build(val context: Context) extends BuildBuild{
   override def dependencies = super.dependencies ++ Seq(
     BuildDependency( projectDirectory.parent ++ "/build-shared")
@@ -113,10 +101,6 @@ class Build(val context: Context) extends BuildBuild{
 """,
 
       "test/build/build.scala" -> s"""import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
 class Build(val context: Context) extends BaseBuild with BuildShared/* with mixins.ScalaTest*/{
   // def scalaTestVersion = "2.2.6"
   
@@ -127,10 +111,6 @@ class Build(val context: Context) extends BaseBuild with BuildShared/* with mixi
 """,
 
       "test/build/build/build.scala" -> s"""import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
 class Build(val context: Context) extends BuildBuild{
   override def scalaVersion: String = "2.11.8"
   
@@ -142,10 +122,6 @@ class Build(val context: Context) extends BuildBuild{
 """,
 
       "build-shared/build/build.scala" -> s"""import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
 class Build(val context: Context) extends BaseBuild{
   override def scalaVersion: String = "$scalaVersion"
 
@@ -157,10 +133,6 @@ class Build(val context: Context) extends BaseBuild{
 """,
 
       "build-shared/BuildShared.scala" -> s"""import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
 trait BuildShared extends BaseBuild{
   override def scalaVersion: String = "$scalaVersion"
   override def enableConcurrency = false // enable for speed, disable for debugging

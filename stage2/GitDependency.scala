@@ -1,7 +1,6 @@
 package cbt
 import java.io._
 import java.net._
-import scala.collection.immutable.Seq
 import org.eclipse.jgit.api._
 import org.eclipse.jgit.lib.Ref
 
@@ -49,7 +48,7 @@ case class GitDependency(
 
   def dependencies = Seq(dependency)
 
-  def exportedClasspath = ClassPath(Seq())
+  def exportedClasspath = ClassPath()
   private[cbt] def targetClasspath = exportedClasspath
   def needsUpdate: Boolean = false
 }

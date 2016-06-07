@@ -1,5 +1,4 @@
 import cbt._
-import scala.collection.immutable.Seq
 import java.util.concurrent.ConcurrentHashMap
 import java.io.File
 import java.net.URL

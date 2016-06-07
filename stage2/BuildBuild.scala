@@ -1,7 +1,6 @@
 package cbt
-import java.io.File
+import java.io._
 import java.nio.file._
-import scala.collection.immutable.Seq
 
 trait BuildBuild extends BaseBuild{
   override def dependencies =

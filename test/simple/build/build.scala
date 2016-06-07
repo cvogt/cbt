@@ -1,6 +1,4 @@
 import cbt._
-import scala.collection.immutable.Seq
-import java.io.File
 
 class Build(val context: cbt.Context) extends BaseBuild{
   override def dependencies = (

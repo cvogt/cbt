@@ -1,7 +1,6 @@
 package cbt
 package mixins
 import java.net.URL
-import scala.collection.immutable.Seq
 import java.io._
 trait Test extends BaseBuild{
   lazy val testedBuild = BuildDependency( projectDirectory.parent )

@@ -9,7 +9,6 @@ import java.security.MessageDigest
 import java.util.jar._
 import java.lang.reflect.Method
 
-import scala.collection.immutable.Seq
 import scala.util._
 
 // pom model
