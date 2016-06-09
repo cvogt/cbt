@@ -52,12 +52,12 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
 
   def publishUnsigned: Unit = {
     lib.publishUnsigned(
-      sourceFiles, pom +: `package`, publishUrl ++ releaseFolder, sonatypeCredentials
+      sourceFiles, `package` :+ pom, publishUrl ++ releaseFolder, sonatypeCredentials
     )
   }
   def publishSigned: Unit = {
     lib.publishSigned(
-      sourceFiles, pom +: `package`, publishUrl ++ releaseFolder, sonatypeCredentials
+      sourceFiles, `package` :+ pom, publishUrl ++ releaseFolder, sonatypeCredentials
     )
   }
 }

@@ -46,6 +46,12 @@ public class Stage0Lib{
     return join( pathSeparator, files );
   }
 
+  public static File write(File file, String content, OpenOption... options) throws Exception{
+    file.getParentFile().mkdirs();
+    Files.write(file.toPath(), content.getBytes());
+    return file;
+  }
+
   public static Boolean compile(
     Boolean changed, Long start, String classpath, String target,
     EarlyDependencies earlyDeps, List<File> sourceFiles, SecurityManager defaultSecurityManager
@@ -82,7 +88,7 @@ public class Stage0Lib{
         System.setOut(System.err);
         int exitCode = runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc, defaultSecurityManager );
         if( exitCode == 0 ){
-          Files.write( statusFile.toPath(), "".getBytes());
+          write( statusFile, "" );
           Files.setLastModifiedTime( statusFile.toPath(), FileTime.fromMillis(start) );
         } else {
           System.exit( exitCode );

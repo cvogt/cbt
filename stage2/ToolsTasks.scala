@@ -137,7 +137,7 @@ ${assignments.mkString("\n")}
 }
 """
     val file = nailgun ++ ("/" ++ "EarlyDependencies.java")
-    Files.write( file.toPath, code.getBytes )
+    lib.write( file, code )
     println( Console.GREEN ++ "Wrote " ++ file.string ++ Console.RESET )
   }
 }

@@ -54,6 +54,8 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   def blue(string: String) = scala.Console.BLUE++string++scala.Console.RESET
   def green(string: String) = scala.Console.GREEN++string++scala.Console.RESET
 
+  def write(file: File, content: String, options: OpenOption*): File = Stage0Lib.write(file, content, options:_*)
+
   def download(url: URL, target: File, sha1: Option[String]): Boolean = {
     if( target.exists ){
       logger.resolver(green("found ") ++ url.string)
@@ -231,7 +233,7 @@ ${files.sorted.mkString(" \\\n")}
         if(code == ExitCode.Success){
           // write version and when last compilation started so we can trigger
           // recompile if cbt version changed or newer source files are seen
-          Files.write(statusFile.toPath, "".getBytes)//cbtVersion.getBytes)
+          write(statusFile, "")//cbtVersion.getBytes)
           Files.setLastModifiedTime(statusFile.toPath, FileTime.fromMillis(start) )
         } else {
           System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
@@ -284,7 +286,7 @@ ${files.sorted.mkString(" \\\n")}
     } else {
       val result = compute
       val string = result.map(serialize).mkString("\n")
-      Files.write(cacheFile.toPath, string.getBytes)
+      write(cacheFile, string)
       result
     }
   }
