@@ -5,7 +5,6 @@ import java.nio.file.Files.readAllBytes
 import scala.collection.immutable.Seq
 
 abstract class PublishBuild(context: Context) extends PackageBuild(context){
-  def name = artifactId
   def description: String
   def url: URL
   def developers: Seq[Developer]

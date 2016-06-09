@@ -1,5 +1,6 @@
 package cbt
 package mixins
+import java.net.URL
 import scala.collection.immutable.Seq
 import java.io._
 trait Test extends BasicBuild{
@@ -38,4 +39,20 @@ trait ScalaParadise extends BasicBuild{
         Seq()
     )
   )
+}
+
+trait Suggested extends BasicBuild{
+  override def scalacOptions = super.scalacOptions ++ Seq(
+    "-language:experimental.macros"
+  )
+}
+
+trait Github extends PublishBuild{
+  def user: String
+  def githubProject = name
+  def githubUser = user
+  final def githubUserProject = githubUser ++ "/" ++ githubProject
+  override def url = new URL(s"http://github.com/$githubUserProject")
+  override def scmUrl = s"git@github.com:$githubUserProject.git"
+  override def scmConnection = s"scm:git:$scmUrl"
 }
