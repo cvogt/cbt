@@ -7,8 +7,7 @@ trait Scaffold{
 
   private def createFile( projectDirectory: File, fileName: String, code: String ){
     val outputFile = projectDirectory ++ ("/" ++ fileName)
-    outputFile.getParentFile.mkdirs
-    Files.write( ( outputFile ).toPath, code.getBytes, StandardOpenOption.CREATE_NEW )
+    Stage0Lib.write( outputFile, code, StandardOpenOption.CREATE_NEW )
     import scala.Console._
     println( GREEN ++ "Created " ++ fileName ++ RESET )
   }

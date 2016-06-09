@@ -241,6 +241,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     if( files.isEmpty ){
       None
     } else {
+      jarFile.getParentFile.mkdirs
       logger.lib("Start packaging "++jarFile.string)
       val manifest = new Manifest
       manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
@@ -360,8 +361,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     // FIXME: do not build this file name including scalaMajorVersion in multiple places
     val path = jarTarget.toString ++ ( "/" ++ artifactId++ "_" ++ scalaMajorVersion ++ "-" ++ version  ++ ".pom" )
     val file = new File(path)
-    Files.write(file.toPath, ("<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString).getBytes)
-    file
+    write(file, "<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString)
   }
 
   def concurrently[T,R]( concurrencyEnabled: Boolean )( items: Seq[T] )( projection: T => R ): Seq[R] = {
