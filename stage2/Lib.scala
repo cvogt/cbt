@@ -14,7 +14,6 @@ import scala.util._
 
 // pom model
 case class Developer(id: String, name: String, timezone: String, url: URL)
-case class License(name: String, url: URL)
 
 /** Don't extend. Create your own libs :). */
 final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
