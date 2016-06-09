@@ -306,6 +306,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     licenses: Seq[License],
     scmUrl: String, // seems like invalid URLs are used here in pom files
     scmConnection: String,
+    inceptionYear: Int,
+    organizationName: String,
+    organizationUrl: URL,
     dependencies: Seq[Dependency],
     pomExtra: Seq[scala.xml.Node],
     jarTarget: File
@@ -343,6 +346,11 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             <url>{scmUrl}</url>
             <connection>{scmConnection}</connection>
           </scm>
+          <inceptionYear>{inceptionYear}</inceptionYear>
+          <organization>
+              <name>{organizationName}</name>
+              <url>{organizationUrl}</url>
+          </organization>
           {pomExtra}
           <dependencies>
           {

@@ -12,6 +12,9 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
   def licenses: Seq[License]
   def scmUrl: String
   def scmConnection: String
+  def inceptionYear: Int
+  def organizationName: String
+  def organizationUrl: URL
   def pomExtra: Seq[scala.xml.Node] = Seq()
 
   // ========== package ==========
@@ -29,6 +32,9 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
     licenses = licenses,
     scmUrl = scmUrl,
     scmConnection = scmConnection,
+    inceptionYear,
+    organizationName,
+    organizationUrl,
     dependencies = dependencies,
     pomExtra = pomExtra,
     jarTarget = jarTarget
