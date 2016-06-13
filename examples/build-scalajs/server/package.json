@@ -1,0 +1,14 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "prototype",
+  "main": "app.js",
+  "author": "Katrin",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "express": "^4.13.3",
+    "express-ws": "^0.2.6",
+    "body-parser": "^1.14.1"
+  }
+}

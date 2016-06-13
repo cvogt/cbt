@@ -34,7 +34,7 @@ class Build(context: cbt.Context) extends BasicBuild(context){
     ).bind(
       "org.cvogt" %% "play-json-extensions" % "0.8.0",
       "org.tpolecat" %% "tut-core" % "0.4.2",
-      "ai.x" %% "lens" % "1.0.0-SNAPSHOT"
+      "ai.x" %% "lens" % "1.0.0"
     )
   )
 }

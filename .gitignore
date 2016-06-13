@@ -9,3 +9,6 @@ target/
 cache_
 .idea
 realpath/realpath
+node_modules
+*fastopt*
+*fullopt*

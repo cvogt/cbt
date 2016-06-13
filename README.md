@@ -121,6 +121,29 @@ Build scripts also have access to a small unsurprising library for
 - packaging jars
 - signing / publishing to sonatype/maven
 
+Scala.js support
+----------------
+
+CBT supports cross-project Scala.js build.
+It preserves same structure as in SBT (https://www.scala-js.org/doc/project/cross-build.html)
+
+ 1. Example for user scalajs project is in: `$CBT_HOME/cbt/examples/build-scalajs`
+ 2. `$CBT_HOME/cbt compile`
+    Will compile JVM and JS sources
+    `$CBT_HOME/cbt jsCompile`
+    Will compile JS sources
+    `$CBT_HOME/cbt jvmCompile`
+    Will compile JVM sources
+ 3. `$CBT_HOME/cbt fastOptJS` and `$CBT_HOME/cbt fullOptJS`
+    Same as in Scala.js sbt project
+
+ Note: Scala.js support is under ongoing development.
+
+ Currently missing features:
+ * No support for jsDependencies:
+   It means that all 3rd party dependencies should added manually, see scalajs build example
+ * No support for test
+
 Missing features in comparison with SBT
 ---------------------------------------
 
