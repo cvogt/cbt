@@ -1,7 +1,8 @@
 package cbt
 import java.io.File
 import scala.collection.immutable.Seq
-abstract class PackageBuild(context: Context) extends BasicBuild(context) with ArtifactInfo{
+// would love to call this just `Package` but that conflicts with scala package objects.
+trait PackageJars extends BaseBuild with ArtifactInfo{
   def name: String
   def artifactId = name
   def defaultVersion: String

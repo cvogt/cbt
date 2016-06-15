@@ -11,7 +11,7 @@ import org.scalatest
    Probably by adding support for subfolders to "GitDependency"
 */
 
-trait SbtLayout extends BasicBuild{
+trait SbtLayout extends BaseBuild{
   outer =>
   override def sources = Seq( projectDirectory ++ "/src/main/scala" )
   def testSources = projectDirectory ++ "/src/test/scala"
@@ -28,7 +28,7 @@ trait SbtLayout extends BasicBuild{
     else None
 }
 
-trait ScalaTest extends BasicBuild{
+trait ScalaTest extends BaseBuild{
   override def run: ExitCode = {
     import ScalaTestLib._
     val _classLoader = classLoader(context.classLoaderCache)

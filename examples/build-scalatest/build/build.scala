@@ -3,7 +3,7 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-class Build( context: Context ) extends BasicBuild( context ) with SbtLayout {
+class Build(val context: Context) extends SbtLayout {
 
   override def dependencies = (
     super.dependencies ++

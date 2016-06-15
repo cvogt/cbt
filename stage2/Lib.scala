@@ -49,7 +49,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     val rootBuildClassName = if( useBasicBuildBuild ) buildBuildClassName else buildClassName
     try{
-      if(useBasicBuildBuild) default( context ) else new cbt.BuildBuild( context.copy( projectDirectory = start ) )
+      if(useBasicBuildBuild) default( context ) else new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuild
     } catch {
       case e:ClassNotFoundException if e.getMessage == rootBuildClassName =>
         throw new Exception(s"no class $rootBuildClassName found in " ++ start.string)
@@ -153,8 +153,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def usage(buildClass: Class[_], show: String): String = {
     val baseTasks = Seq(
       classOf[BasicBuild],
-      classOf[PackageBuild],
-      classOf[PublishBuild],
+      classOf[PackageJars],
+      classOf[Publish],
       classOf[Recommended]
     ).flatMap(lib.taskNames).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks

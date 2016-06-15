@@ -3,7 +3,7 @@ import java.io.File
 import java.nio.file._
 import scala.collection.immutable.Seq
 
-class BuildBuild(context: Context) extends BasicBuild(context){
+trait BuildBuild extends BaseBuild{
   override def dependencies =
     super.dependencies :+ context.cbtDependency
   def managedBuildDirectory: File = lib.realpath( projectDirectory.parent )

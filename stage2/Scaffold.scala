@@ -32,7 +32,7 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-class Build( context: Context ) extends BasicBuild( context ){
+class Build(val context: Context) extends BaseBuild{
   /*
   override def dependencies = (
     super.dependencies // don't forget super.dependencies here
@@ -65,7 +65,7 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-class Build( context: Context ) extends BuildBuild( context ){
+class Build(val context: Context) extends BuildBuild{
 /*
   override def dependencies = (
     super.dependencies // don't forget super.dependencies here
@@ -97,7 +97,7 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-class Build(context: Context) extends BuildBuild(context){
+class Build(val context: Context) extends BuildBuild{
   override def dependencies = super.dependencies ++ Seq(
     BuildDependency( projectDirectory.parent ++ "/build-shared")
     // , "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
@@ -117,7 +117,7 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-class Build(context: cbt.Context) extends BasicBuild(context) with BuildShared/* with cbt.mixins.ScalaTest*/{
+class Build(val context: Context) extends BaseBuild with BuildShared/* with mixins.ScalaTest*/{
   // def scalaTestVersion = "2.2.6"
   
   override def dependencies = super.dependencies ++ Seq(
@@ -131,7 +131,7 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-class Build(context: Context) extends BuildBuild(context){
+class Build(val context: Context) extends BuildBuild{
   override def scalaVersion: String = "2.11.8"
   
   override def dependencies = super.dependencies ++ Seq(
@@ -146,7 +146,7 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-class Build(context: Context) extends BasicBuild(context){
+class Build(val context: Context) extends BaseBuild{
   override def scalaVersion: String = "$scalaVersion"
 
   override def dependencies = super.dependencies ++ Seq(  // don't forget super.dependencies here
@@ -161,7 +161,7 @@ import java.net.URL
 import java.io.File
 import scala.collection.immutable.Seq
 
-trait BuildShared extends BasicBuild{
+trait BuildShared extends BaseBuild{
   override def scalaVersion: String = "$scalaVersion"
   override def enableConcurrency = false // enable for speed, disable for debugging
 

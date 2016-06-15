@@ -4,7 +4,7 @@ import java.net.URL
 import java.nio.file.Files.readAllBytes
 import scala.collection.immutable.Seq
 
-abstract class PublishBuild(context: Context) extends PackageBuild(context){
+trait Publish extends PackageJars{
   def description: String
   def url: URL
   def developers: Seq[Developer]
@@ -40,7 +40,7 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
   private def snapshotUrl = new URL("https://oss.sonatype.org/content/repositories/snapshots")
   private def releaseUrl = new URL("https://oss.sonatype.org/service/local/staging/deploy/maven2")
   def publishUrl = if(version.endsWith("-SNAPSHOT")) snapshotUrl else releaseUrl
-  override def copy(context: Context) = super.copy(context).asInstanceOf[PublishBuild]
+  override def copy(context: Context) = super.copy(context).asInstanceOf[Publish]
 
   protected def sonatypeCredentials = {
     // FIXME: this should probably not use cbtHome, but some reference to the system's host cbt

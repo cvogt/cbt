@@ -10,7 +10,7 @@ import java.util.jar._
 import scala.collection.immutable.Seq
 import scala.util._
 
-trait Recommended extends BasicBuild{
+trait Recommended extends BaseBuild{
   override def scalacOptions = super.scalacOptions ++ Seq(
     "-feature",
     "-deprecation",
@@ -21,7 +21,10 @@ trait Recommended extends BasicBuild{
     "-language:existentials"
   )
 }
-class BasicBuild(val context: Context) extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
+class BasicBuild(val context: Context) extends BaseBuild
+trait BaseBuild extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
+  def context: Context
+  
   // library available to builds
   implicit protected final val logger: Logger = context.logger
   implicit protected final val classLoaderCache: ClassLoaderCache = context.classLoaderCache

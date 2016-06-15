@@ -1,6 +1,6 @@
 import cbt._
 
-trait ScalaJsInformation extends BasicBuild { outer =>
+trait ScalaJsInformation extends BaseBuild { outer =>
 
   val sjsVersion = "0.6.8"
   final private val sjsMajorVersion: String = lib.libMajorVersion(sjsVersion)

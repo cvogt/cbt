@@ -14,7 +14,7 @@ trait ScalaJsSbtDependencyDsl extends SbtDependencyDsl { self: ScalaJsBuild =>
   }
 }
 
-trait ScalaJsBuild extends BasicBuild with ScalaJsSbtDependencyDsl with ScalaJsInformation { outer =>
+trait ScalaJsBuild extends BaseBuild with ScalaJsSbtDependencyDsl with ScalaJsInformation { outer =>
 
   def sharedFolder = projectDirectory ++ "/shared"
   def jvmFolder = projectDirectory ++ "/jvm"
