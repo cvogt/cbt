@@ -1,6 +1,5 @@
 package cbt
 import java.io.File
-import scala.collection.immutable.Seq
 /*
 sealed abstract class ProjectProxy extends Ha{
   protected def delegate: ProjectMetaData
@@ -22,11 +21,11 @@ case class BuildDependency(context: Context) extends TriggerLoop{
   final override lazy val lib: Lib = new Lib(logger)
   private val root = lib.loadRoot( context.copy(args=Seq()) )
   lazy val build = root.finalBuild
-  def exportedClasspath = ClassPath(Seq())
+  def exportedClasspath = ClassPath()
   def dependencies = Seq(build)
   def triggerLoopFiles = root.triggerLoopFiles
   override final val needsUpdate = build.needsUpdate
-  def targetClasspath = ClassPath(Seq())
+  def targetClasspath = ClassPath()
 }
 /*
 case class DependencyOr(first: BuildDependency, second: JavaDependency) extends ProjectProxy with BuildDependencyBase{

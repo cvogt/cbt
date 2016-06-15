@@ -1,7 +1,6 @@
 package cbt
 import java.io._
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.immutable.Seq
 import java.lang._
 
 case class ContextImplementation(

@@ -2,17 +2,16 @@ package cbt
 import java.io.File
 import java.net.URL
 import java.nio.file.Files.readAllBytes
-import scala.collection.immutable.Seq
 
-abstract class PublishBuild(context: Context) extends PackageBuild(context){
-  def name = artifactId
+trait Publish extends PackageJars{
   def description: String
   def url: URL
   def developers: Seq[Developer]
   def licenses: Seq[License]
   def scmUrl: String
   def scmConnection: String
-  def pomExtra: Seq[scala.xml.Node] = Seq()
+  def inceptionYear: Int
+  def organization: Option[Organization]
 
   // ========== package ==========
 
@@ -29,8 +28,9 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
     licenses = licenses,
     scmUrl = scmUrl,
     scmConnection = scmConnection,
+    inceptionYear,
+    organization,
     dependencies = dependencies,
-    pomExtra = pomExtra,
     jarTarget = jarTarget
   )
 
@@ -39,7 +39,7 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
   private def snapshotUrl = new URL("https://oss.sonatype.org/content/repositories/snapshots")
   private def releaseUrl = new URL("https://oss.sonatype.org/service/local/staging/deploy/maven2")
   def publishUrl = if(version.endsWith("-SNAPSHOT")) snapshotUrl else releaseUrl
-  override def copy(context: Context) = super.copy(context).asInstanceOf[PublishBuild]
+  override def copy(context: Context) = super.copy(context).asInstanceOf[Publish]
 
   protected def sonatypeCredentials = {
     // FIXME: this should probably not use cbtHome, but some reference to the system's host cbt

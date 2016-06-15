@@ -1,9 +1,6 @@
 import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
 
-class Build(context: Context) extends BasicBuild(context){
+class Build(val context: Context) extends BaseBuild{
   // FIXME: somehow consolidate this with cbt's own boot-strapping from source.
   override def dependencies = {
     super.dependencies ++ Resolver(mavenCentral).bind(

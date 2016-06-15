@@ -12,8 +12,6 @@ import java.util.{Set=>_,Map=>_,_}
 import java.util.concurrent.ConcurrentHashMap
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
-import scala.collection.immutable.Seq
-
 // CLI interop
 case class ExitCode(integer: Int)
 object ExitCode{
@@ -337,7 +335,7 @@ ${files.sorted.mkString(" \\\n")}
     def dependencyClassLoader( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
       if( dependency.dependencies.isEmpty ){
         // wrap for caching
-        new cbt.URLClassLoader( ClassPath(Seq()), ClassLoader.getSystemClassLoader().getParent() )
+        new cbt.URLClassLoader( ClassPath(), ClassLoader.getSystemClassLoader().getParent() )
       } else if( dependencies.size == 1 ){
         classLoaderRecursion( dependencies.head, latest, cache )
       } else{

@@ -9,12 +9,10 @@ import java.security.MessageDigest
 import java.util.jar._
 import java.lang.reflect.Method
 
-import scala.collection.immutable.Seq
 import scala.util._
 
 // pom model
 case class Developer(id: String, name: String, timezone: String, url: URL)
-case class License(name: String, url: URL)
 
 /** Don't extend. Create your own libs :). */
 final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
@@ -50,7 +48,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     val rootBuildClassName = if( useBasicBuildBuild ) buildBuildClassName else buildClassName
     try{
-      if(useBasicBuildBuild) default( context ) else new cbt.BuildBuild( context.copy( projectDirectory = start ) )
+      if(useBasicBuildBuild) default( context ) else new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuild
     } catch {
       case e:ClassNotFoundException if e.getMessage == rootBuildClassName =>
         throw new Exception(s"no class $rootBuildClassName found in " ++ start.string)
@@ -154,8 +152,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def usage(buildClass: Class[_], show: String): String = {
     val baseTasks = Seq(
       classOf[BasicBuild],
-      classOf[PackageBuild],
-      classOf[PublishBuild],
+      classOf[PackageJars],
+      classOf[Publish],
       classOf[Recommended]
     ).flatMap(lib.taskNames).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks
@@ -307,8 +305,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     licenses: Seq[License],
     scmUrl: String, // seems like invalid URLs are used here in pom files
     scmConnection: String,
+    inceptionYear: Int,
+    organization: Option[Organization],
     dependencies: Seq[Dependency],
-    pomExtra: Seq[scala.xml.Node],
     jarTarget: File
   ): File = {
     val xml =
@@ -344,7 +343,13 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             <url>{scmUrl}</url>
             <connection>{scmConnection}</connection>
           </scm>
-          {pomExtra}
+          <inceptionYear>{inceptionYear}</inceptionYear>
+          {organization.map{ org =>
+            <organization>
+              <name>{org.name}</name>
+              {org.url.map( url => <url>url</url> )}
+            </organization>
+          }}
           <dependencies>
           {
             dependencies.map{

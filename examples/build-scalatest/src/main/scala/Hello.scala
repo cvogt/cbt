@@ -1,6 +1,6 @@
 object Main extends App{
 
-  println("Hell")
+  println("Hello World")
 
   def square(x: Int) = x * x
 

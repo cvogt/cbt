@@ -1,6 +1,5 @@
 package cbt
 import java.net._
-import scala.collection.immutable.Seq
 
 // do not make this a case class, required object identity equality
 class MultiClassLoader(final val parents: Seq[ClassLoader])(implicit val logger: Logger) extends ClassLoader(null) with CachingClassLoader{

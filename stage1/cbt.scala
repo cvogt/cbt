@@ -2,7 +2,6 @@ package cbt
 import java.io._
 import java.nio.file._
 import java.net._
-import scala.collection.immutable.Seq
 import java.util.concurrent.ConcurrentHashMap
 
 object `package`{

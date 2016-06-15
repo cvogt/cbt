@@ -3,7 +3,6 @@ import java.nio.file._
 import java.nio.charset.StandardCharsets
 import java.net._
 import java.io._
-import scala.collection.immutable.Seq
 import scala.xml._
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -115,8 +114,8 @@ class ScalaReflectDependency (cbtHasChanged: Boolean, mavenCache: File, version:
 
 case class ScalaDependencies(cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit val logger: Logger) extends DependencyImplementation{ sd =>
   override final val needsUpdate = false
-  def targetClasspath = ClassPath(Seq())
-  def exportedClasspath = ClassPath(Seq())
+  def targetClasspath = ClassPath()
+  def exportedClasspath = ClassPath()
   def dependencies = Seq(
     new ScalaCompilerDependency(cbtHasChanged, mavenCache, version),
     new ScalaLibraryDependency(cbtHasChanged, mavenCache, version),
@@ -133,11 +132,8 @@ case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implici
 /** Allows to easily assemble a bunch of dependencies */
 case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Logger) extends DependencyImplementation{
   override def needsUpdate = dependencies.exists(_.needsUpdate)
-  override def exportedClasspath = ClassPath(Seq())
-  override def targetClasspath = ClassPath(Seq())
-}
-object Dependencies{
-  def apply( dependencies: Dependency* )(implicit logger: Logger): Dependencies = Dependencies( dependencies.to )
+  override def exportedClasspath = ClassPath()
+  override def targetClasspath = ClassPath()
 }
 
 case class Stage1Dependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTarget: File, stage1Target: File, compatibilityTarget: File)(implicit val logger: Logger) extends DependencyImplementation{

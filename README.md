@@ -15,9 +15,9 @@ easy custom code. If you integrate something, consider
 doing it as traits that you make available as a library that
 other builds can depend on and mix in.
 
-Slides from CBT talk from NEScala 2016:
+Slides and video from CBT talk from NEScala 2016:
 https://github.com/cvogt/talks/raw/master/2016-03-04_NEScala-2016_A-Vision-For-Scala-Builds.pdf
-(video coming soon...)
+https://www.youtube.com/watch?v=5HfKw3hgdOM
 
 Getting started
 ---------------
@@ -44,13 +44,13 @@ that describes your build. Here is an example
 ```scala
 // build/build.scala
 import cbt._
-class Build(context: cbt.Context) extends PackageBuild(context){
-  override def version = "0.6.1-SNAPSHOT"
+class Build(val context: cbt.Context) extends BaseBuild{
+  override def version = "0.6.1"
   override def groupId = "org.cvogt"
   override def artifactId = "play-json-extensions"
   override def dependencies =
-    super.dependencies :+
-    resolver(mavenCentral).bind(
+    super.dependencies ++
+    Resolver(mavenCentral).bind(
       // encouraged way to declare dependencies
       ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
       MavenDependency("joda-time", "joda-time", "2.9.2")

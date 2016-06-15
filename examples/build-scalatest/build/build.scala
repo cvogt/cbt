@@ -1,14 +1,9 @@
 import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
-class Build( context: Context ) extends BasicBuild( context ) with SbtLayout {
-
-  override def dependencies = (
-    super.dependencies ++
-      Resolver( mavenCentral ).bind(
-        ScalaDependency("org.scalatest","scalatest","2.2.4")
-      )
-  )
+class Build(val context: Context) extends SbtLayoutMain {
+  outer =>
+  override def test: Option[ExitCode] = Some{
+    new BasicBuild(context) with ScalaTest with SbtLayoutTest{
+      override def dependencies = outer +: super.dependencies 
+    }.run
+  }  
 }
