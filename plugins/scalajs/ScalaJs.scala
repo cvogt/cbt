@@ -32,6 +32,8 @@ trait ScalaJsBuild extends BaseBuild with ScalaJsSbtDependencyDsl with ScalaJsIn
       Seq(s"-Xplugin:${scalaJsCompilerDep.jar.getAbsolutePath}", "-Xplugin-require:scalajs")
   }
 
+  override def triggerLoopFiles = super.triggerLoopFiles ++ (jvmBuild.sources ++ jsBuild.sources).distinct
+
   def jvmDependencies = Seq.empty[Dependency]
   //TODO: implement
   def jsDependencies = Seq.empty[Dependency]
@@ -69,9 +71,14 @@ trait ScalaJsBuild extends BaseBuild with ScalaJsSbtDependencyDsl with ScalaJsIn
         jsBuild.target.getAbsolutePath) ++
         jsBuild.dependencies.collect{case d: BoundMavenDependency => d.jar.getAbsolutePath},
       scalaJsCliDep.classLoader(jsBuild.context.classLoaderCache))
+  def fastOptJS = {
+    compile
+    link(FastOptJS, fastOptOutput, scalaJsOptions)
   }
-  def fastOptJS = link(FastOptJS, fastOptOutput)
-  def fullOptJS = link(FullOptJS, fullOptOutput)
+  def fullOptJS = {
+    compile
+    link(FullOptJS, fastOptOutput, scalaJsOptions)
+  }
   def fastOptOutput: String = output(FastOptJS)
   def fullOptOutput: String = output(FullOptJS)
 }
