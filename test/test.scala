@@ -141,7 +141,7 @@ object Main{
       ++
       Dependencies(
         Resolver( mavenCentral, sonatypeSnapshots ).bind(
-          MavenDependency("ai.x","lens_2.11","1.0.0-SNAPSHOT")
+          MavenDependency("ai.x","lens_2.11","1.0.0")
         )
       ).classpath.strings
     ).foreach{

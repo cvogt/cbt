@@ -39,9 +39,10 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
 
   def defaultScalaVersion: String = constants.scalaVersion
   final def scalaVersion = context.scalaVersion getOrElse defaultScalaVersion
-  final def scalaMajorVersion: String = lib.scalaMajorVersion(scalaVersion)
+  final def scalaMajorVersion: String = lib.libMajorVersion(scalaVersion)
   def crossScalaVersions: Seq[String] = Seq(scalaVersion, "2.10.6")
   final def crossScalaVersionsArray: Array[String] = crossScalaVersions.to
+  def projectName = "default"
 
   // TODO: this should probably provide a nice error message if class has constructor signature
   def copy(context: Context): BuildInterface = lib.copy(this.getClass, context).asInstanceOf[BuildInterface]
@@ -79,17 +80,14 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
   final def sourceFiles: Seq[File] = lib.sourceFiles(sources)
 
-  protected def assertSourceDirectories(): Unit = {
+  protected def logEmptySourceDirectories(): Unit = {
     val nonExisting =
       sources
         .filterNot( _.exists )
         .diff( Seq(defaultSourceDirectory) )
-    assert(
-      nonExisting.isEmpty,
-      "Some sources do not exist: \n"++nonExisting.mkString("\n")
-    )
+    if(!nonExisting.isEmpty) logger.stage2("Some sources do not exist: \n"++nonExisting.mkString("\n"))
   }
-  assertSourceDirectories()
+  logEmptySourceDirectories()
 
   def Resolver( urls: URL* ) = MavenResolver( context.cbtHasChanged, context.paths.mavenCache, urls: _* )
 

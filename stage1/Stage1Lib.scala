@@ -39,7 +39,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   lib =>
   implicit val implicitLogger: Logger = logger
 
-  def scalaMajorVersion(scalaMinorVersion: String) = scalaMinorVersion.split("\\.").take(2).mkString(".")
+  def libMajorVersion(libFullVersion: String) = libFullVersion.split("\\.").take(2).mkString(".")
 
   // ========== file system / net ==========
 
