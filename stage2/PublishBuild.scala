@@ -14,7 +14,6 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
   def inceptionYear: Int
   def organizationName: String
   def organizationUrl: URL
-  def pomExtra: Seq[scala.xml.Node] = Seq()
 
   // ========== package ==========
 
@@ -35,7 +34,6 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
     organizationName,
     organizationUrl,
     dependencies = dependencies,
-    pomExtra = pomExtra,
     jarTarget = jarTarget
   )
 

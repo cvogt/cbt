@@ -310,7 +310,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     organizationName: String,
     organizationUrl: URL,
     dependencies: Seq[Dependency],
-    pomExtra: Seq[scala.xml.Node],
     jarTarget: File
   ): File = {
     val xml =
@@ -351,7 +350,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
               <name>{organizationName}</name>
               <url>{organizationUrl}</url>
           </organization>
-          {pomExtra}
           <dependencies>
           {
             dependencies.map{
