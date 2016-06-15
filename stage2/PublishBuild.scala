@@ -12,8 +12,7 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
   def scmUrl: String
   def scmConnection: String
   def inceptionYear: Int
-  def organizationName: String
-  def organizationUrl: URL
+  def organization: Option[Organization]
 
   // ========== package ==========
 
@@ -31,8 +30,7 @@ abstract class PublishBuild(context: Context) extends PackageBuild(context){
     scmUrl = scmUrl,
     scmConnection = scmConnection,
     inceptionYear,
-    organizationName,
-    organizationUrl,
+    organization,
     dependencies = dependencies,
     jarTarget = jarTarget
   )

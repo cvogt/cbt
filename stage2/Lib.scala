@@ -307,8 +307,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     scmUrl: String, // seems like invalid URLs are used here in pom files
     scmConnection: String,
     inceptionYear: Int,
-    organizationName: String,
-    organizationUrl: URL,
+    organization: Option[Organization],
     dependencies: Seq[Dependency],
     jarTarget: File
   ): File = {
@@ -346,10 +345,12 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             <connection>{scmConnection}</connection>
           </scm>
           <inceptionYear>{inceptionYear}</inceptionYear>
-          <organization>
-              <name>{organizationName}</name>
-              <url>{organizationUrl}</url>
-          </organization>
+          {organization.map{ org =>
+            <organization>
+              <name>{org.name}</name>
+              {org.url.map( url => <url>url</url> )}
+            </organization>
+          }}
           <dependencies>
           {
             dependencies.map{
