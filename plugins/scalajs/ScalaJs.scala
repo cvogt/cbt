@@ -47,11 +47,11 @@ trait ScalaJsBuild extends BaseBuild with ScalaJsSbtDependencyDsl with ScalaJsIn
     def fileSuffix: String
   }
   case object FastOptJS extends JsOutputMode{
-    override val option = "-f"
+    override val option = "--fastOpt"
     override val fileSuffix = "fastopt"
   }
   case object FullOptJS extends JsOutputMode{
-    override val option = "-u"
+    override val option = "--fullOpt"
     override val fileSuffix = "fullopt"
   }
 
@@ -63,9 +63,9 @@ trait ScalaJsBuild extends BaseBuild with ScalaJsSbtDependencyDsl with ScalaJsIn
       "org.scalajs.cli.Scalajsld",
       Seq(
         mode.option,
-        "-s",
+        "--sourceMap",
         "--stdlib", s"${scalaJsLibDep.jar.getAbsolutePath}",
-        "-o", outputPath,
+        "--output", outputPath
         jsBuild.target.getAbsolutePath) ++
         jsBuild.dependencies.collect{case d: BoundMavenDependency => d.jar.getAbsolutePath},
       scalaJsCliDep.classLoader(jsBuild.context.classLoaderCache))
