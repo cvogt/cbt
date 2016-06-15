@@ -1,9 +1,5 @@
 import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
-class Build( context: Context ) extends BuildBuild( context ){
+class Build(val context: Context) extends BuildBuild{
 
   override def dependencies =
     super.dependencies :+

@@ -2,7 +2,6 @@ import java.io.File
 
 import cbt._
 
-import scala.collection.immutable.Seq
 
 trait ScalaJsSbtDependencyDsl extends SbtDependencyDsl { self: ScalaJsBuild =>
 
