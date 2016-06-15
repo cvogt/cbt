@@ -59,7 +59,6 @@ trait ScalaJsBuild extends BaseBuild with ScalaJsSbtDependencyDsl with ScalaJsIn
 
   private def output(mode: JsOutputMode) = s"${jsBuild.target.getAbsolutePath}/$projectName-${mode.fileSuffix}.js"
 
-  //TODO: should process all options that Scalajsld recognizes?
   private def link(mode: JsOutputMode, outputPath: String) = {
     lib.runMain(
       "org.scalajs.cli.Scalajsld",
@@ -68,9 +67,15 @@ trait ScalaJsBuild extends BaseBuild with ScalaJsSbtDependencyDsl with ScalaJsIn
         "--sourceMap",
         "--stdlib", s"${scalaJsLibDep.jar.getAbsolutePath}",
         "--output", outputPath
+      ) ++ scalaJsOptions ++ Seq(
         jsBuild.target.getAbsolutePath) ++
         jsBuild.dependencies.collect{case d: BoundMavenDependency => d.jar.getAbsolutePath},
-      scalaJsCliDep.classLoader(jsBuild.context.classLoaderCache))
+      scalaJsCliDep.classLoader(jsBuild.context.classLoaderCache)
+    )
+  }
+
+  def scalaJsOptions: Seq[String] = Seq()
+
   def fastOptJS = {
     compile
     link(FastOptJS, fastOptOutput, scalaJsOptions)
