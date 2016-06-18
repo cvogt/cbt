@@ -44,7 +44,7 @@ that describes your build. Here is an example
 ```scala
 // build/build.scala
 import cbt._
-class Build(val context: cbt.Context) extends BaseBuild{
+class Build(val context: cbt.Context) extends Publish{
   override def version = "0.6.1"
   override def groupId = "org.cvogt"
   override def artifactId = "play-json-extensions"
