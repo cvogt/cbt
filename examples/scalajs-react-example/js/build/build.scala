@@ -1,8 +1,10 @@
 import cbt._
-import java.io.File
-class Build( val context: Context ) extends ScalaJsBuild {
-
+class Build(val context: Context) extends ScalaJsBuild{
   override val projectName = "my-project"
+
+  override def sources = super.sources ++ Seq(
+    projectDirectory.getParentFile ++ "/shared"
+  )
 
   override def dependencies = (
     super.dependencies ++
@@ -14,11 +16,7 @@ class Build( val context: Context ) extends ScalaJsBuild {
       )
   )
 
-  /* ++ some JVM only dependencies */
-  override def jvmDependencies = Seq.empty
-
-  override def fastOptOutput = {
-    projectDirectory.getAbsolutePath + "/server/public/" + new File(super.fastOptOutput).getName
+  override protected def fastOptJSFile = {
+    projectDirectory.getParentFile ++ "/server/public" ++ ("/"++super.fastOptJSFile.getName)
   }
 }
-

@@ -8,9 +8,6 @@ import japgolly.scalajs.react.vdom.all._
 
 import scala.scalajs.js.JSON
 
-/**
- * Created by katrin on 2016-04-10.
- */
 object Pictures {
 
   case class State(pictures: List[Picture], favourites: List[Picture])

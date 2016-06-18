@@ -16,7 +16,7 @@ object `package`{
   implicit class FileExtensionMethods( file: File ){
     def ++( s: String ): File = {
       if(s endsWith "/") throw new Exception(
-        """Trying to append a String that ends in "/" to a File would loose it. Use .stripSuffix("/") if you need to."""
+        """Trying to append a String that ends in "/" to a File would loose the trailing "/". Use .stripSuffix("/") if you need to."""
       )
       new File( file.toString ++ s )
     }
