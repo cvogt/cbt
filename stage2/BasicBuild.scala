@@ -87,7 +87,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
     scalaVersion: String = scalaMajorVersion
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
-  final def BuildDependency(path: File) = cbt.BuildDependency(
+  final def DirectoryDependency(path: File) = cbt.DirectoryDependency(
     context.copy( projectDirectory = path, args = Seq() )
   )
 
@@ -138,7 +138,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
 
   def test: Option[ExitCode] = 
     Some(new lib.ReflectBuild(
-      BuildDependency(projectDirectory++"/test").build
+      DirectoryDependency(projectDirectory++"/test").build
     ).callNullary(Some("run")))
   def t = test
   def rt = recursiveUnsafe(Some("test"))

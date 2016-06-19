@@ -16,8 +16,7 @@ class ToolsTasks(
   private def Resolver( urls: URL* ) = MavenResolver(cbtHasChanged,mavenCache,urls: _*)
   implicit val logger: Logger = lib.logger
   def createMain: Unit = lib.createMain( cwd )
-  def createBasicBuild: Unit = lib.createBasicBuild( cwd )
-  def createBuildBuild: Unit = lib.createBuildBuild( cwd )
+  def createBuild: Unit = lib.createBuild( cwd )
   def resolve = {
     ClassPath.flatten(
       args(1).split(",").toVector.map{

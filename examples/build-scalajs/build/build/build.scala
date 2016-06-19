@@ -7,5 +7,5 @@ class Build( context: Context ) extends BuildBuild( context ){
 
   override def dependencies =
     super.dependencies :+
-      BuildDependency(new File(context.cbtHome + "/plugins/scalajs"))
+      DirectoryDependency(new File(context.cbtHome + "/plugins/scalajs"))
 }

@@ -8,8 +8,8 @@ trait BuildBuild extends BaseBuild{
   )
 
   object plugins{
-    final val scalaTest = BuildDependency( managedContext.cbtHome ++ "/plugins/scalatest" )
-    final val sbtLayout = BuildDependency( managedContext.cbtHome ++ "/plugins/sbt_layout" )
+    final val scalaTest = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalatest" )
+    final val sbtLayout = DirectoryDependency( managedContext.cbtHome ++ "/plugins/sbt_layout" )
   }
 
   override def dependencies =
