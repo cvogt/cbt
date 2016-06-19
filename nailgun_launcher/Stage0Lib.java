@@ -74,7 +74,10 @@ public class Stage0Lib{
             "-sbt-interface", earlyDeps.sbtInterface_0_13_9_File,
             "-compiler-interface", earlyDeps.compilerInterface_0_13_9_File,
             "-cp", classpath,
-            "-d", target
+            "-d", target,
+            "-S-deprecation",
+            "-S-feature",
+            "-S-unchecked"
           }
         )
       );
