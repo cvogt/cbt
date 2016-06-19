@@ -9,17 +9,6 @@ import java.util.jar._
 
 import scala.util._
 
-trait Recommended extends BaseBuild{
-  override def scalacOptions = super.scalacOptions ++ Seq(
-    "-feature",
-    "-deprecation",
-    "-unchecked",
-    "-language:postfixOps",
-    "-language:implicitConversions",
-    "-language:higherKinds",
-    "-language:existentials"
-  )
-}
 class BasicBuild(val context: Context) extends BaseBuild
 trait BaseBuild extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
   def context: Context
@@ -120,7 +109,11 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   // ========== compile, run, test ==========
 
   /** scalac options used for zinc and scaladoc */
-  def scalacOptions: Seq[String] = Seq()
+  def scalacOptions: Seq[String] = Seq(
+    "-feature",
+    "-deprecation",
+    "-unchecked"
+  )
 
   private object needsUpdateCache extends Cache[Boolean]
   def needsUpdate: Boolean = needsUpdateCache(

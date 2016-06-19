@@ -133,8 +133,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val baseTasks = Seq(
       classOf[BasicBuild],
       classOf[PackageJars],
-      classOf[Publish],
-      classOf[Recommended]
+      classOf[Publish]
     ).flatMap(lib.taskNames).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks
     (
