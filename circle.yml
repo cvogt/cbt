@@ -9,10 +9,8 @@ dependencies:
     - ./cbt compile
     - ./cbt direct
     - ./cbt -Dlog=all
-    - cd plugins/scalatest/ && ../../cbt compile && cd ../../
 
 test:
   override:
     - ./cbt direct test
     - ./cbt test
-    - cd examples/build-scalatest && ../../cbt test && cd ../..

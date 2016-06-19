@@ -156,6 +156,11 @@ object Main{
     usage("simple-fixed")
     compile("simple-fixed")
     
+    compile("../plugins/sbt_layout")
+    compile("../plugins/scalajs")
+    compile("../plugins/scalatest")
+    compile("../examples/scalatest-example")
+    
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
     if(failures > 0) System.exit(1) else System.exit(0)

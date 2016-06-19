@@ -48,7 +48,7 @@ public class Stage0Lib{
 
   public static File write(File file, String content, OpenOption... options) throws Exception{
     file.getParentFile().mkdirs();
-    Files.write(file.toPath(), content.getBytes());
+    Files.write(file.toPath(), content.getBytes(), options);
     return file;
   }
 
@@ -74,7 +74,10 @@ public class Stage0Lib{
             "-sbt-interface", earlyDeps.sbtInterface_0_13_9_File,
             "-compiler-interface", earlyDeps.compilerInterface_0_13_9_File,
             "-cp", classpath,
-            "-d", target
+            "-d", target,
+            "-S-deprecation",
+            "-S-feature",
+            "-S-unchecked"
           }
         )
       );

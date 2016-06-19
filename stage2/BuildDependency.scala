@@ -15,7 +15,7 @@ trait TriggerLoop extends DependencyImplementation{
   def triggerLoopFiles: Seq[File]
 }
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
-case class BuildDependency(context: Context) extends TriggerLoop{
+case class DirectoryDependency(context: Context) extends TriggerLoop{
   override def show = this.getClass.getSimpleName ++ "(" ++ context.projectDirectory.string ++ ")"
   final override lazy val logger = context.logger
   final override lazy val lib: Lib = new Lib(logger)
@@ -28,7 +28,7 @@ case class BuildDependency(context: Context) extends TriggerLoop{
   def targetClasspath = ClassPath()
 }
 /*
-case class DependencyOr(first: BuildDependency, second: JavaDependency) extends ProjectProxy with BuildDependencyBase{
+case class DependencyOr(first: DirectoryDependency, second: JavaDependency) extends ProjectProxy with DirectoryDependencyBase{
   val isFirst = new File(first.context.projectDirectory).exists
   def triggerLoopFiles = if(isFirst) first.triggerLoopFiles else Seq()
   protected val delegate = if(isFirst) first else second

@@ -9,17 +9,6 @@ import java.util.jar._
 
 import scala.util._
 
-trait Recommended extends BaseBuild{
-  override def scalacOptions = super.scalacOptions ++ Seq(
-    "-feature",
-    "-deprecation",
-    "-unchecked",
-    "-language:postfixOps",
-    "-language:implicitConversions",
-    "-language:higherKinds",
-    "-language:existentials"
-  )
-}
 class BasicBuild(val context: Context) extends BaseBuild
 trait BaseBuild extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
   def context: Context
@@ -98,7 +87,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
     scalaVersion: String = scalaMajorVersion
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
-  final def BuildDependency(path: File) = cbt.BuildDependency(
+  final def DirectoryDependency(path: File) = cbt.DirectoryDependency(
     context.copy( projectDirectory = path, args = Seq() )
   )
 
@@ -120,7 +109,11 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   // ========== compile, run, test ==========
 
   /** scalac options used for zinc and scaladoc */
-  def scalacOptions: Seq[String] = Seq()
+  def scalacOptions: Seq[String] = Seq(
+    "-feature",
+    "-deprecation",
+    "-unchecked"
+  )
 
   private object needsUpdateCache extends Cache[Boolean]
   def needsUpdate: Boolean = needsUpdateCache(
@@ -143,9 +136,12 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   def runClass: String = "Main"
   def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
 
-  def test: Option[ExitCode] = {
-    lib.test(context)
-  }
+  def test: Option[ExitCode] = 
+    Some(new lib.ReflectBuild(
+      DirectoryDependency(projectDirectory++"/test").build
+    ).callNullary(Some("run")))
+  def t = test
+  def rt = recursiveUnsafe(Some("test"))
 
   def recursiveSafe(_run: BuildInterface => Any): ExitCode = {
     val builds = (this +: transitiveDependencies).collect{
@@ -192,9 +188,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   }
 
   def c = compile
-  def t = test
   def r = run
-  def rt = recursiveUnsafe(Some("test"))
 
   /*
   context.logger.composition(">"*80)

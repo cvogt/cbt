@@ -87,7 +87,10 @@ object Stage1{
     val paths = CbtPaths(cbtHome, cache)
     import paths._
 
-    val stage2sourceFiles = stage2.listFiles.toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
+    val stage2sourceFiles = (
+      stage2.listFiles ++ (stage2 ++ "/plugins").listFiles
+    ).toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
+    
     val cbtHasChanged = _cbtChanged || lib.needsUpdate(stage2sourceFiles, stage2StatusFile)
 
     val cls = this.getClass.getClassLoader.loadClass("cbt.NailgunLauncher")
@@ -101,7 +104,7 @@ object Stage1{
       stage2sourceFiles, stage2Target, stage2StatusFile,
       cbtDependency.dependencyClasspath,
       mavenCache,
-      Seq("-deprecation"), classLoaderCache,
+      Seq("-deprecation","-feature","-unchecked"), classLoaderCache,
       zincVersion = "0.3.9", scalaVersion = constants.scalaVersion
     )
 

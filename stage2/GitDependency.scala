@@ -39,7 +39,7 @@ case class GitDependency(
   }
   private object dependencyCache extends Cache[DependencyImplementation]
   def dependency = dependencyCache{
-    BuildDependency(
+    DirectoryDependency(
       context.copy(
         projectDirectory = checkout ++ subDirectory.map("/" ++ _).getOrElse("")
       )
