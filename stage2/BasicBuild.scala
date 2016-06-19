@@ -143,9 +143,12 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   def runClass: String = "Main"
   def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
 
-  def test: Option[ExitCode] = {
-    lib.test(context)
-  }
+  def test: Option[ExitCode] = 
+    Some(new lib.ReflectBuild(
+      BuildDependency(projectDirectory++"/test").build
+    ).callNullary(Some("run")))
+  def t = test
+  def rt = recursiveUnsafe(Some("test"))
 
   def recursiveSafe(_run: BuildInterface => Any): ExitCode = {
     val builds = (this +: transitiveDependencies).collect{
@@ -192,9 +195,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   }
 
   def c = compile
-  def t = test
   def r = run
-  def rt = recursiveUnsafe(Some("test"))
 
   /*
   context.logger.composition(">"*80)
