@@ -48,7 +48,7 @@ public class Stage0Lib{
 
   public static File write(File file, String content, OpenOption... options) throws Exception{
     file.getParentFile().mkdirs();
-    Files.write(file.toPath(), content.getBytes());
+    Files.write(file.toPath(), content.getBytes(), options);
     return file;
   }
 
