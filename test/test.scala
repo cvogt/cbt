@@ -202,6 +202,18 @@ object Main{
       assert(res.err contains "Build cannot be cast to cbt.BuildInterface", res.err)
     }
 
+    {
+      val res = runCbt("no-build-file", Seq("run"))
+      assert(!res.exit0)
+      assert(res.err contains "No file build.scala (lower case) found in", res.err)
+    }
+
+    {
+      val res = runCbt("empty-build-file", Seq("run"))
+      assert(!res.exit0)
+      assert(res.err contains "You need to define a class Build in build.scala in", res.err)
+    }
+
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
     if(failures > 0) System.exit(1) else System.exit(0)
