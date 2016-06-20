@@ -1,11 +1,10 @@
 import cbt._
-import java.net.URL
-import java.io.File
-import scala.collection.immutable.Seq
-
-class Build( context: Context ) extends BasicBuild( context ) with ScalaJsBuild {
-
+class Build(val context: Context) extends ScalaJsBuild{
   override val projectName = "my-project"
+
+  override def sources = super.sources ++ Seq(
+    projectDirectory.getParentFile ++ "/shared"
+  )
 
   override def dependencies = (
     super.dependencies ++
@@ -17,11 +16,7 @@ class Build( context: Context ) extends BasicBuild( context ) with ScalaJsBuild 
       )
   )
 
-  /* ++ some JVM only dependencies */
-  override def jvmDependencies = Seq.empty
-
-  override def fastOptOutput = {
-    projectDirectory.getAbsolutePath + "/server/public/" + new File(super.fastOptOutput).getName
+  override protected def fastOptJSFile = {
+    projectDirectory.getParentFile ++ "/server/public" ++ ("/"++super.fastOptJSFile.getName)
   }
 }
-
