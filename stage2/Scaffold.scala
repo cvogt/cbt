@@ -45,7 +45,6 @@ class Build(val context: Context) extends BaseBuild{
       "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
       "com.lihaoyi" % "ammonite-ops_2.11" % "0.5.5"
     )
-  )
   */
 }
 """
