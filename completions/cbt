@@ -5,16 +5,7 @@ _cbt()
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="_context apiTarget assertSourceDirectories c classLoaderCache \
-          classpath compile compileStatusFile compileTarget context crossScalaVersions \
-          crossScalaVersionsArray defaultScalaVersion defaultVersion dependencies dependenciesArray \
-          dependencyClasspath dependencyClasspathArray dependencyTree description developers docJar \
-          enableConcurrency exportedClasspath exportedClasspathArray finalBuild jar jarTarget lib \
-          licenses localJars logger name needsUpdate needsUpdateCompat package pom pomExtra projectDirectory \
-          publishSigned publishSnapshot r recursive releaseFolder releaseUrl rt run runClass scalaMajorVersion \
-          scalaTarget scalaVersion scalacOptions scmConnection scmUrl show snapshotUrl sonatypeCredentials \
-          sourceFiles sources srcJar t target targetClasspath test tools transitiveDependencies \
-          triggerLoopFiles triggerLoopFilesArray url usage version zincVersion"
+    opts=$(cbt)
 
     COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
     return 0
