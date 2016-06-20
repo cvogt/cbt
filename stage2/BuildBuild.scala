@@ -58,7 +58,11 @@ trait BuildBuild extends BaseBuild{
               }
           }
       } else {
-        new BasicBuild(managedContext)
+        if( projectDirectory.getParentFile.getName == "build" ){
+          new BasicBuild( managedContext ) with BuildBuild
+        } else {
+          new BasicBuild( managedContext )
+        }
       }
     )
     try{
