@@ -43,27 +43,43 @@ that describes your build. Here is an example
 
 ```scala
 // build/build.scala
-import cbt._
-class Build(val context: cbt.Context) extends Publish{
-  override def version = "0.6.1"
+class Build(val context: cbt.Context) extends PackageJars {
+  override def defaultVersion = "0.6.1"
+
+  override def name = "play-json-extensions"
+
   override def groupId = "org.cvogt"
+
   override def artifactId = "play-json-extensions"
+
   override def dependencies =
     super.dependencies ++
-    Resolver(mavenCentral).bind(
-      // encouraged way to declare dependencies
-      ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
-      MavenDependency("joda-time", "joda-time", "2.9.2")
-      // also supported for SBT syntax compatibility:
-      // "com.typesafe.play" %% "play-json" % "2.4.4"
-      // Maven.central % "joda-time" % "joda-time % "2.9.2"
-    )
+      Resolver(mavenCentral).bind(
+        // encouraged way to declare dependencies
+        ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
+        MavenDependency("joda-time", "joda-time", "2.9.2"))
+  
   override def compile = {
     println("Compiling...")
     super.compile
   }
+
   def foo = "Hello World"
 }
+```
+
+Dependencies could also be declared using SBT style.
+
+```scala
+class Build(val context: cbt.Context) extends PackageJars {
+...
+// sbt compatible dependencies definition
+override def dependencies =
+  super.dependencies ++
+    Resolver(mavenCentral).bind("com.typesafe.play" %% "play-json" % "2.4.4",
+      "joda-time", "joda-time", "2.9.2")
+...
+}      
 ```
 
 Now you can call methods of this class through cbt. Try `cbt foo`.
