@@ -1,7 +1,7 @@
 import cbt._
 import scalariform.formatter.preferences._
 
-class Build(val context: Context) extends BuildBuild with Scalariform {
+class Build(val context: Context) extends BaseBuild with Scalariform {
   override def compile = {
     scalariformFormat
     super.compile
@@ -13,7 +13,7 @@ class Build(val context: Context) extends BuildBuild with Scalariform {
       .setPreference(DoubleIndentClassDeclaration, true)
       .setPreference(RewriteArrowSymbols, true)
 
-  def breakFormatting = {
+  final def breakFormatting = {
     import java.nio.file._
     import scala.collection.JavaConverters._
     sourceFiles foreach { file =>
