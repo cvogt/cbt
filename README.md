@@ -57,7 +57,8 @@ class Build(val context: cbt.Context) extends PackageJars {
       Resolver(mavenCentral).bind(
         // encouraged way to declare dependencies
         ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
-        MavenDependency("joda-time", "joda-time", "2.9.2"))
+        MavenDependency("joda-time", "joda-time", "2.9.2")
+      )
   
   override def compile = {
     println("Compiling...")
@@ -76,8 +77,10 @@ class Build(val context: cbt.Context) extends PackageJars {
 // sbt compatible dependencies definition
 override def dependencies =
   super.dependencies ++
-    Resolver(mavenCentral).bind("com.typesafe.play" %% "play-json" % "2.4.4",
-      "joda-time", "joda-time", "2.9.2")
+    Resolver(mavenCentral).bind(
+      "com.typesafe.play" %% "play-json" % "2.4.4",
+      "joda-time" % "joda-time" % "2.9.2"
+    )
 ...
 }      
 ```
