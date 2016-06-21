@@ -50,8 +50,6 @@ class Build(val context: cbt.Context) extends PackageJars {
 
   override def groupId = "org.cvogt"
 
-  override def artifactId = "play-json-extensions"
-
   override def dependencies =
     super.dependencies ++
       Resolver(mavenCentral).bind(
