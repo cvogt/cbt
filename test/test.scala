@@ -162,6 +162,7 @@ object Main{
     compile("../plugins/scalajs")
     compile("../plugins/scalariform")
     compile("../plugins/scalatest")
+    compile("../plugins/uber-jar")
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")
@@ -170,7 +171,8 @@ object Main{
     compile("../examples/multi-project-example")
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
-    
+    compile("../examples/uber-jar-example")
+
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
     if(failures > 0) System.exit(1) else System.exit(0)
