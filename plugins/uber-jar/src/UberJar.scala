@@ -51,6 +51,7 @@ object UberJar extends JarUtils {
     * 4. extract all jars, filter out their MANIFEST.MF and signatures files
     * 5. write content of all jars to target jar file
     * 6. Finalize everything, and return `ExitCode`
+    *
     * @param targetDir build's target directory
     * @param compilerTarget directory where compiled classfiles are
     * @param classpath build's classpath
@@ -95,14 +96,21 @@ object UberJar extends JarUtils {
     }
   }
 
-  //  Main-Class: classname
-  //  Manifest-Version: 1.0
-  //  Created-By: 1.7.0_06 (Oracle Corporation)
-  // this template is taken from java tutorial oracle site. replace with actual value, if possible...if needed
+  /**
+    * Writes three attributes to manifest file:
+    *
+    *  Main-Class: classname
+    *  Manifest-Version: 1.0
+    *  Created-By: java.runtime.version
+    *
+    * @param mainClass optional main class
+    * @return mainifest for jar
+    */
   private def createManifest(mainClass: Option[String]): jar.Manifest = {
     val m = new jar.Manifest()
     m.getMainAttributes.putValue("Manifest-Version", "1.0")
-    m.getMainAttributes.putValue("Created-By", "1.7.0_06 (Oracle Corporation)")
+    val createdBy = Option(System.getProperty("java.runtime.version")) getOrElse "1.7.0_06 (Oracle Corporation)"
+    m.getMainAttributes.putValue("Created-By", createdBy)
     mainClass foreach { className =>
       m.getMainAttributes.putValue("Main-Class", className)
     }
