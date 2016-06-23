@@ -158,8 +158,12 @@ object Main{
     compile("simple-fixed")
     
     compile("../plugins/sbt_layout")
+    compile("../plugins/scalafmt")
     compile("../plugins/scalajs")
+    compile("../plugins/scalariform")
     compile("../plugins/scalatest")
+    compile("../examples/scalafmt-example")
+    compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")
     compile("../examples/scalajs-react-example/js")
     compile("../examples/scalajs-react-example/jvm")

@@ -4,13 +4,12 @@ import java.io.File
 import java.nio.file.FileSystems
 import java.nio.file.Files._
 
-import scala.util.Try
 import scalariform.formatter.ScalaFormatter
 import scalariform.formatter.preferences.FormattingPreferences
 import scalariform.parser.ScalaParserException
 
 trait Scalariform extends BaseBuild {
-  def scalariformFormat: ExitCode = {
+  final def scalariformFormat: ExitCode = {
     Scalariform.format(sourceFiles, scalariformPreferences, scalaVersion)
     ExitCode.Success
   }
@@ -35,7 +34,7 @@ object Scalariform {
 
   private val scalaFileMatcher = FileSystems.getDefault.getPathMatcher("glob:**.scala")
 
-  def format(files: Seq[File], preferences: FormattingPreferences, scalaVersion: String) = {
+  def format(files: Seq[File], preferences: FormattingPreferences, scalaVersion: String): Unit = {
     var reformattedCount: Int = 0
     for (file <- files if file.exists) {
       val path = file.toPath
@@ -52,11 +51,11 @@ object Scalariform {
             reformattedCount += 1
           }
         } catch {
-          case e: ScalaParserException => System.err.println(s"Scalariform parser error: ${e.getMessage} when formatting source: $file")
+          case e: ScalaParserException => System.err.println(s"Scalariform parser error: ${e.getMessage} when formatting: $file")
         }
       }
     }
-    System.err.println(s"Reformatted $reformattedCount Scala sources")
+    if (reformattedCount > 0) System.err.println(s"Formatted $reformattedCount Scala sources")
   }
 
 }

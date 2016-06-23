@@ -11,22 +11,26 @@ case class Logger(enabledLoggers: Set[String], start: Long) {
   def this(enabledLoggers: Option[String], start: Long) = this( enabledLoggers.toVector.flatMap( _.split(",") ).toSet, start )
 
   def log(name: String, msg: => String) = {
-    val timeTaken = ((System.currentTimeMillis.toDouble - start) / 1000).toString
-    System.err.println( s"[$timeTaken][$name] $msg" )
+    if(
+      (enabledLoggers contains name)
+        || (enabledLoggers contains "all")
+    ){
+      logUnguarded(name, msg)
+    }
   }
 
   def showInvocation(method: String, args: Any) = method ++ "( " ++ args.toString ++ " )"
 
-  final def stage1(msg: => String) = logGuarded(names.stage1, msg)
-  final def stage2(msg: => String) = logGuarded(names.stage2, msg)
-  final def loop(msg: => String) = logGuarded(names.loop, msg)
-  final def task(msg: => String) = logGuarded(names.task, msg)
-  final def composition(msg: => String) = logGuarded(names.composition, msg)
-  final def resolver(msg: => String) = logGuarded(names.resolver, msg)
-  final def lib(msg: => String) = logGuarded(names.lib, msg)
-  final def test(msg: => String) = logGuarded(names.test, msg)
-  final def git(msg: => String) = logGuarded(names.git, msg)
-  final def pom(msg: => String) = logGuarded(names.pom, msg)
+  final def stage1(msg: => String) = log(names.stage1, msg)
+  final def stage2(msg: => String) = log(names.stage2, msg)
+  final def loop(msg: => String) = log(names.loop, msg)
+  final def task(msg: => String) = log(names.task, msg)
+  final def composition(msg: => String) = log(names.composition, msg)
+  final def resolver(msg: => String) = log(names.resolver, msg)
+  final def lib(msg: => String) = log(names.lib, msg)
+  final def test(msg: => String) = log(names.test, msg)
+  final def git(msg: => String) = log(names.git, msg)
+  final def pom(msg: => String) = log(names.pom, msg)
 
   private object names{
     val stage1 = "stage1"
@@ -41,12 +45,8 @@ case class Logger(enabledLoggers: Set[String], start: Long) {
     val git = "git"
   }
 
-  private def logGuarded(name: String, msg: => String) = {
-    if(
-      (enabledLoggers contains name)
-      || (enabledLoggers contains "all")
-    ){
-      log(name, msg)
-    }
+  private def logUnguarded(name: String, msg: => String) = {
+    val timeTaken = ((System.currentTimeMillis.toDouble - start) / 1000).toString
+    System.err.println( s"[$timeTaken][$name] $msg" )
   }
 }

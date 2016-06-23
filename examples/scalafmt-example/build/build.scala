@@ -1,19 +1,15 @@
 import cbt._
-import scalariform.formatter.preferences._
+import org.scalafmt.ScalafmtStyle
 
-class Build(val context: Context) extends BaseBuild with Scalariform {
+class Build(val context: Context) extends BuildBuild with Scalafmt {
   override def compile = {
-    scalariformFormat
+    scalafmt
     super.compile
   }
 
-  override def scalariformPreferences =
-    FormattingPreferences()
-      .setPreference(SpacesAroundMultiImports, true)
-      .setPreference(DoubleIndentClassDeclaration, true)
-      .setPreference(RewriteArrowSymbols, true)
+  override def scalafmtConfig: ScalafmtStyle = ScalafmtStyle.defaultWithAlign
 
-  final def breakFormatting = {
+  def breakFormatting = {
     import java.nio.file._
     import java.nio.charset.Charset
     import scala.collection.JavaConverters._
