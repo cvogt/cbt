@@ -11,6 +11,6 @@ class Build(val context: Context) extends BaseBuild with UberJar {
       ScalaDependency("org.typelevel", "cats", "0.6.0")
     )
 
-  override def uberJarName = projectName + "-0.0.1"
+  override def uberJarName = projectName + "-0.0.1" + ".jar"
 
 }

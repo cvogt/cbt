@@ -215,6 +215,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   def jarFile( jarFile: File, files: Seq[File], mainClass: Option[String] = None ): Option[File] = {
+    Files.deleteIfExists(jarFile.toPath)
     if( files.isEmpty ){
       None
     } else {
@@ -224,7 +225,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
       manifest.getMainAttributes.putValue("Created-By",
         Option(System.getProperty("java.runtime.version")) getOrElse "1.7.0_06 (Oracle Corporation)")
-      mainClass foreach { className => manifest.getMainAttributes.put(Attributes.Name.MAIN_CLASS, className)
+      mainClass foreach { className =>
+        manifest.getMainAttributes.put(Attributes.Name.MAIN_CLASS, className)
       }
       val jar = new JarOutputStream(new FileOutputStream(jarFile), manifest)
       try{

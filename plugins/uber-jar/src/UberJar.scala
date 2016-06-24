@@ -15,7 +15,7 @@ trait UberJar extends BaseBuild {
 
   def uberJarMainClass: Option[String] = Some(runClass)
 
-  def uberJarName: String = projectName
+  def uberJarName: String = projectName + ".jar"
 
 }
 
@@ -33,6 +33,7 @@ class UberJarLib(logger: Logger) {
     * @param target        build's target directory
     * @param compileTarget directory where compiled classfiles are
     * @param classpath     build's classpath
+    * @param mainClass     optional main class
     * @param jarName       name of resulting jar file
     */
   def create(target: File,
@@ -43,11 +44,8 @@ class UberJarLib(logger: Logger) {
     log(s"Compiler target directory is: $compileTarget")
     log(s"Classpath is: $classpath")
     log(s"Target directory is: $target")
+    log(s"Jar name is: $jarName")
     mainClass foreach (c => log(s"Main class is is: $c"))
-
-    log("Creating far file...")
-    val file = createJarFile(target.toPath, jarName)
-    log("Creating far file - DONE")
 
     val jars = classpath.files filter (f => jarFileMatcher.matches(f.toPath))
     log(s"Found ${jars.length} jar dependencies: \n ${jars mkString "\n"}")
@@ -57,23 +55,15 @@ class UberJarLib(logger: Logger) {
     log("Extracting jars - DONE")
 
     log("Writing jar file...")
-    val optOutput = lib.jarFile(file, Seq(compileTarget, extractedJarsRoot), mainClass)
+    val uberJarPath = target.toPath.resolve(jarName)
+    val uberJar =
+      lib.jarFile(uberJarPath.toFile, Seq(compileTarget, extractedJarsRoot), mainClass) getOrElse {
+        throw new Exception("Jar file wasn't created!")
+      }
     log("Writing jar file - DONE")
 
-    optOutput foreach { uberJar =>
-      System.err.println(s"Uber jar created. You can grab it at $uberJar")
-    }
-
+    System.err.println(s"Uber jar created. You can grab it at $uberJar")
   }
-
-  private def createJarFile(parent: Path, name: String): File = {
-    val path = parent.resolve(validJarName(name))
-    Files.deleteIfExists(path)
-    Files.createFile(path)
-    path.toFile
-  }
-
-  private def validJarName(name: String) = if (name.endsWith(".jar")) name else name + ".jar"
 
   /**
     * Extracts jars, and writes them on disk. Returns root directory of extracted jars
