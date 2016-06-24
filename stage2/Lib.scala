@@ -214,15 +214,19 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     } yield file    
   }
 
-  def jarFile( jarFile: File, files: Seq[File] ): Option[File] = {
+  def jarFile( jarFile: File, files: Seq[File], mainClass: Option[String] = None ): Option[File] = {
     if( files.isEmpty ){
       None
     } else {
       jarFile.getParentFile.mkdirs
       logger.lib("Start packaging "++jarFile.string)
-      val manifest = new Manifest
-      manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
-      val jar = new JarOutputStream(new FileOutputStream(jarFile.toString), manifest)
+      val manifest = new Manifest()
+      manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
+      manifest.getMainAttributes.putValue("Created-By",
+        Option(System.getProperty("java.runtime.version")) getOrElse "1.7.0_06 (Oracle Corporation)")
+      mainClass foreach { className => manifest.getMainAttributes.put(Attributes.Name.MAIN_CLASS, className)
+      }
+      val jar = new JarOutputStream(new FileOutputStream(jarFile), manifest)
       try{
         val names = for {
           base <- files.filter(_.exists).map(realpath)
@@ -235,7 +239,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
             entry.setTime(file.lastModified)
             jar.putNextEntry(entry)
             jar.write( readAllBytes( file.toPath ) )
-            jar.closeEntry
+            jar.closeEntry()
             name
         }
 
@@ -245,7 +249,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
           s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
         )
       } finally {
-        jar.close
+        jar.close()
       }
 
       logger.lib("Done packaging " ++ jarFile.toString)

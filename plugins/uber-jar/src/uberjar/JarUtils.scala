@@ -2,64 +2,37 @@ package cbt.uberjar
 
 import java.io.File
 import java.nio.file._
-import java.nio.file.attribute.BasicFileAttributes
-import java.util.jar.{JarFile, JarOutputStream}
-import java.util.zip.{ZipEntry, ZipException}
+import java.util.jar.JarFile
 
 private[cbt] trait JarUtils {
 
-  protected val (pathSeparator, jarFileMatcher, excludeFileMatcher) = {
+  protected val (jarFileMatcher, excludeFileMatcher) = {
     val fs = FileSystems.getDefault
-    (fs.getSeparator, fs.getPathMatcher("glob:**.jar"), fs.getPathMatcher("glob:**{.RSA,.DSA,.SF,.MF}"))
+    (fs.getPathMatcher("glob:**.jar"), fs.getPathMatcher("glob:**{.RSA,.DSA,.SF,.MF,META-INF}"))
   }
 
-  /**
-    * If `root` is directory: writes content of directory to jar with original mapping
-    * If `root` is file: writes this file to jar
-    * @param root parent directory, with content should go to jar, or file to be written
-    * @param out jar output stream
-    * @param log logger
-    * @return returns `root`
-    */
-  protected def writeFilesToJar(root: Path, out: JarOutputStream)(log: String => Unit): Path = {
-    Files.walkFileTree(root, new SimpleFileVisitor[Path]() {
-      override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
-        // when we put part of compiled classes, zip already contains some entries. We should not duplicate them.
-        try {
-          out.putNextEntry(new ZipEntry(root.relativize(file).toString))
-          Files.copy(file, out)
-          out.closeEntry()
-        } catch {
-          case e: ZipException => log(s"Failed to add entry, skipping cause: $e")
-        }
-        FileVisitResult.CONTINUE
-      }
-
-      override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult = {
-        // when we put part compiled classes, zip already contains some entries. We should not duplicate them.
-        try {
-          out.putNextEntry(new ZipEntry(root.relativize(dir).toString + pathSeparator))
-          out.closeEntry()
-        } catch {
-          case e: ZipException => log(s"Failed to add entry, skipping cause: $e")
-        }
-        FileVisitResult.CONTINUE
-      }
-    })
+  protected def createJarFile(parent: Path, name: String): File = {
+    val path = parent.resolve(validJarName(name))
+    Files.deleteIfExists(path)
+    Files.createFile(path)
+    path.toFile
   }
+
+  private def validJarName(name: String) = if (name.endsWith(".jar")) name else name + ".jar"
 
   /**
     * Extracts jars, and writes them on disk. Returns root directory of extracted jars
     * TODO: in future we probably should save extracted jars in target directory, to reuse them on second run
+    *
     * @param jars list of *.jar files
-    * @param log logger
+    * @param log  logger
     * @return root directory of extracted jars
     */
   protected def extractJars(jars: Seq[File])(log: String => Unit): Path = {
     val destDir = {
       val path = Files.createTempDirectory("unjars")
       path.toFile.deleteOnExit()
-      log(s"Unjars directory: $path")
+      log(s"Extracted jars directory: $path")
       path
     }
     jars foreach { jar => extractJar(jar, destDir)(log) }
@@ -70,9 +43,10 @@ private[cbt] trait JarUtils {
     * Extracts content of single jar file to destination directory.
     * When extracting jar, if same file already exists, we skip(don't write) this file.
     * TODO: maybe skipping duplicates is not best strategy. Figure out duplicate strategy.
+    *
     * @param jarFile jar file to extract
     * @param destDir destination directory
-    * @param log logger
+    * @param log     logger
     */
   private def extractJar(jarFile: File, destDir: Path)(log: String => Unit): Unit = {
     log(s"Extracting jar: $jarFile")
@@ -85,12 +59,15 @@ private[cbt] trait JarUtils {
       if (excludeFileMatcher.matches(entryPath)) {
         log(s"Excluded file ${entryPath.getFileName} from jar: $jarFile")
       } else {
-        if (Files.exists(entryPath)) {
-          log(s"File $entryPath already exists, skipping.")
-        } else {
-          if (entry.isDirectory) {
+        val exists = Files.exists(entryPath)
+        if (entry.isDirectory) {
+          if (!exists) {
             Files.createDirectory(entryPath)
             //              log(s"Created directory: $entryPath")
+          }
+        } else {
+          if (exists) {
+            log(s"File $entryPath already exists, skipping.")
           } else {
             val is = jar.getInputStream(entry)
             Files.copy(is, entryPath)
