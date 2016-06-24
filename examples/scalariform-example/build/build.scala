@@ -19,14 +19,10 @@ class Build(val context: Context) extends BaseBuild with Scalariform {
     import scala.collection.JavaConverters._
     val utf8 = Charset.forName("UTF-8")
     sourceFiles foreach { file =>
-      try {
-        val path = file.toPath
-        val fileLines = Files.readAllLines(path, utf8).asScala
-        val brokenLines = fileLines map (_.dropWhile(_ ==' '))
-        Files.write(path, brokenLines.asJava, utf8)
-      } catch {
-        case e: Exception => System.err.print(s"Error happend when breaking formatting: ${e}")
-      }
+      val path = file.toPath
+      val fileLines = Files.readAllLines(path, utf8).asScala
+      val brokenLines = fileLines map (_.dropWhile(_ == ' '))
+      Files.write(path, brokenLines.asJava, utf8)
     }
     System.err.println("Done breaking formatting")
   }
