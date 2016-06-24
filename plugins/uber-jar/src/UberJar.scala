@@ -8,8 +8,8 @@ trait UberJar extends BaseBuild {
 
   final def uberJar: ExitCode = {
     System.err.println("Creating uber jar...")
-    new UberJarLib(logger).create(target, compileTarget, classpath, uberJarMainClass, uberJarName)
-    System.err.println("Creating uber jar - DONE")
+    new UberJarLib(logger).create(target, classpath, uberJarMainClass, uberJarName)
+    System.err.println(lib.green("Creating uber jar - DONE"))
     ExitCode.Success
   }
 
@@ -31,24 +31,22 @@ class UberJarLib(logger: Logger) {
     * Creates uber jar for given build.
     *
     * @param target        build's target directory
-    * @param compileTarget directory where compiled classfiles are
     * @param classpath     build's classpath
     * @param mainClass     optional main class
     * @param jarName       name of resulting jar file
     */
   def create(target: File,
-             compileTarget: File,
              classpath: ClassPath,
              mainClass: Option[String],
              jarName: String): Unit = {
-    log(s"Compiler target directory is: $compileTarget")
     log(s"Classpath is: $classpath")
     log(s"Target directory is: $target")
     log(s"Jar name is: $jarName")
     mainClass foreach (c => log(s"Main class is is: $c"))
 
-    val jars = classpath.files filter (f => jarFileMatcher.matches(f.toPath))
+    val (jars, dirs) = classpath.files partition (f => jarFileMatcher.matches(f.toPath))
     log(s"Found ${jars.length} jar dependencies: \n ${jars mkString "\n"}")
+    log(s"Found ${dirs.length} directories in classpath: \n ${dirs mkString "\n"}")
 
     log("Extracting jars...")
     val extractedJarsRoot = extractJars(jars.distinct)(log).toFile
@@ -56,13 +54,12 @@ class UberJarLib(logger: Logger) {
 
     log("Writing jar file...")
     val uberJarPath = target.toPath.resolve(jarName)
-    val uberJar =
-      lib.jarFile(uberJarPath.toFile, Seq(compileTarget, extractedJarsRoot), mainClass) getOrElse {
+    val uberJar = lib.jarFile(uberJarPath.toFile, dirs :+ extractedJarsRoot, mainClass) getOrElse {
         throw new Exception("Jar file wasn't created!")
       }
     log("Writing jar file - DONE")
 
-    System.err.println(s"Uber jar created. You can grab it at $uberJar")
+    System.err.println(lib.green(s"Uber jar created. You can grab it at $uberJar"))
   }
 
   /**
