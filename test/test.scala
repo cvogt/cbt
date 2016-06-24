@@ -167,6 +167,7 @@ object Main{
     compile("../examples/scalatest-example")
     compile("../examples/scalajs-react-example/js")
     compile("../examples/scalajs-react-example/jvm")
+    compile("../examples/multi-project-example")
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
     
