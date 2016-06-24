@@ -223,29 +223,31 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       val manifest = new Manifest
       manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
       val jar = new JarOutputStream(new FileOutputStream(jarFile.toString), manifest)
+      try{
+        val names = for {
+          base <- files.filter(_.exists).map(realpath)
+          file <- listFilesRecursive(base) if file.isFile
+        } yield {
+            val name = if(base.isDirectory){
+              file.toString stripPrefix (base.toString ++ File.separator)
+            } else file.toString
+            val entry = new JarEntry( name )
+            entry.setTime(file.lastModified)
+            jar.putNextEntry(entry)
+            jar.write( readAllBytes( file.toPath ) )
+            jar.closeEntry
+            name
+        }
 
-      val names = for {
-        base <- files.filter(_.exists).map(realpath)
-        file <- listFilesRecursive(base) if file.isFile
-      } yield {
-          val name = if(base.isDirectory){
-            file.toString stripPrefix (base.toString ++ File.separator)
-          } else file.toString
-          val entry = new JarEntry( name )
-          entry.setTime(file.lastModified)
-          jar.putNextEntry(entry)
-          jar.write( readAllBytes( file.toPath ) )
-          jar.closeEntry
-          name
+        val duplicateFiles = (names diff names.distinct).distinct
+        assert(
+          duplicateFiles.isEmpty,
+          s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
+        )
+      } finally {
+        jar.close
       }
 
-      val duplicateFiles = (names diff names.distinct).distinct
-      assert(
-        duplicateFiles.isEmpty,
-        s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
-      )
-
-      jar.close
       logger.lib("Done packaging " ++ jarFile.toString)
 
       Some(jarFile)
