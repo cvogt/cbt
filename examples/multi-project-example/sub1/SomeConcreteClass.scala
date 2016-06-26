@@ -1,0 +1,1 @@
+class SomeConcreteClass extends SomeSharedClass
