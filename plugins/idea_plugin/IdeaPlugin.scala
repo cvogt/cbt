@@ -11,9 +11,9 @@ trait IdeaPlugin extends BaseBuild {
 
   // @TODO add only the top level dependencies
   def generateIdeaProject: ExitCode = {
-    val moduleDir = "$MODULE_DIR$"
+    val moduleDir = projectDirectory.getPath
 
-    val projectDependencies: List[String] = for {
+    /*val projectDependencies: List[String] = for {
       depJarFile <- this.dependencies
         .flatMap(dep => dep.dependenciesArray().toList)
         .flatMap(x => x.exportedClasspathArray().toList).toList
@@ -35,7 +35,7 @@ trait IdeaPlugin extends BaseBuild {
     }
     val fw = new FileWriter(imlFile.getPath, false)
     fw.write(templateWithCBTSources(projectDependencies.mkString("\n")))
-    fw.close()
+    fw.close()*/
     ExitCode.Success
   }
 
