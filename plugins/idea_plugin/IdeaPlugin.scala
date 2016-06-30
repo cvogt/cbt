@@ -4,16 +4,18 @@ import java.io.{File, FileWriter}
 
 import cbt.{BaseBuild, ExitCode}
 
-
+/**
+  * IDEA plugin
+  */
 trait IdeaPlugin extends BaseBuild {
 
   import IdeaPlugin._
 
   // @TODO add only the top level dependencies
+  // @TODO return exit code dynamically
   def generateIdeaProject: ExitCode = {
     val moduleDir = projectDirectory.getPath
-
-    /*val projectDependencies: List[String] = for {
+    val projectDependencies: List[String] = for {
       depJarFile <- this.dependencies
         .flatMap(dep => dep.dependenciesArray().toList)
         .flatMap(x => x.exportedClasspathArray().toList).toList
@@ -34,8 +36,8 @@ trait IdeaPlugin extends BaseBuild {
       imlFile.createNewFile()
     }
     val fw = new FileWriter(imlFile.getPath, false)
-    fw.write(templateWithCBTSources(projectDependencies.mkString("\n")))
-    fw.close()*/
+    fw.write(templateWithCBTSources(projectDependencies.mkString("\n"), moduleDir))
+    fw.close()
     ExitCode.Success
   }
 
@@ -44,10 +46,10 @@ trait IdeaPlugin extends BaseBuild {
 private[idea_plugin] object IdeaPlugin {
 
   // @TODO inject from the build.scala
-  // scala version
+  // @TODO infer scala version from project
   // path of cbt relative to module dir
 
-  private val templateWithCBTSources: (String) => String = (dependencies: String) =>
+  private val templateWithCBTSources: (String, String) => String = (dependencies: String, moduleRootDir: String) =>
     """<?xml version="1.0" encoding="UTF-8"?>
       |<module type="JAVA_MODULE" version="4">
       |  <component name="NewModuleRootManager" inherit-compiler-output="true">

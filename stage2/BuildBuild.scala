@@ -14,6 +14,7 @@ trait BuildBuild extends BaseBuild{
     final val scalariform = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalariform" )
     final val scalafmt = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalafmt" )
     final val uberJar = DirectoryDependency( managedContext.cbtHome ++ "/plugins/uber-jar" )
+    final val ideaPlugin = DirectoryDependency( managedContext.cbtHome ++ "/plugins/idea_plugin" )
   }
 
   override def dependencies =
