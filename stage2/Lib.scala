@@ -361,20 +361,20 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     else items.map(projection)
   }
 
-  def publishUnsigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
+  def publishUnsigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
     if(sourceFiles.nonEmpty){
       publish( artifacts, url, credentials )
     }
   }
 
-  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
+  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
     // TODO: make concurrency configurable here
     if(sourceFiles.nonEmpty){
       publish( artifacts ++ artifacts.map(sign), url, credentials )
     }
   }
 
-  private def publish(artifacts: Seq[File], url: URL, credentials: String): Unit = {
+  private def publish(artifacts: Seq[File], url: URL, credentials: Option[String]): Unit = {
     val files = artifacts.map(nameAndContents)
     lazy val checksums = files.flatMap{
       case (name, content) => Seq(
@@ -386,10 +386,10 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     uploadAll(url, all, credentials)
   }
 
-  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: String ): Unit =
+  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: Option[String] = None ): Unit =
     nameAndContents.map{ case(name, content) => upload(name, content, url, credentials ) }
 
-  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: String): Unit = {
+  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: Option[String] = None): Unit = {
     import java.net._
     import java.io._
     val url = baseUrl ++ fileName
@@ -397,8 +397,12 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")
-    val encoding = new sun.misc.BASE64Encoder().encode(credentials.getBytes)
-    httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
+    credentials.foreach(
+      c => {
+        val encoding = new sun.misc.BASE64Encoder().encode(c.getBytes)
+        httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
+      }
+    )
     httpCon.setRequestProperty("Content-Type", "application/binary")
     httpCon.getOutputStream.write(
       fileContents
