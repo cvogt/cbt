@@ -54,6 +54,7 @@ public class NailgunLauncher{
       return;
     }
 
+    installProxySettings();
     String[] diff = args[0].split("\\.");
     long start = _start - (Long.parseLong(diff[0]) * 1000L) - Long.parseLong(diff[1]);
     
