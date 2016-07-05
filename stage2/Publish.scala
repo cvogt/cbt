@@ -41,9 +41,9 @@ trait Publish extends PackageJars{
   def publishUrl = if(version.endsWith("-SNAPSHOT")) snapshotUrl else releaseUrl
   override def copy(context: Context) = super.copy(context).asInstanceOf[Publish]
 
-  protected def sonatypeCredentials = {
+  protected def sonatypeCredentials: Option[String] = {
     // FIXME: this should probably not use cbtHome, but some reference to the system's host cbt
-    new String(readAllBytes((context.cbtRootHome ++ "/sonatype.login").toPath)).trim
+    Some(new String(readAllBytes((context.cbtRootHome ++ "/sonatype.login").toPath)).trim)
   }
 
   def publishSnapshot: Unit = {
