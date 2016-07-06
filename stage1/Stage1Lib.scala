@@ -60,7 +60,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       true
     } else {
       val incomplete = ( target ++ ".incomplete" ).toPath;
-      val connection = url.openConnection.asInstanceOf[HttpURLConnection]
+      val connection = Stage0Lib.openConnectionConsideringProxy(url)
       if(connection.getResponseCode != HttpURLConnection.HTTP_OK){
         logger.resolver(blue("not found: ") ++ url.string)
         false

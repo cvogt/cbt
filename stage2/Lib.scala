@@ -394,7 +394,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     import java.io._
     val url = baseUrl ++ fileName
     System.err.println(blue("uploading ") ++ url.toString)
-    val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
+    val httpCon = Stage0Lib.openConnectionConsideringProxy(url)
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")
     credentials.foreach(
