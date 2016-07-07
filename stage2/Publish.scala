@@ -35,7 +35,7 @@ trait Publish extends PackageJars{
   )
 
   // ========== publish ==========
-  final protected def releaseFolder = s"/${groupId.replace(".","/")}/${artifactId}_$scalaMajorVersion/$version/"
+  final protected val releaseFolder = s"/${groupId.replace(".","/")}/${artifactId}_$scalaMajorVersion/$version/"
   private def snapshotUrl = new URL("https://oss.sonatype.org/content/repositories/snapshots")
   private def releaseUrl = new URL("https://oss.sonatype.org/service/local/staging/deploy/maven2")
   def publishUrl = if(version.endsWith("-SNAPSHOT")) snapshotUrl else releaseUrl
@@ -48,6 +48,14 @@ trait Publish extends PackageJars{
 
   def publishSnapshot: Unit = {
     copy( context.copy(version = Some(version+"-SNAPSHOT")) ).publishUnsigned
+  }
+
+  def publishLocal: Unit = {
+    lib.publishLocal( sourceFiles, `package` :+ pom, context.paths.mavenCache, releaseFolder )
+  }
+
+  def publishSnapshotLocal: Unit = {
+    copy( context.copy(version = Some(version+"-SNAPSHOT")) ).publishLocal
   }
 
   def publishUnsigned: Unit = {
