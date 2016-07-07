@@ -367,6 +367,18 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
+  def publishLocal( sourceFiles: Seq[File], artifacts: Seq[File], mavenCache: File, releaseFolder: String ): Unit = {
+    if(sourceFiles.nonEmpty){
+      val targetDir = mavenCache ++ releaseFolder.stripSuffix("/")
+      targetDir.mkdirs
+      artifacts.foreach{ a =>
+        val target = targetDir ++ ("/" ++ a.getName)
+        System.err.println(blue("publishing ") ++ target.getPath)
+        Files.copy( a.toPath, target.toPath, StandardCopyOption.REPLACE_EXISTING )
+      }
+    }
+  }
+
   def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
     // TODO: make concurrency configurable here
     if(sourceFiles.nonEmpty){
