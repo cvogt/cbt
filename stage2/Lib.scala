@@ -298,58 +298,56 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     jarTarget: File
   ): File = {
     val xml =
-      <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
-          <modelVersion>4.0.0</modelVersion>
-          <groupId>{groupId}</groupId>
-          <artifactId>{artifactId ++ "_" ++ scalaMajorVersion}</artifactId>
-          <version>{version}</version>
-          <packaging>jar</packaging>
-          <name>{name}</name>
-          <description>{description}</description>
-          <url>{url}</url>
-          <licenses>
-            {licenses.map{ license =>
-            <license>
-              <name>{license.name}</name>
-                <url>{license.url}</url>
-              <distribution>repo</distribution>
-            </license>
-            }}
-          </licenses>
-          <developers>
-            {developers.map{ developer =>
-            <developer>
-              <id>{developer.id}</id>
-              <name>{developer.name}</name>
-              <timezone>{developer.timezone}</timezone>
-              <url>{developer.url}</url>
-            </developer>
-            }}
-          </developers>
-          <scm>
-            <url>{scmUrl}</url>
-            <connection>{scmConnection}</connection>
-          </scm>
-          <inceptionYear>{inceptionYear}</inceptionYear>
-          {organization.map{ org =>
-            <organization>
-              <name>{org.name}</name>
-              {org.url.map( url => <url>url</url> )}
-            </organization>
-          }}
-          <dependencies>
-          {
-            dependencies.map{
-              case d:ArtifactInfo =>
-                <dependency>
-                    <groupId>{d.groupId}</groupId>
-                    <artifactId>{d.artifactId}</artifactId>
-                    <version>{d.version}</version>
-                </dependency>
-            }
-          }
-          </dependencies>
-      </project>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>{groupId}</groupId>
+    <artifactId>{artifactId ++ "_" ++ scalaMajorVersion}</artifactId>
+    <version>{version}</version>
+    <packaging>jar</packaging>
+    <name>{name}</name>
+    <description>{description}</description>
+    <url>{url}</url>
+    <licenses>
+      {licenses.map{ license =>
+      <license>
+        <name>{license.name}</name>
+        {license.url.map(url => <url>url</url>).getOrElse( scala.xml.NodeSeq.Empty )}
+        <distribution>repo</distribution>
+      </license>
+      }}
+    </licenses>
+    <developers>
+      {developers.map{ developer =>
+      <developer>
+        <id>{developer.id}</id>
+        <name>{developer.name}</name>
+        <timezone>{developer.timezone}</timezone>
+        <url>{developer.url}</url>
+      </developer>
+      }}
+    </developers>
+    <scm>
+      <url>{scmUrl}</url>
+      <connection>{scmConnection}</connection>
+    </scm>
+    <inceptionYear>{inceptionYear}</inceptionYear>
+    {organization.map{ org =>
+      <organization>
+        <name>{org.name}</name>
+        {org.url.map( url => <url>url</url> ).getOrElse( scala.xml.NodeSeq.Empty )}
+      </organization>
+    }.getOrElse(scala.xml.NodeSeq.Empty)}
+    <dependencies>
+    {dependencies.map{
+      case d:ArtifactInfo =>
+      <dependency>
+        <groupId>{d.groupId}</groupId>
+        <artifactId>{d.artifactId}</artifactId>
+        <version>{d.version}</version>
+      </dependency>
+    }}
+    </dependencies>
+</project>
     // FIXME: do not build this file name including scalaMajorVersion in multiple places
     val path = jarTarget.toString ++ ( "/" ++ artifactId++ "_" ++ scalaMajorVersion ++ "-" ++ version  ++ ".pom" )
     val file = new File(path)
