@@ -4,9 +4,6 @@ import java.io.{File, FileWriter}
 
 import cbt.{BaseBuild, ExitCode}
 
-/**
-  * IDEA plugin
-  */
 trait IdeaPlugin extends BaseBuild {
 
   import IdeaPlugin._
@@ -14,21 +11,25 @@ trait IdeaPlugin extends BaseBuild {
   // @TODO add only the top level dependencies
   // @TODO return exit code dynamically
   def generateIdeaProject: ExitCode = {
+
+    val dependencyEntry: (String) => String = (url: String) => <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url={url}/>
+        </CLASSES>
+        <JAVADOC/>
+        <SOURCES/>
+      </library>
+    </orderEntry>.toString()
+
     val moduleDir = projectDirectory.getPath
     val projectDependencies: List[String] = for {
       depJarFile <- this.dependencies
         .flatMap(dep => dep.dependenciesArray().toList)
-        .flatMap(x => x.exportedClasspathArray().toList).toList
-      depIdeaOrderEntry =
-      s"""<orderEntry type="module-library">
-          |      <library>
-          |        <CLASSES>
-          |            <root url="jar://$moduleDir/../cbt/${depJarFile.getPath.split("/cbt")(1)}!/" />
-          |          </CLASSES>
-          |          <JAVADOC />
-          |          <SOURCES />
-          |       </library>
-          |</orderEntry>""".stripMargin
+        .flatMap(x => x.exportedClasspathArray().toList)
+        .toList
+      depIdeaOrderEntry = dependencyEntry(
+        s"jar://$moduleDir/../cbt/${depJarFile.getPath.split("/cbt")(1)}!/")
     } yield depIdeaOrderEntry
 
     val imlFile = new File(projectDirectory.getPath + s"/$projectName.iml")
@@ -49,7 +50,8 @@ private[idea_plugin] object IdeaPlugin {
   // @TODO infer scala version from project
   // path of cbt relative to module dir
 
-  private val templateWithCBTSources: (String, String) => String = (dependencies: String, moduleRootDir: String) =>
+  private val templateWithCBTSources: (String, String) => String = (dependencies: String,
+                                                                    moduleRootDir: String) =>
     """<?xml version="1.0" encoding="UTF-8"?>
       |<module type="JAVA_MODULE" version="4">
       |  <component name="NewModuleRootManager" inherit-compiler-output="true">
