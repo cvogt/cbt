@@ -35,4 +35,6 @@ class Build(val context: cbt.Context) extends BaseBuild{
       "ai.x" %% "lens" % "1.0.0"
     )
   )
+  
+  def printArgs = context.args.mkString(" ")
 }
