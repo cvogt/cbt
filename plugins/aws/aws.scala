@@ -34,11 +34,11 @@ import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model._
 
 
-abstract case class OnAwsLambda( targetBuild: BaseBuild )(implicit logger: Logger) extends DependencyImplementation {
+abstract class OnAwsLambda( targetBuild: BaseBuild )(implicit logger: Logger) extends DependencyImplementation {
   override def show = s"AwsBuild($targetBuild.show)"
   override def needsUpdate = targetBuild.needsUpdate
   override def dependencies = targetBuild.dependencies
-  def bucketName: String = ""
+  def bucketName: String
   private[cbt] def targetClasspath = targetBuild.targetClasspath
   def exportedClasspath = {
     AwsLambdaLib.deployWithCbt(bucketName, targetBuild.projectDirectory)
@@ -77,7 +77,8 @@ object AwsLambdaLib{
       }
       case _: Throwable => throw new IllegalArgumentException("Failed to get or read function from bucket")
     }
-    val req = new InvokeRequest().withFunctionName(arn)
+    val req = new InvokeRequest().withFunctionName(arn).withPayload("\"compile " ++ bucketName ++ " " ++ projectName ++"\"")
+    println("Compiling on aws lambda.")
     val buffer = lambdaClient.invoke(req).getPayload
     val stringResult = new String(buffer.array)
     val target = new File(project.toString + TARGET)
@@ -176,24 +177,32 @@ object AwsLambdaLib{
   }
 
   def deployWithCbt(bucket: String, project: File) = {
-    val CBT_HOME   = System.getenv("CBT_HOME")
+    val CBT_HOME    = System.getenv("CBT_HOME")
     val cacheFiles  = new File(CBT_HOME + "/cache")
-    val cbtHome    = new File(CBT_HOME)
-    val cbtDeps    = getDependencies(cbtHome) ++ getDependencies(new File("."))
+    val cbtHome     = new File(CBT_HOME)
+    val lambdaBuild = new File(s"${CBT_HOME}/plugins/aws/lambdaBuild")
     val cloudCBT   = data.resolve("cbt")
-    val MIN_CBT    = Array[String]("build", "compatibility", "nailgun_launcher", "realpath", "stage1", "stage2")
+    val ALL_CBT    = Array[String]("compatibility", "realpath", "stage1", "stage2")
     val JAVA_SRC   = Array[String]("compatibility", "nailgun_launcher")
     val target     = new File(System.getProperty("user.dir") + "/target/scala-2.11/classes/" ) 
-    val sourceFiles = target.listFiles.toList ++ cbtHome.listFiles.toList.filter(MIN_CBT contains _.getName)
+    val sourceFiles = cbtHome.listFiles.toList.filter(ALL_CBT contains _.getName) ++ lambdaBuild.listFiles.toList
     val cbtZipList = sourceFiles.map(src => {
       val copyTargetFolder = JAVA_SRC contains src.getName
-      copy(src.toPath, data.resolve(src.getName), true, None )
+      copy(src.toPath, data.resolve(src.getName), copyTargetFolder, None )
     }).flatten.map(_.toString).toList
 
+    /*
     val cache = fs.getPath("/data/cache")
     Files.createDirectory(cache)
     val cacheZipList = cacheFiles.listFiles.toList.map(src => {
       copy(src.toPath, cache.resolve(src.getName), true, None)
+    }).flatten.map(_.toString).toList
+    */
+
+    val lambdaFiles = new File(s"${CBT_HOME}/plugins/aws/target/scala-2.11/classes")
+    val lambdaFilesList = lambdaFiles.listFiles.toList ++ List(new File(s"${System.getProperties.getProperty("user.home")}/.aws/credentials"))
+    val lambdaZipList = lambdaFilesList.filter( !_.toString.startsWith("cbt")).map( src=> {
+      copy(src.toPath, data.resolve(src.getName), true, None)
     }).flatten.map(_.toString).toList
 
     val userCode = fs.getPath("/data/code")
@@ -202,7 +211,7 @@ object AwsLambdaLib{
       copy(src.toPath, userCode.resolve(src.getName), false, None)
     }).flatten.map(_.toString).toList
 
-    val projZipList = cbtZipList ++ codeZipList ++ cacheZipList
+    val projZipList = cbtZipList ++ codeZipList ++ lambdaZipList // ++ cacheZipList
     zip(s"${project.getName}_files.zip", data, projZipList)
     upload(bucket, new File(s"${project.getName}_files.zip") )
     cloudCompile(project, bucket)

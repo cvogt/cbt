@@ -30,7 +30,8 @@ public class StartCbt {
         env.put("NAILGUN", "/tmp/nailgun_launcher/");
         env.put("TARGET", "target/scala-2.11/classes/");
         setEnv(env);
-        String[] nailgunArgs = new String[args.length + 2];
+        String[] nailgunArgs = new String[args.length];
+        // FIXME: is it okay to manually set the time taken to 0?
         nailgunArgs[0] = "0.0";
         nailgunArgs[1] = System.getProperty("user.dir");
         for (int i = 2; i < nailgunArgs.length; i++) {
@@ -53,10 +54,12 @@ public class StartCbt {
             //
         }
 
-        params[0] = "test-bucket-chav"; // some sample bucket
+        Object[][] deployParams = { {args[args.length - 2], args[args.length - 1] } }; 
         File cFile = new File("/tmp/cache/");
+
+        //FIXME: See if there is a way to not hard code the files
         HashSet<String> cacheFiles = getFileList(cFile);
-        cacheFiles.add("/tmp/");    
+        cacheFiles.add("/tmp/");
         // FIXME: duplicate versions of HTTP client throws exceptions
         ArrayList<String> cacheList = new ArrayList<String>(cacheFiles);
         try {
@@ -67,9 +70,10 @@ public class StartCbt {
                 URL url = inCache.toURI().toURL(); 
                 urls[i] = url;
             }
+            
             ClassLoader cl = new URLClassLoader(urls);
             Class<?> cls = cl.loadClass("CodeDeploy");
-            res = (Integer) cls.getMethod("deploy", String.class).invoke((Object) null, params);
+            res = (Integer) cls.getMethod("deploy", String.class, String.class).invoke((Object) null, (Object) deployParams[0][0], (Object) deployParams[0][1]);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -86,8 +90,10 @@ public class StartCbt {
                 getFileList(f, zipped);
             }
         } else {
-            if (!file.toString().startsWith("/tmp/cache/maven/org/apache/httpcomponents/httpclient/4.3.6"))
+            //if (!file.toString().startsWith("/tmp/cache/maven/org/apache/httpcomponents/httpclient/4.3.6")) {
+                System.out.println("Adding: " + file.toString() + " to class path.");
                 zipped.add(file.toString());
+            //}
         }
         return zipped;
     }

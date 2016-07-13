@@ -28,6 +28,14 @@ class EarlyDependencies{
   String scalaLibrary_2_10_5_File;
   String aws_java_sdk_s3_1_11_15_File;
   String aws_java_sdk_lambda_1_11_15_File;
+  String aws_java_sdk_core_1_11_15_File;
+  String commons_logging_1_1_3_File;
+  String http_client_4_5_2_File;
+  String jackson_databind_2_6_6_File;
+  String jackson_dataformat_cbor_2_6_6_File;
+  String jackson_core_2_6_6_File;
+  String jackson_annotations_2_6_0_File;
+  String joda_time_2_8_1_File;
 
   public EarlyDependencies(
     String mavenCache, String mavenUrl, ClassLoaderCache2<ClassLoader> classLoaderCache, ClassLoader rootClassLoader
@@ -45,9 +53,14 @@ class EarlyDependencies{
     scalaLibrary_2_10_5_File = mavenCache + "/org/scala-lang/scala-library/2.10.5/scala-library-2.10.5.jar";
     aws_java_sdk_s3_1_11_15_File = mavenCache + "/com/amazonaws/aws-java-sdk-s3/1.11.15/aws-java-sdk-s3-1.11.15.jar";
     aws_java_sdk_lambda_1_11_15_File = mavenCache + "/com/amazonaws/aws-java-sdk-lambda/1.11.15/aws-java-sdk-lambda-1.11.15.jar";
-
-    download(new URL(mavenUrl + "/com/amazonaws/aws-java-sdk-s3/1.11.15/aws-java-sdk-s3-1.11.15.jar"), Paths.get(aws_java_sdk_s3_1_11_15_File), "9bb0cf0e60b28672bba22e8ce2197e27a1a2ea10");
-    download(new URL(mavenUrl + "/com/amazonaws/aws-java-sdk-lambda/1.11.15/aws-java-sdk-s3-1.11.15.jar"), Paths.get(aws_java_sdk_lambda_1_11_15_File), "acfce605788914ca7762e31f33cabe24f9ea3d44");
+    aws_java_sdk_core_1_11_15_File = mavenCache + "/com/amazonaws/aws-java-sdk-core/1.11.15/aws-java-sdk-core-1.11.15.jar";
+    commons_logging_1_1_3_File = mavenCache + "/commons-logging/commons-logging/1.1.3/commons-logging-1.1.3.jar";
+    http_client_4_5_2_File = mavenCache + "/org/apache/httpcomponents/httpclient/4.5.2/httpclient-4.5.2.jar";
+    jackson_databind_2_6_6_File = mavenCache + "/com/fasterxml/jackson/core/jackson-databind/2.6.6/jackson-databind-2.6.6.jar";
+    jackson_core_2_6_6_File = mavenCache + "/com/fasterxml/jackson/core/jackson-core/2.6.6/jackson-core-2.6.6.jar";
+    jackson_annotations_2_6_0_File = mavenCache + "/com/fasterxml/jackson/core/jackson-annotations/2.6.0/jackson-annotations-2.6.0.jar";;
+    jackson_dataformat_cbor_2_6_6_File = mavenCache + "/com/fasterxml/jackson/dataformat/jackson-dataformat-cbor/2.6.6/jackson-dataformat-cbor-2.6.6.jar";
+    joda_time_2_8_1_File = mavenCache + "/joda-time/joda-time/2.8.1/joda-time-2.8.1.jar";
 
     download(new URL(mavenUrl + "/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar"), Paths.get(scalaReflect_2_11_8_File), "b74530deeba742ab4f3134de0c2da0edc49ca361");
     download(new URL(mavenUrl + "/org/scala-lang/scala-compiler/2.11.8/scala-compiler-2.11.8.jar"), Paths.get(scalaCompiler_2_11_8_File), "fe1285c9f7b58954c5ef6d80b59063569c065e9a");
@@ -145,6 +158,17 @@ class EarlyDependencies{
     classLoader = scalaXml_1_0_5_;
     classpathArray = scalaXml_1_0_5_ClasspathArray;
 
+    // aws dependencies
+    download(new URL(mavenUrl + "/commons-logging/commons-logging/1.1.3/commons-logging-1.1.3.jar"), Paths.get(commons_logging_1_1_3_File), "f6f66e966c70a83ffbdb6f17a0919eaf7c8aca7f");
+    download(new URL(mavenUrl + "/com/fasterxml/jackson/core/jackson-core/2.6.6/jackson-core-2.6.6.jar"), Paths.get(jackson_core_2_6_6_File), "02eb801df67aacaf5b1deb4ac626e1964508e47b");
+    download(new URL(mavenUrl + "/com/fasterxml/jackson/core/jackson-annotations/2.6.0/jackson-annotations-2.6.0.jar"), Paths.get(jackson_annotations_2_6_0_File), "a0990e2e812ac6639b6ce955c91b13228500476e");
+    download(new URL(mavenUrl + "/org/apache/httpcomponents/httpclient/4.5.2/httpclient-4.5.2.jar"), Paths.get(http_client_4_5_2_File), "733db77aa8d9b2d68015189df76ab06304406e50");
+    download(new URL(mavenUrl + "/com/fasterxml/jackson/core/jackson-databind/2.6.6/jackson-databind-2.6.6.jar"), Paths.get(jackson_databind_2_6_6_File), "5108dde6049374ba980b360e1ecff49847baba4a");
+    download(new URL(mavenUrl + "/com/fasterxml/jackson/dataformat/jackson-dataformat-cbor/2.6.6/jackson-dataformat-cbor-2.6.6.jar"), Paths.get(jackson_dataformat_cbor_2_6_6_File), "34c7b7ff495fc6b049612bdc9db0900a68e112f8");
+    download(new URL(mavenUrl + "/joda-time/joda-time/2.8.1/joda-time-2.8.1.jar"), Paths.get(joda_time_2_8_1_File), "f5bfc718c95a7b1d3c371bb02a188a4df18361a9");
+    download(new URL(mavenUrl + "/com/amazonaws/aws-java-sdk-s3/1.11.15/aws-java-sdk-s3-1.11.15.jar"), Paths.get(aws_java_sdk_s3_1_11_15_File), "9bb0cf0e60b28672bba22e8ce2197e27a1a2ea10");
+    download(new URL(mavenUrl + "/com/amazonaws/aws-java-sdk-lambda/1.11.15/aws-java-sdk-lambda-1.11.15.jar"), Paths.get(aws_java_sdk_lambda_1_11_15_File), "acfce605788914ca7762e31f33cabe24f9ea3d44");
+    download(new URL(mavenUrl + "/com/amazonaws/aws-java-sdk-core/1.11.15/aws-java-sdk-core-1.11.15.jar"), Paths.get(aws_java_sdk_core_1_11_15_File), "63719265160e5b267acf37e5df1ffb322affa4d7");  
     zinc = zinc_0_3_9_;
   }
 }

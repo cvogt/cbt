@@ -17,16 +17,16 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 
 public class CodeDeploy {
-    public static int deploy(String bucketName) {
+    public static int deploy(String bucketName, String projectName) {
         File target = new File("/tmp/code/target/");
         File buildTarget = new File("/tmp/code/build/target/"); 
         ArrayList<String> codeFiles = getFileList(target);
         ArrayList<String> buildFiles = getFileList(buildTarget);
 
-        zip("target", codeFiles);
-        zip("buildTarget", buildFiles);
-        upload(bucketName, "/tmp/target.zip");
-        upload(bucketName, "/tmp/buildTarget.zip");
+        zip(projectName + "_target.zip", codeFiles);
+        zip(projectName + "_buildTarget.zip", buildFiles);
+        upload(bucketName, "/tmp/" + projectName + "_target.zip");
+        upload(bucketName, "/tmp/" + projectName + "_buildTarget.zip");
         return 0;
     }
 
@@ -47,7 +47,8 @@ public class CodeDeploy {
 
     public static void upload(String bucketName, String uploadFileName) {
 
-        AmazonS3 s3client = new AmazonS3Client();//new ProfileCredentialsProvider("/tmp/credentials", "default"));
+        System.out.println("Uploading code");
+        AmazonS3 s3client = new AmazonS3Client(new ProfileCredentialsProvider("/tmp/credentials", "default"));
         try {
             System.out.println("Uploading a new object to S3 from a file\n");
             File file = new File(uploadFileName);

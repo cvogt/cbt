@@ -21,8 +21,7 @@ public class RunCbt {
     }
 
     @SuppressWarnings("unchecked")
-    public String cbtHandler() {
-        String args = "compile";
+    public String cbtHandler(String args) {
         File dir = new File("."); //to test locally change this to "target"
         File[] filesList = dir.listFiles();
         for (File file : filesList) {
