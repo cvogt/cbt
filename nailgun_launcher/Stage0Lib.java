@@ -46,6 +46,12 @@ public class Stage0Lib{
     return join( pathSeparator, files );
   }
 
+  public static File write(File file, String content, OpenOption... options) throws Exception{
+    file.getParentFile().mkdirs();
+    Files.write(file.toPath(), content.getBytes(), options);
+    return file;
+  }
+
   public static Boolean compile(
     Boolean changed, Long start, String classpath, String target,
     EarlyDependencies earlyDeps, List<File> sourceFiles, SecurityManager defaultSecurityManager
@@ -61,14 +67,17 @@ public class Stage0Lib{
     if(changed){
       List<String> zincArgs = new ArrayList<String>(
         Arrays.asList(
-          new String[]{ 
+          new String[]{
             "-scala-compiler", earlyDeps.scalaCompiler_2_11_8_File,
             "-scala-library", earlyDeps.scalaLibrary_2_11_8_File,
             "-scala-extra", earlyDeps.scalaReflect_2_11_8_File,
             "-sbt-interface", earlyDeps.sbtInterface_0_13_9_File,
             "-compiler-interface", earlyDeps.compilerInterface_0_13_9_File,
             "-cp", classpath,
-            "-d", target
+            "-d", target,
+            "-S-deprecation",
+            "-S-feature",
+            "-S-unchecked"
           }
         )
       );
@@ -82,7 +91,7 @@ public class Stage0Lib{
         System.setOut(System.err);
         int exitCode = runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc, defaultSecurityManager );
         if( exitCode == 0 ){
-          Files.write( statusFile.toPath(), "".getBytes());
+          write( statusFile, "" );
           Files.setLastModifiedTime( statusFile.toPath(), FileTime.fromMillis(start) );
         } else {
           System.exit( exitCode );
@@ -104,13 +113,55 @@ public class Stage0Lib{
       new URL[]{ new URL("file:"+file) }, parent
     );
   }
+
+  private static String getVarFromEnv(String envKey) {
+    String value = System.getenv(envKey);
+    if(value==null || value.isEmpty()) {
+      value = System.getenv(envKey.toUpperCase());
+    }
+    return value;
+  }
+
+  private static void setProxyfromPropOrEnv(String envKey, String propKeyH, String propKeyP) {
+    String proxyHost = System.getProperty(propKeyH);
+    String proxyPort = System.getProperty(propKeyP);
+    if((proxyHost==null || proxyHost.isEmpty()) && (proxyPort==null || proxyPort.isEmpty())) {
+      String envVar = getVarFromEnv(envKey);
+      if(envVar != null && !envVar.isEmpty()) {
+        String[] proxy = envVar.replaceFirst("^https?://", "").split(":", 2);
+        System.setProperty(propKeyH, proxy[0]);
+        System.setProperty(propKeyP, proxy[1]);
+      }
+    }
+  }
+
+  public static void installProxySettings() throws URISyntaxException {
+    setProxyfromPropOrEnv("http_proxy", "http.proxyHost", "http.proxyPort");
+    setProxyfromPropOrEnv("https_proxy", "https.proxyHost", "https.proxyPort");
+    String nonHosts = System.getProperty("http.nonProxyHosts");
+    if(nonHosts==null || nonHosts.isEmpty()) {
+      String envVar = getVarFromEnv("no_proxy");
+      if(envVar != null && !envVar.isEmpty()) {
+        System.setProperty("http.nonProxyHosts", envVar.replaceAll(",","|"));
+      }
+    }
+  }
+
+  private static final ProxySelector ps = ProxySelector.getDefault();
+
+  public static HttpURLConnection openConnectionConsideringProxy(URL urlString)
+      throws IOException, URISyntaxException {
+    java.net.Proxy proxy = ps.select(urlString.toURI()).get(0);
+    return (HttpURLConnection) urlString.openConnection(proxy);
+  }
+
   public static void download(URL urlString, Path target, String sha1) throws Exception {
     final Path unverified = Paths.get(target+".unverified");
     if(!Files.exists(target)) {
       new File(target.toString()).getParentFile().mkdirs();
       System.err.println("downloading " + urlString);
       System.err.println("to " + target);
-      final InputStream stream = urlString.openStream();
+      final InputStream stream = openConnectionConsideringProxy(urlString).getInputStream();
       Files.copy(stream, unverified, StandardCopyOption.REPLACE_EXISTING);
       stream.close();
       final String checksum = sha1(Files.readAllBytes(unverified));

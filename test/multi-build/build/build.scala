@@ -1,9 +1,7 @@
 import cbt._
-import scala.collection.immutable.Seq
-import java.io.File
-class Build(context: Context) extends BasicBuild(context){
+class Build(val context: Context) extends BaseBuild{
   override def dependencies = Seq(
-    BuildDependency(projectDirectory++"/sub1"),
-    BuildDependency(projectDirectory++"/sub2")
+    DirectoryDependency(projectDirectory++"/sub1"),
+    DirectoryDependency(projectDirectory++"/sub2")
   ) ++ super.dependencies 
 }

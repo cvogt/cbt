@@ -1,9 +1,5 @@
 package cbt
-
 import java.io._
-
-import scala.collection.immutable.Seq
-
 
 object Stage2 extends Stage2Base{
   def getBuild(__context: java.lang.Object, _cbtChanged: java.lang.Boolean) = {
@@ -45,6 +41,7 @@ object Stage2 extends Stage2Base{
       args.permanentKeys,
       args.permanentClassLoaders,
       args.cache,
+      args.cbtHome,
       args.cbtHome,
       args.compatibilityTarget,
       null

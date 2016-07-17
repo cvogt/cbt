@@ -9,12 +9,10 @@ import java.security.MessageDigest
 import java.util.jar._
 import java.lang.reflect.Method
 
-import scala.collection.immutable.Seq
 import scala.util._
 
 // pom model
 case class Developer(id: String, name: String, timezone: String, url: URL)
-case class License(name: String, url: URL)
 
 /** Don't extend. Create your own libs :). */
 final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
@@ -50,7 +48,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     val rootBuildClassName = if( useBasicBuildBuild ) buildBuildClassName else buildClassName
     try{
-      if(useBasicBuildBuild) default( context ) else new cbt.BuildBuild( context.copy( projectDirectory = start ) )
+      if(useBasicBuildBuild) default( context ) else new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuild
     } catch {
       case e:ClassNotFoundException if e.getMessage == rootBuildClassName =>
         throw new Exception(s"no class $rootBuildClassName found in " ++ start.string)
@@ -109,26 +107,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-  def test( context: Context ): Option[ExitCode] = {
-    if((context.projectDirectory ++ "/test").exists){
-      val loggers = logger.enabledLoggers.mkString(",")
-      // FIXME: this is a hack to pass logger args on to the tests.
-      // should probably have a more structured way
-      val loggerArg = if(loggers != "") Some("-Dlog="++loggers) else None
-
-      logger.lib(s"invoke testDefault( $context )")
-      val exitCode: ExitCode =
-        new ReflectBuild(
-          loadDynamic(
-            context.copy( projectDirectory = context.projectDirectory ++ "/test", args = loggerArg.toVector ++ context.args ),
-            new BasicBuild(_) with mixins.Test
-          )
-        ).callNullary( Some("run") )
-      logger.lib(s"return testDefault( $context )")
-      Some(exitCode)
-    } else None
-  }
-
   // task reflection helpers
   def tasks(cls:Class[_]): Map[String, Method] =
     Stream
@@ -154,9 +132,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def usage(buildClass: Class[_], show: String): String = {
     val baseTasks = Seq(
       classOf[BasicBuild],
-      classOf[PackageBuild],
-      classOf[PublishBuild],
-      classOf[Recommended]
+      classOf[PackageJars],
+      classOf[Publish]
     ).flatMap(lib.taskNames).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks
     (
@@ -237,37 +214,46 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     } yield file    
   }
 
-  def jarFile( jarFile: File, files: Seq[File] ): Option[File] = {
+  def jarFile( jarFile: File, files: Seq[File], mainClass: Option[String] = None ): Option[File] = {
+    Files.deleteIfExists(jarFile.toPath)
     if( files.isEmpty ){
       None
     } else {
+      jarFile.getParentFile.mkdirs
       logger.lib("Start packaging "++jarFile.string)
-      val manifest = new Manifest
-      manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0")
-      val jar = new JarOutputStream(new FileOutputStream(jarFile.toString), manifest)
+      val manifest = new Manifest()
+      manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
+      manifest.getMainAttributes.putValue("Created-By",
+        Option(System.getProperty("java.runtime.version")) getOrElse "1.7.0_06 (Oracle Corporation)")
+      mainClass foreach { className =>
+        manifest.getMainAttributes.put(Attributes.Name.MAIN_CLASS, className)
+      }
+      val jar = new JarOutputStream(new FileOutputStream(jarFile), manifest)
+      try{
+        val names = for {
+          base <- files.filter(_.exists).map(realpath)
+          file <- listFilesRecursive(base) if file.isFile
+        } yield {
+            val name = if(base.isDirectory){
+              file.toString stripPrefix (base.toString ++ File.separator)
+            } else file.toString
+            val entry = new JarEntry( name )
+            entry.setTime(file.lastModified)
+            jar.putNextEntry(entry)
+            jar.write( readAllBytes( file.toPath ) )
+            jar.closeEntry()
+            name
+        }
 
-      val names = for {
-        base <- files.filter(_.exists).map(realpath)
-        file <- listFilesRecursive(base) if file.isFile
-      } yield {
-          val name = if(base.isDirectory){
-            file.toString stripPrefix base.toString
-          } else file.toString
-          val entry = new JarEntry( name )
-          entry.setTime(file.lastModified)
-          jar.putNextEntry(entry)
-          jar.write( readAllBytes( file.toPath ) )
-          jar.closeEntry
-          name
+        val duplicateFiles = (names diff names.distinct).distinct
+        assert(
+          duplicateFiles.isEmpty,
+          s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
+        )
+      } finally {
+        jar.close()
       }
 
-      val duplicateFiles = (names diff names.distinct).distinct
-      assert(
-        duplicateFiles.isEmpty,
-        s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
-      )
-
-      jar.close
       logger.lib("Done packaging " ++ jarFile.toString)
 
       Some(jarFile)
@@ -298,6 +284,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     groupId: String,
     artifactId: String,
     version: String,
+    scalaMajorVersion: String,
     name: String,
     description: String,
     url: URL,
@@ -305,61 +292,66 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     licenses: Seq[License],
     scmUrl: String, // seems like invalid URLs are used here in pom files
     scmConnection: String,
+    inceptionYear: Int,
+    organization: Option[Organization],
     dependencies: Seq[Dependency],
-    pomExtra: Seq[scala.xml.Node],
     jarTarget: File
   ): File = {
     val xml =
-      <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
-          <modelVersion>4.0.0</modelVersion>
-          <groupId>{groupId}</groupId>
-          <artifactId>{artifactId}</artifactId>
-          <version>{version}</version>
-          <packaging>jar</packaging>
-          <name>{name}</name>
-          <description>{description}</description>
-          <url>{url}</url>
-          <licenses>
-            {licenses.map{ license =>
-            <license>
-              <name>{license.name}</name>
-                <url>{license.url}</url>
-              <distribution>repo</distribution>
-            </license>
-            }}
-          </licenses>
-          <developers>
-            {developers.map{ developer =>
-            <developer>
-              <id>{developer.id}</id>
-              <name>{developer.name}</name>
-              <timezone>{developer.timezone}</timezone>
-              <url>{developer.url}</url>
-            </developer>
-            }}
-          </developers>
-          <scm>
-            <url>{scmUrl}</url>
-            <connection>{scmConnection}</connection>
-          </scm>
-          {pomExtra}
-          <dependencies>
-          {
-            dependencies.map{
-              case d:ArtifactInfo =>
-                <dependency>
-                    <groupId>{d.groupId}</groupId>
-                    <artifactId>{d.artifactId}</artifactId>
-                    <version>{d.version}</version>
-                </dependency>
-            }
-          }
-          </dependencies>
-      </project>
-    val path = jarTarget.toString ++ ( "/" ++ artifactId ++ "-" ++ version ++ ".pom" )
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>{groupId}</groupId>
+    <artifactId>{artifactId ++ "_" ++ scalaMajorVersion}</artifactId>
+    <version>{version}</version>
+    <packaging>jar</packaging>
+    <name>{name}</name>
+    <description>{description}</description>
+    <url>{url}</url>
+    <licenses>
+      {licenses.map{ license =>
+      <license>
+        <name>{license.name}</name>
+        {license.url.map(url => <url>url</url>).getOrElse( scala.xml.NodeSeq.Empty )}
+        <distribution>repo</distribution>
+      </license>
+      }}
+    </licenses>
+    <developers>
+      {developers.map{ developer =>
+      <developer>
+        <id>{developer.id}</id>
+        <name>{developer.name}</name>
+        <timezone>{developer.timezone}</timezone>
+        <url>{developer.url}</url>
+      </developer>
+      }}
+    </developers>
+    <scm>
+      <url>{scmUrl}</url>
+      <connection>{scmConnection}</connection>
+    </scm>
+    <inceptionYear>{inceptionYear}</inceptionYear>
+    {organization.map{ org =>
+      <organization>
+        <name>{org.name}</name>
+        {org.url.map( url => <url>url</url> ).getOrElse( scala.xml.NodeSeq.Empty )}
+      </organization>
+    }.getOrElse(scala.xml.NodeSeq.Empty)}
+    <dependencies>
+    {dependencies.map{
+      case d:ArtifactInfo =>
+      <dependency>
+        <groupId>{d.groupId}</groupId>
+        <artifactId>{d.artifactId}</artifactId>
+        <version>{d.version}</version>
+      </dependency>
+    }}
+    </dependencies>
+</project>
+    // FIXME: do not build this file name including scalaMajorVersion in multiple places
+    val path = jarTarget.toString ++ ( "/" ++ artifactId++ "_" ++ scalaMajorVersion ++ "-" ++ version  ++ ".pom" )
     val file = new File(path)
-    Files.write(file.toPath, ("<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString).getBytes)
-    file
+    write(file, "<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString)
   }
 
   def concurrently[T,R]( concurrencyEnabled: Boolean )( items: Seq[T] )( projection: T => R ): Seq[R] = {
@@ -367,42 +359,60 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     else items.map(projection)
   }
 
-  def publishSnapshot( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
+  def publishUnsigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
     if(sourceFiles.nonEmpty){
-      val files = artifacts.map(nameAndContents)
-      uploadAll(url, files, credentials)
+      publish( artifacts, url, credentials )
     }
   }
 
-  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: String ): Unit = {
+  def publishLocal( sourceFiles: Seq[File], artifacts: Seq[File], mavenCache: File, releaseFolder: String ): Unit = {
+    if(sourceFiles.nonEmpty){
+      val targetDir = mavenCache ++ releaseFolder.stripSuffix("/")
+      targetDir.mkdirs
+      artifacts.foreach{ a =>
+        val target = targetDir ++ ("/" ++ a.getName)
+        System.err.println(blue("publishing ") ++ target.getPath)
+        Files.copy( a.toPath, target.toPath, StandardCopyOption.REPLACE_EXISTING )
+      }
+    }
+  }
+
+  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
     // TODO: make concurrency configurable here
     if(sourceFiles.nonEmpty){
-      val files = (artifacts ++ artifacts.map(sign)).map(nameAndContents)
-      lazy val checksums = files.flatMap{
-        case (name, content) => Seq(
-          name++".md5" -> md5(content).toArray.map(_.toByte),
-          name++".sha1" -> sha1(content).toArray.map(_.toByte)
-        )
-      }
-      val all = (files ++ checksums)
-      uploadAll(url, all, credentials)
+      publish( artifacts ++ artifacts.map(sign), url, credentials )
     }
   }
 
+  private def publish(artifacts: Seq[File], url: URL, credentials: Option[String]): Unit = {
+    val files = artifacts.map(nameAndContents)
+    lazy val checksums = files.flatMap{
+      case (name, content) => Seq(
+        name++".md5" -> md5(content).toArray.map(_.toByte),
+        name++".sha1" -> sha1(content).toArray.map(_.toByte)
+      )
+    }
+    val all = (files ++ checksums)
+    uploadAll(url, all, credentials)
+  }
 
-  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: String ): Unit =
-    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials: String ) }
+  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: Option[String] = None ): Unit =
+    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials ) }
 
-  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: String): Unit = {
+  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: Option[String] = None): Unit = {
     import java.net._
     import java.io._
-    logger.task("uploading "++fileName)
     val url = baseUrl ++ fileName
-    val httpCon = url.openConnection.asInstanceOf[HttpURLConnection]
+    System.err.println(blue("uploading ") ++ url.toString)
+    val httpCon = Stage0Lib.openConnectionConsideringProxy(url)
     httpCon.setDoOutput(true)
     httpCon.setRequestMethod("PUT")
-    val encoding = new sun.misc.BASE64Encoder().encode(credentials.getBytes)
-    httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
+    credentials.foreach(
+      c => {
+        val encoding = new sun.misc.BASE64Encoder().encode(c.getBytes)
+        httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
+      }
+    )
     httpCon.setRequestProperty("Content-Type", "application/binary")
     httpCon.getOutputStream.write(
       fileContents

@@ -1,7 +1,6 @@
 package cbt
 import java.io._
 import java.util.concurrent.ConcurrentHashMap
-import scala.collection.immutable.Seq
 import java.lang._
 
 case class ContextImplementation(
@@ -17,6 +16,7 @@ case class ContextImplementation(
   permanentClassLoaders: ConcurrentHashMap[AnyRef,ClassLoader],
   cache: File,
   cbtHome: File,
+  cbtRootHome: File,
   compatibilityTarget: File,
   parentBuildOrNull: BuildInterface
 ) extends Context

@@ -1,19 +1,27 @@
 package cbt
-import java.io.File
 import java.nio.file._
-import scala.collection.immutable.Seq
 
-class BuildBuild(context: Context) extends BasicBuild(context){
+trait BuildBuild extends BaseBuild{
+  private final val managedContext = context.copy(
+    projectDirectory = managedBuildDirectory,
+    parentBuild=Some(this)
+  )
+
+  object plugins{
+    final val scalaTest = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalatest" )
+    final val sbtLayout = DirectoryDependency( managedContext.cbtHome ++ "/plugins/sbt_layout" )
+    final val scalaJs   = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalajs" )
+    final val scalariform = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalariform" )
+    final val scalafmt = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalafmt" )
+    final val uberJar = DirectoryDependency( managedContext.cbtHome ++ "/plugins/uber-jar" )
+  }
+
   override def dependencies =
     super.dependencies :+ context.cbtDependency
-  def managedBuildDirectory: File = lib.realpath( projectDirectory.parent )
+  def managedBuildDirectory: java.io.File = lib.realpath( projectDirectory.parent )
   private object managedBuildCache extends Cache[BuildInterface]
   def managedBuild = managedBuildCache{
     try{
-      val managedContext = context.copy(
-        projectDirectory = managedBuildDirectory,
-        parentBuild=Some(this)
-      )
       val managedBuildFile = projectDirectory++"/build.scala"
       logger.composition("Loading build at "++managedContext.projectDirectory.toString)
       (
@@ -28,24 +36,25 @@ class BuildBuild(context: Context) extends BasicBuild(context){
               if(context.cbtHome.string.contains(hash))
                 None
               else Some{
-                val checkoutDirectory = new GitDependency(base, hash).checkout
-                val build = new BasicBuild( context.copy( projectDirectory = checkoutDirectory ++ "/nailgun_launcher" ) )
-                val cl = build
-                  .classLoader(classLoaderCache)
                 // Note: cbt can't use an old version of itself for building,
                 // otherwise we'd have to recursively build all versions since
                 // the beginning. Instead CBT always needs to build the pure Java
                 // Launcher in the checkout with itself and then run it via reflection.
-                cl
+                val dep = new GitDependency(base, hash, Some("nailgun_launcher"))
+                val ctx = managedContext.copy( cbtHome = dep.checkout )
+                dep.classLoader(classLoaderCache)
                   .loadClass( "cbt.NailgunLauncher" )
                   .getMethod( "getBuild", classOf[AnyRef] )
-                  .invoke( null, managedContext.copy(cbtHome=checkoutDirectory) )
+                  .invoke( null, ctx )
               }
             }.getOrElse{
+              //new BasicBuild(managedContext)
+              ///*
               classLoader(context.classLoaderCache)
                 .loadClass(lib.buildClassName)
                 .getConstructors.head
                 .newInstance(managedContext)
+              //*/
             }
         } else {
           new BasicBuild(managedContext)

@@ -2,7 +2,6 @@ package cbt
 import java.io._
 import java.nio.file._
 import java.net._
-import scala.collection.immutable.Seq
 import java.util.concurrent.ConcurrentHashMap
 
 object `package`{
@@ -17,7 +16,7 @@ object `package`{
   implicit class FileExtensionMethods( file: File ){
     def ++( s: String ): File = {
       if(s endsWith "/") throw new Exception(
-        """Trying to append a String that ends in "/" to a File would loose it. Use .stripSuffix("/") if you need to."""
+        """Trying to append a String that ends in "/" to a File would loose the trailing "/". Use .stripSuffix("/") if you need to."""
       )
       new File( file.toString ++ s )
     }
@@ -90,6 +89,7 @@ object `package`{
       permanentClassLoaders,
       cache,
       cbtHome,
+      cbtRootHome,
       compatibilityTarget,
       parentBuild.getOrElse(null)
     )

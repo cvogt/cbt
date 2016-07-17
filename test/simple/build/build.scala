@@ -1,13 +1,11 @@
 import cbt._
-import scala.collection.immutable.Seq
-import java.io.File
 
-class Build(context: cbt.Context) extends BasicBuild(context){
+class Build(val context: cbt.Context) extends BaseBuild{
   override def dependencies = (
     super.dependencies
     ++
     Seq(
-      GitDependency("https://github.com/xdotai/diff.git", "698717469b8dd86e8570b86354892be9c0654caf")
+      GitDependency("https://github.com/xdotai/diff.git", "05fdac13a177f74952b54171733be01c258594a8")
     ) ++
     // FIXME: make the below less verbose
     Resolver( mavenCentral ).bind(
@@ -34,7 +32,7 @@ class Build(context: cbt.Context) extends BasicBuild(context){
     ).bind(
       "org.cvogt" %% "play-json-extensions" % "0.8.0",
       "org.tpolecat" %% "tut-core" % "0.4.2",
-      "ai.x" %% "lens" % "1.0.0-SNAPSHOT"
+      "ai.x" %% "lens" % "1.0.0"
     )
   )
 }

@@ -15,9 +15,9 @@ easy custom code. If you integrate something, consider
 doing it as traits that you make available as a library that
 other builds can depend on and mix in.
 
-Slides from CBT talk from NEScala 2016:
+Slides and video from CBT talk from NEScala 2016:
 https://github.com/cvogt/talks/raw/master/2016-03-04_NEScala-2016_A-Vision-For-Scala-Builds.pdf
-(video coming soon...)
+https://www.youtube.com/watch?v=5HfKw3hgdOM
 
 Getting started
 ---------------
@@ -43,27 +43,44 @@ that describes your build. Here is an example
 
 ```scala
 // build/build.scala
-import cbt._
-class Build(context: cbt.Context) extends PackageBuild(context){
-  override def version = "0.6.1-SNAPSHOT"
+class Build(val context: cbt.Context) extends PackageJars {
+  override def defaultVersion = "0.6.1"
+
+  override def name = "play-json-extensions"
+
   override def groupId = "org.cvogt"
-  override def artifactId = "play-json-extensions"
+
   override def dependencies =
-    super.dependencies :+
-    resolver(mavenCentral).bind(
-      // encouraged way to declare dependencies
-      ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
-      MavenDependency("joda-time", "joda-time", "2.9.2")
-      // also supported for SBT syntax compatibility:
-      // "com.typesafe.play" %% "play-json" % "2.4.4"
-      // Maven.central % "joda-time" % "joda-time % "2.9.2"
-    )
+    super.dependencies ++
+      Resolver(mavenCentral).bind(
+        // encouraged way to declare dependencies
+        ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
+        MavenDependency("joda-time", "joda-time", "2.9.2")
+      )
+  
   override def compile = {
     println("Compiling...")
     super.compile
   }
+
   def foo = "Hello World"
 }
+```
+
+Dependencies could also be declared using SBT style.
+
+```scala
+class Build(val context: cbt.Context) extends PackageJars {
+...
+// sbt compatible dependencies definition
+override def dependencies =
+  super.dependencies ++
+    Resolver(mavenCentral).bind(
+      "com.typesafe.play" %% "play-json" % "2.4.4",
+      "joda-time" % "joda-time" % "2.9.2"
+    )
+...
+}      
 ```
 
 Now you can call methods of this class through cbt. Try `cbt foo`.
@@ -120,6 +137,29 @@ Build scripts also have access to a small unsurprising library for
 - running code
 - packaging jars
 - signing / publishing to sonatype/maven
+
+Scala.js support
+----------------
+
+CBT supports cross-project Scala.js build.
+It preserves same structure as in SBT (https://www.scala-js.org/doc/project/cross-build.html)
+
+ 1. Example for user scalajs project is in: `$CBT_HOME/cbt/examples/build-scalajs`
+ 2. `$CBT_HOME/cbt compile`
+    Will compile JVM and JS sources
+    `$CBT_HOME/cbt jsCompile`
+    Will compile JS sources
+    `$CBT_HOME/cbt jvmCompile`
+    Will compile JVM sources
+ 3. `$CBT_HOME/cbt fastOptJS` and `$CBT_HOME/cbt fullOptJS`
+    Same as in Scala.js sbt project
+
+ Note: Scala.js support is under ongoing development.
+
+ Currently missing features:
+ * No support for jsDependencies:
+   It means that all 3rd party dependencies should added manually, see scalajs build example
+ * No support for test
 
 Missing features in comparison with SBT
 ---------------------------------------

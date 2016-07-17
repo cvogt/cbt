@@ -1,5 +1,5 @@
 package cbt
-trait SbtDependencyDsl{ self: BasicBuild =>
+trait SbtDependencyDsl{ self: BaseBuild =>
   /** SBT-like dependency builder DSL for syntax compatibility */
   class DependencyBuilder2( groupId: String, artifactId: String, scalaVersion: Option[String] ){
     def %(version: String) = scalaVersion.map(

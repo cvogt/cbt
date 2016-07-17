@@ -54,6 +54,7 @@ public class NailgunLauncher{
       return;
     }
 
+    installProxySettings();
     String[] diff = args[0].split("\\.");
     long start = _start - (Long.parseLong(diff[0]) * 1000L) - Long.parseLong(diff[1]);
     
@@ -65,21 +66,35 @@ public class NailgunLauncher{
       false, start, cache, CBT_HOME, compatibilityTarget, classLoaderCache
     );
 
-    System.exit(
-      (Integer) res
-        .classLoader
-        .loadClass("cbt.Stage1")
-        .getMethod(
-          "run",
-          String[].class, File.class, File.class, Boolean.class,
-          File.class, Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
-        )
-        .invoke(
-          null,
-          (Object) args, new File(cache), new File(CBT_HOME), res.changed,
-          new File(compatibilityTarget), start, classLoaderCache.keys, classLoaderCache.values
-        )
-    );
+    try{
+      System.exit(
+        (Integer) res
+          .classLoader
+          .loadClass("cbt.Stage1")
+          .getMethod(
+            "run",
+            String[].class, File.class, File.class, Boolean.class,
+            File.class, Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
+          )
+          .invoke(
+            null,
+            (Object) args, new File(cache), new File(CBT_HOME), res.changed,
+            new File(compatibilityTarget), start, classLoaderCache.keys, classLoaderCache.values
+          )
+      );
+    } catch (Exception e) {
+      Throwable t = unwrapInvocationTargetException(e);
+      t.printStackTrace();
+      System.exit(1);
+    }
+  }
+
+  public static Throwable unwrapInvocationTargetException(Throwable e){
+    if(e instanceof java.lang.reflect.InvocationTargetException){
+      return unwrapInvocationTargetException(((java.lang.reflect.InvocationTargetException) e).getCause());
+    } else{
+      return e;
+    }
   }
 
   public static BuildStage1Result buildStage1(

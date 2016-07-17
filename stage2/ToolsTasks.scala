@@ -1,5 +1,4 @@
 package cbt
-import scala.collection.immutable.Seq
 import java.net._
 import java.io.{Console=>_,_}
 import java.nio.file._
@@ -17,8 +16,7 @@ class ToolsTasks(
   private def Resolver( urls: URL* ) = MavenResolver(cbtHasChanged,mavenCache,urls: _*)
   implicit val logger: Logger = lib.logger
   def createMain: Unit = lib.createMain( cwd )
-  def createBasicBuild: Unit = lib.createBasicBuild( cwd )
-  def createBuildBuild: Unit = lib.createBuildBuild( cwd )
+  def createBuild: Unit = lib.createBuild( cwd )
   def resolve = {
     ClassPath.flatten(
       args(1).split(",").toVector.map{
@@ -38,22 +36,22 @@ class ToolsTasks(
   def amm = ammonite
   def ammonite = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
-    val scalac = new ScalaCompilerDependency( cbtHasChanged,mavenCache, version )
-    val d = Resolver(mavenCentral).bindOne(
+    val classLoader = Resolver(mavenCentral).bindOne(
       MavenDependency(
-        "com.lihaoyi","ammonite-repl_2.11.7",args.lift(1).getOrElse("0.5.7")
+        "com.lihaoyi","ammonite-repl_2.11.8",args.lift(1).getOrElse("0.5.8")
       )
-    )
+    ).classLoader(classLoaderCache)
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
     lib.runMain(
-      "ammonite.repl.Main", Seq(), d.classLoader(classLoaderCache)
+      "ammonite.repl.Main", args.drop(2), classLoader
     )
   }
   def scala = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val scalac = new ScalaCompilerDependency( cbtHasChanged, mavenCache, version )
+    val _args = Seq("-cp", scalac.classpath.string) ++ args.drop(2)
     lib.runMain(
-      "scala.tools.nsc.MainGenericRunner", Seq("-cp", scalac.classpath.string), scalac.classLoader(classLoaderCache)
+      "scala.tools.nsc.MainGenericRunner", _args, scalac.classLoader(classLoaderCache)
     )
   }
   def cbtEarlyDependencies = {
@@ -67,8 +65,10 @@ class ToolsTasks(
     )
     
     val scalaXml = Dependencies(
-      Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang.modules","scala-xml_"+scalaMajorVersion,scalaXmlVersion)),
-      Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-library",scalaVersion))
+      Resolver(mavenCentral).bind(
+        MavenDependency("org.scala-lang.modules","scala-xml_"+scalaMajorVersion,scalaXmlVersion),
+        MavenDependency("org.scala-lang","scala-library",scalaVersion)
+      )
     )
 
     val zinc = Resolver(mavenCentral).bindOne(MavenDependency("com.typesafe.zinc","zinc",zincVersion))
@@ -137,7 +137,7 @@ ${assignments.mkString("\n")}
 }
 """
     val file = nailgun ++ ("/" ++ "EarlyDependencies.java")
-    Files.write( file.toPath, code.getBytes )
+    lib.write( file, code )
     println( Console.GREEN ++ "Wrote " ++ file.string ++ Console.RESET )
   }
 }

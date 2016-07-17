@@ -1,13 +1,11 @@
 package cbt
 import java.io._
 import java.net._
-import scala.collection.immutable.Seq
 
 object ClassPath{
-  def apply(files: File*): ClassPath = ClassPath(files.toVector)
   def flatten( classPaths: Seq[ClassPath] ): ClassPath = ClassPath( classPaths.map(_.files).flatten )
 }
-case class ClassPath(files: Seq[File]){
+case class ClassPath(files: Seq[File] = Seq()){
   private val duplicates = (files diff files.distinct).distinct
   assert(
     duplicates.isEmpty,
@@ -15,7 +13,7 @@ case class ClassPath(files: Seq[File]){
   )
   private val nonExisting = files.distinct.filterNot(_.exists)
   assert(
-    duplicates.isEmpty,
+    nonExisting.isEmpty,
     "Classpath contains entires that don't exist on disk:\n" ++ nonExisting.mkString("\n") ++ "\nin classpath:\n"++string
   )
   

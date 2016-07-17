@@ -7,21 +7,12 @@ import java.nio.file.Files.readAllBytes
 import java.security.MessageDigest
 import java.util.jar._
 
-import scala.collection.immutable.Seq
 import scala.util._
 
-trait Recommended extends BasicBuild{
-  override def scalacOptions = super.scalacOptions ++ Seq(
-    "-feature",
-    "-deprecation",
-    "-unchecked",
-    "-language:postfixOps",
-    "-language:implicitConversions",
-    "-language:higherKinds",
-    "-language:existentials"
-  )
-}
-class BasicBuild(val context: Context) extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
+class BasicBuild(val context: Context) extends BaseBuild
+trait BaseBuild extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
+  def context: Context
+  
   // library available to builds
   implicit protected final val logger: Logger = context.logger
   implicit protected final val classLoaderCache: ClassLoaderCache = context.classLoaderCache
@@ -39,9 +30,10 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
 
   def defaultScalaVersion: String = constants.scalaVersion
   final def scalaVersion = context.scalaVersion getOrElse defaultScalaVersion
-  final def scalaMajorVersion: String = lib.scalaMajorVersion(scalaVersion)
+  final def scalaMajorVersion: String = lib.libMajorVersion(scalaVersion)
   def crossScalaVersions: Seq[String] = Seq(scalaVersion, "2.10.6")
   final def crossScalaVersionsArray: Array[String] = crossScalaVersions.to
+  def projectName = "default"
 
   // TODO: this should probably provide a nice error message if class has constructor signature
   def copy(context: Context): BuildInterface = lib.copy(this.getClass, context).asInstanceOf[BuildInterface]
@@ -79,17 +71,14 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
   final def sourceFiles: Seq[File] = lib.sourceFiles(sources)
 
-  protected def assertSourceDirectories(): Unit = {
+  protected def logEmptySourceDirectories(): Unit = {
     val nonExisting =
       sources
         .filterNot( _.exists )
         .diff( Seq(defaultSourceDirectory) )
-    assert(
-      nonExisting.isEmpty,
-      "Some sources do not exist: \n"++nonExisting.mkString("\n")
-    )
+    if(!nonExisting.isEmpty) logger.stage2("Some sources do not exist: \n"++nonExisting.mkString("\n"))
   }
-  assertSourceDirectories()
+  logEmptySourceDirectories()
 
   def Resolver( urls: URL* ) = MavenResolver( context.cbtHasChanged, context.paths.mavenCache, urls: _* )
 
@@ -98,7 +87,7 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
     scalaVersion: String = scalaMajorVersion
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
-  final def BuildDependency(path: File) = cbt.BuildDependency(
+  final def DirectoryDependency(path: File) = cbt.DirectoryDependency(
     context.copy( projectDirectory = path, args = Seq() )
   )
 
@@ -112,12 +101,19 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
 
   override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
 
-  def exportedClasspath   : ClassPath = ClassPath(compile.toSeq:_*)
+  protected def compileDependencies: Seq[Dependency] = Nil
+  final def compileClasspath : ClassPath = ClassPath( compileDependencies.flatMap(_.exportedClasspath.files).distinct )
+
+  def exportedClasspath   : ClassPath = ClassPath(compile.toSeq)
   def targetClasspath = ClassPath(Seq(compileTarget))
   // ========== compile, run, test ==========
 
   /** scalac options used for zinc and scaladoc */
-  def scalacOptions: Seq[String] = Seq()
+  def scalacOptions: Seq[String] = Seq(
+    "-feature",
+    "-deprecation",
+    "-unchecked"
+  )
 
   private object needsUpdateCache extends Cache[Boolean]
   def needsUpdate: Boolean = needsUpdateCache(
@@ -131,7 +127,7 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
     lib.compile(
       context.cbtHasChanged,
       needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
-      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath,
+      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath ++ compileClasspath,
       context.paths.mavenCache, scalacOptions, context.classLoaderCache,
       zincVersion = zincVersion, scalaVersion = scalaVersion
     )
@@ -140,9 +136,12 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
   def runClass: String = "Main"
   def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
 
-  def test: Option[ExitCode] = {
-    lib.test(context)
-  }
+  def test: Option[ExitCode] = 
+    Some(new lib.ReflectBuild(
+      DirectoryDependency(projectDirectory++"/test").build
+    ).callNullary(Some("run")))
+  def t = test
+  def rt = recursiveUnsafe(Some("test"))
 
   def recursiveSafe(_run: BuildInterface => Any): ExitCode = {
     val builds = (this +: transitiveDependencies).collect{
@@ -189,9 +188,7 @@ class BasicBuild(val context: Context) extends DependencyImplementation with Bui
   }
 
   def c = compile
-  def t = test
   def r = run
-  def rt = recursiveUnsafe(Some("test"))
 
   /*
   context.logger.composition(">"*80)

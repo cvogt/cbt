@@ -7,3 +7,8 @@ scala_classes
 target/
 *.login
 cache_
+.idea
+realpath/realpath
+node_modules
+*fastopt*
+*fullopt*

@@ -1,5 +1,4 @@
 import cbt._
-import scala.collection.immutable.Seq
 import java.util.concurrent.ConcurrentHashMap
 import java.io.File
 import java.net.URL
@@ -65,9 +64,10 @@ object Main{
       assert(res.out == "", debugToken ++ res.toString)
       assert(res.err contains usageString, debugToken ++ res.toString)
     }
-    def compile(path: String)(implicit logger: Logger) = {
-      val res = runCbt(path, Seq("compile"))
-      val debugToken = "compile " ++ path ++ " "
+    def compile(path: String)(implicit logger: Logger) = task("compile", path)
+    def task(name: String, path: String)(implicit logger: Logger) = {
+      val res = runCbt(path, Seq(name))
+      val debugToken = name ++ " " ++ path ++ " "
       assertSuccess(res,debugToken)
       // assert(res.err == "", res.err) // FIXME: enable this
     }
@@ -92,6 +92,7 @@ object Main{
         new ConcurrentHashMap[String,AnyRef],
         new ConcurrentHashMap[AnyRef,ClassLoader],
         cache,
+        cbtHome,
         cbtHome,
         cbtHome ++ "/compatibilityTarget",
         null
@@ -140,7 +141,7 @@ object Main{
       ++
       Dependencies(
         Resolver( mavenCentral, sonatypeSnapshots ).bind(
-          MavenDependency("ai.x","lens_2.11","1.0.0-SNAPSHOT")
+          MavenDependency("ai.x","lens_2.11","1.0.0")
         )
       ).classpath.strings
     ).foreach{
@@ -156,6 +157,22 @@ object Main{
     usage("simple-fixed")
     compile("simple-fixed")
     
+    compile("../plugins/sbt_layout")
+    compile("../plugins/scalafmt")
+    compile("../plugins/scalajs")
+    compile("../plugins/scalariform")
+    compile("../plugins/scalatest")
+    compile("../plugins/uber-jar")
+    compile("../examples/scalafmt-example")
+    compile("../examples/scalariform-example")
+    compile("../examples/scalatest-example")
+    compile("../examples/scalajs-react-example/js")
+    compile("../examples/scalajs-react-example/jvm")
+    compile("../examples/multi-project-example")
+    task("fastOptJS","../examples/scalajs-react-example/js")
+    task("fullOptJS","../examples/scalajs-react-example/js")
+    compile("../examples/uber-jar-example")
+
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
     if(failures > 0) System.exit(1) else System.exit(0)

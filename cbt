@@ -203,7 +203,7 @@ stage1 () {
 	then
 		log "Running JVM directly" $*
 		# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
-		java -Xmx6072m -Xss10M -cp $NAILGUN$TARGET cbt.NailgunLauncher $(time_taken) "$CWD" $*
+		java $JAVA_OPTS -Xmx6072m -Xss10M -cp $NAILGUN$TARGET cbt.NailgunLauncher $(time_taken) "$CWD" $*
 	else
 		log "Running via nailgun." $*
 		for i in 0 1 2 3 4 5 6 7 8 9; do
