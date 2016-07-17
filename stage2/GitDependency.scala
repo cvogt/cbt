@@ -18,34 +18,30 @@ case class GitDependency(
   // TODO: add support for authentication via ssh and/or https
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
   private val GitUrl( _, domain, path ) = url  
-
+  case class GitCredentials(
+    username: String,
+    password: String
+  )
 
   def checkout: File = {
-    def mkCredentials(creds: Option[Array[String]]): UsernamePasswordCredentialsProvider = creds match {
-      case Some(credential) => {
-        val username = credential(0)
-        val password = credential(1)
-        new UsernamePasswordCredentialsProvider(username, password)
-      }
-      case None => new UsernamePasswordCredentialsProvider("dummy", "dummy")
+    def authenticate(creds: Option[GitCredentials], git: CloneCommand): CloneCommand = creds match {
+      case Some(credentials) => git.setCredentialsProvider(new UsernamePasswordCredentialsProvider(credentials.username, credentials.password))
+      case None => git
     }
     val checkoutDirectory = context.cache ++ s"/git/$domain/$path/$ref"
     if(checkoutDirectory.exists){
       logger.git(s"Found existing checkout of $url#$ref in $checkoutDirectory")
     } else {
       logger.git(s"Cloning $url into $checkoutDirectory")
-      val authList = {
+      val credentials = {
         try {
-          val userNameAndPassword = scala.io.Source.fromFile(context.projectDirectory + "/git.login").mkString.split("\n")
-          Some(userNameAndPassword)
+          val credentials = scala.io.Source.fromFile(context.projectDirectory + "/git.login").mkString.split("\n")
+          Some(GitCredentials(credentials(0), credentials(1)))
         } catch {
           case e: FileNotFoundException => None
         }
       }
-      val git =
-        Git.cloneRepository()
-          .setURI(url)
-          .setCredentialsProvider( mkCredentials( authList ) )
+      val git = authenticate(credentials, Git.cloneRepository().setURI(url))
           .setDirectory(checkoutDirectory)
           .call()
 
