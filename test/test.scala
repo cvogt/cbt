@@ -72,6 +72,12 @@ object Main{
       // assert(res.err == "", res.err) // FIXME: enable this
     }
 
+    def clean(path: String)(implicit logger: Logger) = {
+      val res = runCbt(path, Seq("clean", "-f"))
+      val debugToken = "clean " ++ path ++ " "
+      assertSuccess(res,debugToken)
+    }
+
     logger.test( "Running tests " ++ _args.toList.toString )
 
     val cache = cbtHome ++ "/cache"
@@ -150,12 +156,16 @@ object Main{
 
     usage("nothing")
     compile("nothing")
+    clean("nothing")
     usage("multi-build")
     compile("multi-build")
+    clean("multi-build")
     usage("simple")
     compile("simple")
+    clean("simple")
     usage("simple-fixed")
     compile("simple-fixed")
+    clean("simple-fixed")
     
     compile("../plugins/sbt_layout")
     compile("../plugins/scalafmt")
@@ -172,6 +182,7 @@ object Main{
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
     compile("../examples/uber-jar-example")
+    
 
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )

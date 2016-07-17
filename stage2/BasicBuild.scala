@@ -136,6 +136,11 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   def runClass: String = "Main"
   def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
 
+  def clean = {
+    val arg = if (context.args.length > 1) context.args(1) else ""
+    lib.clean(scalaTarget, arg)
+  }
+
   def test: Option[ExitCode] = 
     Some(new lib.ReflectBuild(
       DirectoryDependency(projectDirectory++"/test").build
