@@ -13,8 +13,6 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.*;
 
-import com.amazonaws.services.lambda.runtime.Context;
-
 public class RunCbt {
     public static void main(String[] args) {
         return;
@@ -22,6 +20,7 @@ public class RunCbt {
 
     @SuppressWarnings("unchecked")
     public String cbtHandler(String args) {
+        System.out.println("In runCbt");
         File dir = new File("."); //to test locally change this to "target"
         File[] filesList = dir.listFiles();
         for (File file : filesList) {

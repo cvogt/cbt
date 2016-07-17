@@ -66,8 +66,8 @@ object AwsLambdaLib{
       val codeLocation = new FunctionCodeLocation().withLocation(url)
       val getFunctionRequest = new GetFunctionRequest().withFunctionName(functionName)
       val getFunctionResult = lambdaClient getFunction getFunctionRequest
-      getFunctionResult.setCode(codeLocation)
-      getFunctionResult.getConfiguration.getFunctionArn
+      val updatedFunction = getFunctionResult.withCode(codeLocation)
+      updatedFunction.getConfiguration.getFunctionArn
     } catch {
       case e: ResourceNotFoundException => {
         val createResult = createLambda(bucketName, functionName, "RunCbt::cbtHandler", s"${projectName}_files.zip"
@@ -79,31 +79,34 @@ object AwsLambdaLib{
     }
     val req = new InvokeRequest().withFunctionName(arn).withPayload("\"compile " ++ bucketName ++ " " ++ projectName ++"\"")
     println("Compiling on aws lambda.")
-    val buffer = lambdaClient.invoke(req).getPayload
-    val stringResult = new String(buffer.array)
+    lambdaClient.invoke(req).getPayload
+    
     val target = new File(project.toString + TARGET)
     val buildTarget = new File(project.toString + "/build" + TARGET)
     target.mkdirs
     buildTarget.mkdirs
-    println(s"Downloading compiled files to ${target.toString} and ${buildTarget.toString}")
-    val targetIS = s3client.getObject(bucketName, "target.zip").getObjectContent
-    val buildIS  = s3client.getObject(bucketName, "buildTarget.zip").getObjectContent
+    println(s"Downloading compiled files to ${target.toString} and ${buildTarget.toString} from ${bucketName}")
+    val targetIS = s3client.getObject(new GetObjectRequest(bucketName, projectName + "Target.zip")).getObjectContent
     unzip(targetIS, target.toString)
+    targetIS.close
+    val buildIS  = s3client.getObject(new GetObjectRequest(bucketName, projectName + "BuildTarget.zip")).getObjectContent
     unzip(buildIS, buildTarget.toString)
+    buildIS.close
 
     // make compile setup consistent
     val targetCache = new File(target.getParentFile.toString + "/cache")
-    val buildTargetCache = new File(buildTarget.getParentFile.toString + "/cache")
     targetCache.mkdirs
-    buildTargetCache.mkdirs
     Files.copy(new File(target.toString + "/classes.last-success").toPath
               , new File(target.getParentFile.toString + "/classes.last-success").toPath
               , StandardCopyOption.REPLACE_EXISTING )
-    Files.copy(new File(buildTarget.toString + "/classes").toPath
-              , new File(buildTarget.getParentFile.toString + "/classes.last-success").toPath
-              , StandardCopyOption.REPLACE_EXISTING )
     Files.copy(new File(target.toString + "/classes").toPath
               , new File(targetCache.toString + "/classes").toPath
+              , StandardCopyOption.REPLACE_EXISTING )
+
+    val buildTargetCache = new File(buildTarget.getParentFile.toString + "/cache")
+    buildTargetCache.mkdirs
+    Files.copy(new File(buildTarget.toString + "/classes").toPath
+              , new File(buildTarget.getParentFile.toString + "/classes.last-success").toPath
               , StandardCopyOption.REPLACE_EXISTING )
     Files.copy(new File(buildTarget.toString + "/classes").toPath
               , new File(buildTargetCache.toString + "/classes").toPath
@@ -180,38 +183,48 @@ object AwsLambdaLib{
     val CBT_HOME    = System.getenv("CBT_HOME")
     val cacheFiles  = new File(CBT_HOME + "/cache")
     val cbtHome     = new File(CBT_HOME)
-    val lambdaBuild = new File(s"${CBT_HOME}/plugins/aws/lambdaBuild")
+    val deployBuild = new File(s"${CBT_HOME}/plugins/aws/CodeDeploy")
     val cloudCBT   = data.resolve("cbt")
-    val ALL_CBT    = Array[String]("compatibility", "realpath", "stage1", "stage2")
+    val ALL_CBT    = Array[String]("build", "nailgun_launcher", "compatibility", "realpath", "stage1", "stage2")
     val JAVA_SRC   = Array[String]("compatibility", "nailgun_launcher")
     val target     = new File(System.getProperty("user.dir") + "/target/scala-2.11/classes/" ) 
-    val sourceFiles = cbtHome.listFiles.toList.filter(ALL_CBT contains _.getName) ++ lambdaBuild.listFiles.toList
+    val sourceFiles = cbtHome.listFiles.toList.filter(ALL_CBT contains _.getName)
     val cbtZipList = sourceFiles.map(src => {
       val copyTargetFolder = JAVA_SRC contains src.getName
-      copy(src.toPath, data.resolve(src.getName), copyTargetFolder, None )
+      copy(src.toPath, data.resolve(src.getName), copyTargetFolder )
     }).flatten.map(_.toString).toList
 
+    // compile target that ships with AWS
+    val contents = Process("cbt compile", deployBuild).lineStream
+    
+    // disabled for smaller cbt shipping file for metered connections
     /*
     val cache = fs.getPath("/data/cache")
     Files.createDirectory(cache)
     val cacheZipList = cacheFiles.listFiles.toList.map(src => {
-      copy(src.toPath, cache.resolve(src.getName), true, None)
+      copy(src.toPath, cache.resolve(src.getName), true )
     }).flatten.map(_.toString).toList
     */
 
     val lambdaFiles = new File(s"${CBT_HOME}/plugins/aws/target/scala-2.11/classes")
     val lambdaFilesList = lambdaFiles.listFiles.toList ++ List(new File(s"${System.getProperties.getProperty("user.home")}/.aws/credentials"))
     val lambdaZipList = lambdaFilesList.filter( !_.toString.startsWith("cbt")).map( src=> {
-      copy(src.toPath, data.resolve(src.getName), true, None)
+      copy(src.toPath, data.resolve(src.getName), true )
     }).flatten.map(_.toString).toList
 
     val userCode = fs.getPath("/data/code")
     Files.createDirectory(userCode)
     val codeZipList = project.listFiles.toList.map(src => {
-      copy(src.toPath, userCode.resolve(src.getName), false, None)
+      copy(src.toPath, userCode.resolve(src.getName), false )
     }).flatten.map(_.toString).toList
 
-    val projZipList = cbtZipList ++ codeZipList ++ lambdaZipList // ++ cacheZipList
+    val deployCode = fs.getPath("/data/deploy")
+    Files.createDirectory(deployCode)
+    val deployZipList = deployBuild.listFiles.toList.map(src => {
+      copy(src.toPath, deployCode.resolve(src.getName), true )
+    }).flatten.map(_.toString).toList
+
+    val projZipList = cbtZipList ++ codeZipList ++ lambdaZipList ++ deployZipList // ++ cacheZipList
     zip(s"${project.getName}_files.zip", data, projZipList)
     upload(bucket, new File(s"${project.getName}_files.zip") )
     cloudCompile(project, bucket)
@@ -220,7 +233,7 @@ object AwsLambdaLib{
   def deploy(bucket: String, source: File) = {
     val zipFile = new File( s"/tmp/${source.getName}.zip")
     val zipList = source.listFiles.toList.map(src => {
-      copy(src.toPath, data.resolve(src.getName), true, None)
+      copy(src.toPath, data.resolve(src.getName), true )
     }).flatten.map(_.toString).toList
     zip(zipFile.toString, source.toPath, zipList)
     upload(bucket, zipFile)
@@ -277,32 +290,21 @@ object AwsLambdaLib{
     zos.close()
   }
 
-  def copy(source: Path, destination: Path, copyTarget: Boolean, include: Option[List[String]]): List[Path] = source match {
+  def copy(source: Path, destination: Path, copyTarget: Boolean ): List[Path] = source match {
     case src if src.toFile.isDirectory => {
         val files = if ( ((source.toFile.getName != "target") || copyTarget) && !source.toFile.getName.startsWith(".")) {
                       Files createDirectory destination
                       source.toFile.listFiles.toList.map(file => {
-                        copy( file.toPath, destination.resolve(file.getName) , copyTarget, include ) 
+                        copy( file.toPath, destination.resolve(file.getName) , copyTarget ) 
                       }).flatten
                     }
                     else List[Path]()
         files
       }
-    case _ => { include match {
-        case None => { 
-          Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING )
-          List(destination)
-        }
-        case Some(f) => { 
-          val fileName = source.toFile.toString
-          val versions = fileName.take(fileName.lastIndexOf('/'))
-          if (f contains versions.take(versions.lastIndexOf('/'))) {  
-            Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING )
-            List(destination)
-          } else List[Path]()
-        }
+      case src => {
+        Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING )
+        List(destination)
       }
-    }
   }  
 
   def handleException(e: AmazonClientException) = e match {

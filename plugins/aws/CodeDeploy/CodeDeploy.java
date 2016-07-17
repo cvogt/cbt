@@ -17,16 +17,27 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 
 public class CodeDeploy {
+    public static void main(String[] args) {
+        for (String arg: args) {
+            System.out.println(arg);
+        }
+        String bucketName = args[1];
+        String projectName = args[2];
+        deploy(bucketName, projectName);
+    }
     public static int deploy(String bucketName, String projectName) {
         File target = new File("/tmp/code/target/");
         File buildTarget = new File("/tmp/code/build/target/"); 
         ArrayList<String> codeFiles = getFileList(target);
         ArrayList<String> buildFiles = getFileList(buildTarget);
-
-        zip(projectName + "_target.zip", codeFiles);
-        zip(projectName + "_buildTarget.zip", buildFiles);
-        upload(bucketName, "/tmp/" + projectName + "_target.zip");
-        upload(bucketName, "/tmp/" + projectName + "_buildTarget.zip");
+        zip(projectName + "Target", codeFiles);
+        zip(projectName + "BuildTarget", buildFiles);
+        upload(bucketName, "/tmp/" + projectName + "Target.zip");
+        upload(bucketName, "/tmp/" + projectName + "BuildTarget.zip");
+        File tmp = new File("/tmp");
+        for (File f: tmp.listFiles()) {
+            System.out.println(f.toString());
+        }
         return 0;
     }
 

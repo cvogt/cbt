@@ -20,6 +20,7 @@ import com.amazonaws.services.s3.model.PutObjectRequest;
 public class StartCbt {
     @SuppressWarnings("unchecked")
     public static int run(String[] args) {
+        System.out.println("In startCbt");
         System.setSecurityManager(new NoExitSecurityManager());
         System.getProperties().setProperty("user.dir", "/tmp/code");
         System.getProperties().setProperty("zinc.home", "/tmp");
@@ -39,43 +40,38 @@ public class StartCbt {
         }
 
         Object[] params = { nailgunArgs };
+        String[] parameters = {"0.0", "/tmp/deploy", "run", args[args.length - 2], args[args.length - 1] };
+        Object[] deployParams = { parameters }; 
+
+        File file = new File("/tmp/nailgun_launcher/target/scala-2.11/classes/");
+
+        // FIXME: currently no way of differentiating between a compile exception and trap exit so solution is to swallow both
         try {
-            // Convert File to a URL
-            File file = new File("/tmp/nailgun_launcher/target/scala-2.11/classes/");
             URL url = file.toURI().toURL(); 
             URL[] urls = new URL[]{url};
             ClassLoader cl = new URLClassLoader(urls);
-            
             Class<?> cls = cl.loadClass("cbt.NailgunLauncher");
+            System.getProperties().setProperty("user.dir", "/tmp/code");
+            System.out.println("Now compiling code with cwd as " + System.getProperty("user.dir"));
             cls.getMethod("main", String[].class).invoke((Object) null, params);
         } catch (ExitException e) {
             //
         } catch (Exception e) {
-            //
+            
         }
 
-        Object[][] deployParams = { {args[args.length - 2], args[args.length - 1] } }; 
-        File cFile = new File("/tmp/cache/");
-
-        //FIXME: See if there is a way to not hard code the files
-        HashSet<String> cacheFiles = getFileList(cFile);
-        cacheFiles.add("/tmp/");
-        // FIXME: duplicate versions of HTTP client throws exceptions
-        ArrayList<String> cacheList = new ArrayList<String>(cacheFiles);
         try {
-            // Convert File to a URL
-            URL[] urls = new URL[cacheList.size()];
-            for (int i = 0; i < urls.length; i++) {
-                File inCache = new File(cacheList.get(i));
-                URL url = inCache.toURI().toURL(); 
-                urls[i] = url;
-            }
-            
+            URL url = file.toURI().toURL(); 
+            URL[] urls = new URL[]{url};
             ClassLoader cl = new URLClassLoader(urls);
-            Class<?> cls = cl.loadClass("CodeDeploy");
-            res = (Integer) cls.getMethod("deploy", String.class, String.class).invoke((Object) null, (Object) deployParams[0][0], (Object) deployParams[0][1]);
-        } catch (Throwable e) {
-            e.printStackTrace();
+            Class<?> cls = cl.loadClass("cbt.NailgunLauncher");
+            System.getProperties().setProperty("user.dir", "/tmp/deploy"); 
+            System.out.println("Now running deploy with cwd as " + System.getProperty("user.dir"));
+            cls.getMethod("main", String[].class).invoke((Object) null, deployParams);
+        } catch (ExitException e) {
+            //
+        } catch (Exception e) {
+            
         }
         return res;
     }
@@ -90,10 +86,10 @@ public class StartCbt {
                 getFileList(f, zipped);
             }
         } else {
-            //if (!file.toString().startsWith("/tmp/cache/maven/org/apache/httpcomponents/httpclient/4.3.6")) {
+            if (!file.toString().contains("/httpclient/4.5.2")) {
                 System.out.println("Adding: " + file.toString() + " to class path.");
                 zipped.add(file.toString());
-            //}
+            }
         }
         return zipped;
     }
