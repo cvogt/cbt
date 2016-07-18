@@ -134,7 +134,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   }
 
   def runClass: String = "Main"
-  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
+  def run: ExitCode = lib.runMainIfFound( runClass, context.args.drop(1), classLoader(context.classLoaderCache) )
 
   def test: Option[ExitCode] = 
     Some(new lib.ReflectBuild(
