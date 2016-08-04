@@ -1,5 +1,6 @@
 package cbt
 import java.io._
+import java.nio._
 import java.nio.file._
 import java.net._
 import java.util.concurrent.ConcurrentHashMap
@@ -13,12 +14,12 @@ object `package`{
   val sonatypeSnapshots = sonatypeBase ++ "snapshots"
 
   private val lib = new BaseLib
-  implicit class FileExtensionMethods( file: File ){
-    def ++( s: String ): File = {
+  implicit class FileExtensionMethods( file: Path ){
+    def ++( s: String ): Path = {
       if(s endsWith "/") throw new Exception(
         """Trying to append a String that ends in "/" to a File would loose the trailing "/". Use .stripSuffix("/") if you need to."""
       )
-      new File( file.toString ++ s )
+      Paths.get( file.toString ++ java.io.File.separator ++ s )
     }
     def parent = lib.realpath(file ++ "/..")
     def string = file.toString
@@ -29,7 +30,7 @@ object `package`{
   }
   implicit class BuildInterfaceExtensions(build: BuildInterface){
     import build._
-    def triggerLoopFiles: Seq[File] = triggerLoopFilesArray.to
+    def triggerLoopFiles: Seq[Path] = triggerLoopFilesArray.to
     def crossScalaVersions: Seq[String] = crossScalaVersionsArray.to
   }
   implicit class ArtifactInfoExtensions(subject: ArtifactInfo){
@@ -67,14 +68,14 @@ object `package`{
     def cbtHasChanged: scala.Boolean = cbtHasChangedCompat
 
     def copy(
-      projectDirectory: File = projectDirectory,
+      projectDirectory: Path = projectDirectory,
       args: Seq[String] = args,
       enabledLoggers: Set[String] = enabledLoggers,
       cbtHasChanged: Boolean = cbtHasChanged,
       version: Option[String] = version,
       scalaVersion: Option[String] = scalaVersion,
-      cache: File = cache,
-      cbtHome: File = cbtHome,
+      cache: Path = cache,
+      cbtHome: Path = cbtHome,
       parentBuild: Option[BuildInterface] = None
     ): Context = ContextImplementation(
       projectDirectory,

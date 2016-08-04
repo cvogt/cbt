@@ -1,14 +1,15 @@
 package cbt
 import java.net._
 import java.io.{Console=>_,_}
+import java.nio._
 import java.nio.file._
 class ToolsTasks(
   lib: Lib,
   args: Seq[String],
-  cwd: File,
+  cwd: Path,
   classLoaderCache: ClassLoaderCache,
-  cache: File,
-  cbtHome: File,
+  cache: Path,
+  cbtHome: Path,
   cbtHasChanged: Boolean
 ){
   private val paths = CbtPaths(cbtHome, cache)

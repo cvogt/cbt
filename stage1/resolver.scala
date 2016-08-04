@@ -1,4 +1,5 @@
 package cbt
+import java.nio._
 import java.nio.file._
 import java.nio.charset.StandardCharsets
 import java.net._
@@ -14,8 +15,8 @@ abstract class DependencyImplementation extends Dependency{
   def needsUpdate: Boolean
   //def cacheClassLoader: Boolean = false
   private[cbt] def targetClasspath: ClassPath
-  def dependencyClasspathArray: Array[File] = dependencyClasspath.files.toArray
-  def exportedClasspathArray: Array[File] = exportedClasspath.files.toArray
+  def dependencyClasspathArray: Array[Path] = dependencyClasspath.files.toArray
+  def exportedClasspathArray: Array[Path] = exportedClasspath.files.toArray
   def exportedClasspath: ClassPath
   def dependenciesArray: Array[Dependency] = dependencies.to
 
@@ -108,11 +109,11 @@ abstract class DependencyImplementation extends Dependency{
 }
 
 // TODO: all this hard codes the scala version, needs more flexibility
-class ScalaCompilerDependency(cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-compiler",version, Classifier.none), Seq(mavenCentral))
-class ScalaLibraryDependency (cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-library",version, Classifier.none), Seq(mavenCentral))
-class ScalaReflectDependency (cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-reflect",version, Classifier.none), Seq(mavenCentral))
+class ScalaCompilerDependency(cbtHasChanged: Boolean, mavenCache: Path, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-compiler",version, Classifier.none), Seq(mavenCentral))
+class ScalaLibraryDependency (cbtHasChanged: Boolean, mavenCache: Path, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-library",version, Classifier.none), Seq(mavenCentral))
+class ScalaReflectDependency (cbtHasChanged: Boolean, mavenCache: Path, version: String)(implicit logger: Logger) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-reflect",version, Classifier.none), Seq(mavenCentral))
 
-case class ScalaDependencies(cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit val logger: Logger) extends DependencyImplementation{ sd =>
+case class ScalaDependencies(cbtHasChanged: Boolean, mavenCache: Path, version: String)(implicit val logger: Logger) extends DependencyImplementation{ sd =>
   override final val needsUpdate = false
   def targetClasspath = ClassPath()
   def exportedClasspath = ClassPath()
@@ -123,7 +124,7 @@ case class ScalaDependencies(cbtHasChanged: Boolean, mavenCache: File, version: 
   )
 }
 
-case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implicit val logger: Logger) extends DependencyImplementation{
+case class BinaryDependency( path: Path, dependencies: Seq[Dependency] )(implicit val logger: Logger) extends DependencyImplementation{
   def exportedClasspath = ClassPath(Seq(path))
   override def needsUpdate = false
   def targetClasspath = exportedClasspath
@@ -136,7 +137,7 @@ case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Lo
   override def targetClasspath = ClassPath()
 }
 
-case class Stage1Dependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTarget: File, stage1Target: File, compatibilityTarget: File)(implicit val logger: Logger) extends DependencyImplementation{
+case class Stage1Dependency(cbtHasChanged: Boolean, mavenCache: Path, nailgunTarget: Path, stage1Target: Path, compatibilityTarget: Path)(implicit val logger: Logger) extends DependencyImplementation{
   override def needsUpdate = cbtHasChanged
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(nailgunTarget, stage1Target) )
@@ -149,13 +150,13 @@ case class Stage1Dependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTar
     MavenDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
   )
 }
-case class CompatibilityDependency(cbtHasChanged: Boolean, compatibilityTarget: File)(implicit val logger: Logger) extends DependencyImplementation{
+case class CompatibilityDependency(cbtHasChanged: Boolean, compatibilityTarget: Path)(implicit val logger: Logger) extends DependencyImplementation{
   override def needsUpdate = cbtHasChanged
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(compatibilityTarget) )
   override def dependencies = Seq()
 }
-case class CbtDependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit val logger: Logger) extends DependencyImplementation{
+case class CbtDependency(cbtHasChanged: Boolean, mavenCache: Path, nailgunTarget: Path, stage1Target: Path, stage2Target: Path, compatibilityTarget: Path)(implicit val logger: Logger) extends DependencyImplementation{
   override def needsUpdate = cbtHasChanged
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq( stage2Target ) )
@@ -179,7 +180,7 @@ abstract class DependenciesProxy{
 
 }
 class BoundMavenDependencies(
-  cbtHasChanged: Boolean, mavenCache: File, urls: Seq[URL], mavenDependencies: Seq[MavenDependency]
+  cbtHasChanged: Boolean, mavenCache: Path, urls: Seq[URL], mavenDependencies: Seq[MavenDependency]
 )(implicit logger: Logger) extends Dependencies(
   mavenDependencies.map( BoundMavenDependency(cbtHasChanged,mavenCache,_,urls) )
 )
@@ -195,7 +196,7 @@ object MavenDependency{
 }
 // FIXME: take MavenResolver instead of mavenCache and repositories separately
 case class BoundMavenDependency(
-  cbtHasChanged: Boolean, mavenCache: File, mavenDependency: MavenDependency, repositories: Seq[URL]
+  cbtHasChanged: Boolean, mavenCache: Path, mavenDependency: MavenDependency, repositories: Seq[URL]
 )(implicit val logger: Logger) extends DependencyImplementation with ArtifactInfo{
   val MavenDependency( groupId, artifactId, version, classifier ) = mavenDependency
   assert(
@@ -228,10 +229,10 @@ case class BoundMavenDependency(
   override def targetClasspath = exportedClasspath
   import scala.collection.JavaConversions._
 
-  private def resolve(suffix: String, hash: Option[String]): File = {
+  private def resolve(suffix: String, hash: Option[String]): Path = {
     logger.resolver("Resolving "+this)
-    val file = mavenCache ++ basePath ++ "." ++ suffix
-    val urls = repositories.map(_ ++ basePath ++ "." ++ suffix)
+    val file = Paths.get( mavenCache + basePath + "." + suffix )
+    val urls = repositories.map(f => Paths.get( f.toString + basePath.toString + "." + suffix).toUri.toURL )
     urls.find(
       lib.download(_, file, hash)
     ).getOrElse(
@@ -242,7 +243,7 @@ case class BoundMavenDependency(
 
   private def resolveHash(suffix: String) = {
     Files.readAllLines(
-      resolve( suffix ++ ".sha1", None ).toPath,
+      resolve( suffix.toString + ".sha1" , None ),
       StandardCharsets.UTF_8
     ).mkString("\n").split(" ").head.trim
   }
@@ -253,11 +254,11 @@ case class BoundMavenDependency(
   private object pomSha1Cache extends Cache[String]
   def pomSha1: String = pomSha1Cache{ resolveHash("pom") }
 
-  private object jarCache extends Cache[File]
-  def jar: File = jarCache{ resolve("jar", Some(jarSha1)) }
+  private object jarCache extends Cache[Path]
+  def jar: Path = jarCache{ resolve("jar", Some(jarSha1)) }
 
-  private object pomCache extends Cache[File]
-  def pom: File = pomCache{ resolve("pom", Some(pomSha1)) }
+  private object pomCache extends Cache[Path]
+  def pom: Path = pomCache{ resolve("pom", Some(pomSha1)) }
 
   private def pomXml = XML.loadFile(pom.string)
   // ========== pom traversal ==========

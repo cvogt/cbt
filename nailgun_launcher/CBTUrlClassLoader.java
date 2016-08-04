@@ -1,5 +1,7 @@
 package cbt;
 import java.io.*;
+import java.nio.*;
+import java.nio.file.*;
 import java.net.*;
 import java.util.*;
 import static cbt.Stage0Lib.*;
@@ -43,8 +45,8 @@ class CbtURLClassLoader extends java.net.URLClassLoader{
   }
   void assertExist(URL[] urls){
     for(URL url: urls){
-      if(!new File(url.getPath()).exists()){
-        throw new AssertionError("File does not exist when trying to create CbtURLClassLoader: "+url);
+      if(!Files.exists( Paths.get( url.getPath() ), LinkOption.NOFOLLOW_LINKS ) ){
+        throw new AssertionError("File does not exist when trying to create CbtURLClassLoader: " + url);
       }
     }
   }

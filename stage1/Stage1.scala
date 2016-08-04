@@ -1,6 +1,8 @@
 package cbt
 
 import java.io._
+import java.nio._
+import java.nio.file._
 import java.util.concurrent.ConcurrentHashMap
 
 import scala.collection.JavaConverters._
@@ -37,13 +39,13 @@ abstract class Stage2Base{
 }
 
 case class Stage2Args(
-  cwd: File,
+  cwd: Path,
   args: Seq[String],
   cbtHasChanged: Boolean,
   classLoaderCache: ClassLoaderCache,
-  cache: File,
-  cbtHome: File,
-  compatibilityTarget: File
+  cache: Path,
+  cbtHome: Path,
+  compatibilityTarget: Path
 ){
   val ClassLoaderCache(
     logger,
@@ -52,8 +54,10 @@ case class Stage2Args(
   ) = classLoaderCache  
 }
 object Stage1{
-  protected def newerThan( a: File, b: File ) ={
-    a.lastModified > b.lastModified
+  protected def newerThan( a: Path, b: Path ) ={
+    val t1 = Files.getLastModifiedTime(a, LinkOption.NOFOLLOW_LINKS )
+    val t2 = Files.getLastModifiedTime(b, LinkOption.NOFOLLOW_LINKS )
+    t1.compareTo(t2) > 0
   }
 
   def getBuild( _context: java.lang.Object, _cbtChanged: java.lang.Boolean ) = {
@@ -78,7 +82,7 @@ object Stage1{
   }
 
   def buildStage2(
-    compatibilityTarget: File, classLoaderCache: ClassLoaderCache, _cbtChanged: Boolean, cbtHome: File, cache: File
+    compatibilityTarget: Path, classLoaderCache: ClassLoaderCache, _cbtChanged: Boolean, cbtHome: Path, cache: Path
   ): (Boolean, ClassLoader) = {
     import classLoaderCache.logger
 
@@ -86,10 +90,12 @@ object Stage1{
     import lib._
     val paths = CbtPaths(cbtHome, cache)
     import paths._
+    import scala.collection.JavaConverters
 
     val stage2sourceFiles = (
-      stage2.listFiles ++ (stage2 ++ "/plugins").listFiles
-    ).toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
+      Files.newDirectoryStream(stage2).iterator.asScala.toSeq ++
+      Files.newDirectoryStream(stage2 ++ "plugins").iterator.asScala.toSeq
+    ).toVector.filter( path => !Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) ).filter(_.toString.endsWith(".scala") )
     
     val cbtHasChanged = _cbtChanged || lib.needsUpdate(stage2sourceFiles, stage2StatusFile)
 
@@ -142,10 +148,10 @@ object Stage1{
 
   def run(
     _args: Array[String],
-    cache: File,
-    cbtHome: File,
+    cache: Path,
+    cbtHome: Path,
     _cbtChanged: java.lang.Boolean,
-    compatibilityTarget: File,
+    compatibilityTarget: Path,
     start: java.lang.Long,
     classLoaderCacheKeys: ConcurrentHashMap[String,AnyRef],
     classLoaderCacheValues: ConcurrentHashMap[AnyRef,ClassLoader]
@@ -164,7 +170,7 @@ object Stage1{
     val (cbtHasChanged, classLoader) = buildStage2( compatibilityTarget, classLoaderCache, _cbtChanged, cbtHome, cache )
 
     val stage2Args = Stage2Args(
-      new File( args.args(0) ),
+      Paths.get( args.args(0) ),
       args.args.drop(1).toVector,
       // launcher changes cause entire nailgun restart, so no need for them here
       cbtHasChanged = cbtHasChanged,

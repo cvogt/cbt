@@ -1,4 +1,6 @@
 package cbt
+import java.nio._
+import java.nio.file._
 import java.io.File
 import java.net.URL
 import java.nio.file.Files.readAllBytes
@@ -16,7 +18,7 @@ trait Publish extends PackageJars{
   // ========== package ==========
 
   /** put additional xml that should go into the POM file in here */
-  def pom: File = lib.pom(
+  def pom: Path = lib.pom(
     groupId = groupId,
     artifactId = artifactId,
     version = version,
@@ -43,7 +45,7 @@ trait Publish extends PackageJars{
 
   protected def sonatypeCredentials: Option[String] = {
     // FIXME: this should probably not use cbtHome, but some reference to the system's host cbt
-    Some(new String(readAllBytes((context.cbtRootHome ++ "/sonatype.login").toPath)).trim)
+    Some(new String(readAllBytes((context.cbtRootHome ++ "/sonatype.login"))).trim)
   }
 
   def publishSnapshot: Unit = {

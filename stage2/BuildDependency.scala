@@ -1,5 +1,6 @@
 package cbt
-import java.io.File
+import java.nio._
+import java.nio.file._
 /*
 sealed abstract class ProjectProxy extends Ha{
   protected def delegate: ProjectMetaData
@@ -12,7 +13,7 @@ sealed abstract class ProjectProxy extends Ha{
 */
 trait TriggerLoop extends DependencyImplementation{
   final def triggerLoopFilesArray = triggerLoopFiles.toArray
-  def triggerLoopFiles: Seq[File]
+  def triggerLoopFiles: Seq[Path]
 }
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
 case class DirectoryDependency(context: Context) extends TriggerLoop{
