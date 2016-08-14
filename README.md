@@ -176,3 +176,19 @@ solution could be code generating traits at build-time and mixing them
 in ad-hoc. It's a build-tool after all. Build-time code-generation and
 class loading is not rocket science. But there may be simpler solutions
 for the cases at hand. And they are edge cases anyways.
+
+Bash completions
+----------------
+To auto-complete cbt task names in bash do this:
+
+```
+mkdir ~/.bash_completion.d/
+cp shell-integration/cbt-completions.bash ~/.bash_completion.d/
+```
+
+Add this to you .bashrc
+```
+for f in ~/.bash_completion.d/*; do
+    source $f
+done
+```

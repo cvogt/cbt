@@ -109,13 +109,6 @@ log "Find out real path. Build realpath if needed." $*
 
 export CBT_HOME=$(dirname $($_DIR/realpath/realpath.sh $0))
 
-
-if [ ! -f /etc/bash_completion.d/cbt ]; then
-  sudo cp $CBT_HOME/completions/cbt /etc/bash_completion.d/cbt
-  # reload shell so completions work
-  exec bash
-fi
-
 export NAILGUN=$CBT_HOME/nailgun_launcher/
 export TARGET=target/scala-2.11/classes/
 mkdir -p $NAILGUN$TARGET
