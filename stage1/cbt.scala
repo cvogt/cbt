@@ -5,6 +5,8 @@ import java.nio.file._
 import java.net._
 import java.util.concurrent.ConcurrentHashMap
 
+import scala.collection.JavaConverters._
+
 object `package`{
   val mavenCentral = new URL("https://repo1.maven.org/maven2")
   val jcenter = new URL("https://jcenter.bintray.com")
@@ -14,15 +16,20 @@ object `package`{
   val sonatypeSnapshots = sonatypeBase ++ "snapshots"
 
   private val lib = new BaseLib
-  implicit class FileExtensionMethods( file: Path ){
+  implicit class FileExtensionMethods( path: Path ){
     def ++( s: String ): Path = {
       if(s endsWith "/") throw new Exception(
         """Trying to append a String that ends in "/" to a File would loose the trailing "/". Use .stripSuffix("/") if you need to."""
       )
-      Paths.get( file.toString ++ java.io.File.separator ++ s )
+      Paths.get( path.toString ++ java.io.File.separator ++ s )
     }
-    def parent = lib.realpath(file ++ "/..")
-    def string = file.toString
+    def parent = path.getParent
+    def string = path.toString
+    def lastModified = Files.getLastModifiedTime( path, LinkOption.NOFOLLOW_LINKS )
+    def exists = Files.exists( path, LinkOption.NOFOLLOW_LINKS )
+    def isDirectory = Files.isDirectory( path, LinkOption.NOFOLLOW_LINKS )
+    def isFile = !isDirectory
+    def listFiles = Files.newDirectoryStream(path).iterator.asScala.toSeq
   }
   implicit class URLExtensionMethods( url: URL ){
     def ++( s: String ): URL = new URL( url.toString ++ s )

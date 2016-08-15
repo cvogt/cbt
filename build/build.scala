@@ -14,7 +14,7 @@ class Build(val context: Context) extends Publish{
   }
   override def sources = Seq(
     "nailgun_launcher", "stage1", "stage2", "compatibility"
-  ).map(d => Path.get( projectDirectory.toString + ("/" + d) ) )
+  ).map(d => Paths.get( projectDirectory.toString + ("/" + d) ) )
 
   def groupId: String = "org.cvogt"
 

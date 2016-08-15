@@ -54,10 +54,8 @@ case class Stage2Args(
   ) = classLoaderCache  
 }
 object Stage1{
-  protected def newerThan( a: Path, b: Path ) ={
-    val t1 = Files.getLastModifiedTime(a, LinkOption.NOFOLLOW_LINKS )
-    val t2 = Files.getLastModifiedTime(b, LinkOption.NOFOLLOW_LINKS )
-    t1.compareTo(t2) > 0
+  protected def newerThan( a: Path, b: Path ) = {
+    a.lastModified.compareTo(b.lastModified) > 0
   }
 
   def getBuild( _context: java.lang.Object, _cbtChanged: java.lang.Boolean ) = {
@@ -93,9 +91,9 @@ object Stage1{
     import scala.collection.JavaConverters
 
     val stage2sourceFiles = (
-      Files.newDirectoryStream(stage2).iterator.asScala.toSeq ++
-      Files.newDirectoryStream(stage2 ++ "plugins").iterator.asScala.toSeq
-    ).toVector.filter( path => !Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) ).filter(_.toString.endsWith(".scala") )
+      stage2.listFiles ++
+      (stage2 ++ "plugins").listFiles
+    ).toVector.filter( _.isFile ).filter(_.toString.endsWith(".scala") )
     
     val cbtHasChanged = _cbtChanged || lib.needsUpdate(stage2sourceFiles, stage2StatusFile)
 

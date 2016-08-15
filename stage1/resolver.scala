@@ -231,8 +231,8 @@ case class BoundMavenDependency(
 
   private def resolve(suffix: String, hash: Option[String]): Path = {
     logger.resolver("Resolving "+this)
-    val file = Paths.get( mavenCache + basePath + "." + suffix )
-    val urls = repositories.map(f => Paths.get( f.toString + basePath.toString + "." + suffix).toUri.toURL )
+    val file = FileSystems.getDefault().getPath( mavenCache + basePath + "." + suffix )
+    val urls = repositories.map( _ ++ basePath ++ "." ++ suffix )
     urls.find(
       lib.download(_, file, hash)
     ).getOrElse(

@@ -13,7 +13,7 @@ case class ClassPath(files: Seq[Path] = Seq()){
     duplicates.isEmpty,
     "Duplicate classpath entries found:\n" ++ duplicates.mkString("\n") ++ "\nin classpath:\n"++string
   )
-  private val nonExisting = files.distinct.filterNot(f => Files.exists(f, LinkOption.NOFOLLOW_LINKS) )
+  private val nonExisting = files.distinct.filterNot( _.exists )
   assert(
     nonExisting.isEmpty,
     "Classpath contains entires that don't exist on disk:\n" ++ nonExisting.mkString("\n") ++ "\nin classpath:\n"++string
@@ -24,7 +24,7 @@ case class ClassPath(files: Seq[Path] = Seq()){
   def ++(other: ClassPath) = ClassPath(files ++ other.files)
   def string = strings.mkString( File.pathSeparator )
   def strings = files.map{
-    f => f.toString ++ ( if( Files.isDirectory ( f, LinkOption.NOFOLLOW_LINKS ) ) "/" else "" )
+    f => f.toString ++ ( if( f.isDirectory ) "/" else "" )
   }.sorted
   def toConsole = string
 }

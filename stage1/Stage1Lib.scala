@@ -57,11 +57,12 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   def write(file: Path, content: String, options: OpenOption*): Path = Stage0Lib.write(file, content, options:_*)
 
   def download(url: URL, target: Path, sha1: Option[String]): Boolean = {
-    if(  Files.exists(target, LinkOption.NOFOLLOW_LINKS) ){
+    if( target.exists ){
       logger.resolver(green("found ") ++ url.string)
       true
     } else {
-      val incomplete = ( target ++ ".incomplete" )
+      val incomplete = ( FileSystems.getDefault().getPath( target.string ++ ".incomplete" ) )
+      println(url)
       val connection = Stage0Lib.openConnectionConsideringProxy(url)
       if(connection.getResponseCode != HttpURLConnection.HTTP_OK){
         logger.resolver(blue("not found: ") ++ url.string)
@@ -91,8 +92,8 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def listFilesRecursive(f: Path): Seq[Path] = {
     f +: (
-      if( Files.isDirectory(f, LinkOption.NOFOLLOW_LINKS) )
-        Files.newDirectoryStream(f).iterator.asScala.toSeq.flatMap(file => listFilesRecursive(file) ).toVector
+      if( f.isDirectory )
+        f.listFiles.flatMap(file => listFilesRecursive(file) ).toVector
       else Seq[Path]()
     )
   }
@@ -129,8 +130,8 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def needsUpdate( sourceFiles: Seq[Path], statusFile: Path ) = {
     try {
-      val lastCompile = Files.getLastModifiedTime(statusFile, LinkOption.NOFOLLOW_LINKS )
-      sourceFiles.filter(f => (Files.getLastModifiedTime(f, LinkOption.NOFOLLOW_LINKS ) compareTo lastCompile) > 0).nonEmpty
+      val lastCompile = statusFile.lastModified
+      sourceFiles.filter(f => ( f.lastModified compareTo lastCompile) > 0).nonEmpty
     } catch {
       case e: Throwable => true
     }
@@ -283,7 +284,7 @@ ${files.sorted.mkString(" \\\n")}
     ( deserialize: String => T )
     ( serialize: T => String )
     ( compute: => Seq[T] ) = {
-    if(!cbtHasChanged &&  Files.exists(cacheFile, LinkOption.NOFOLLOW_LINKS) ){
+    if(!cbtHasChanged &&  cacheFile.exists ){
       import collection.JavaConversions._
       Files
         .readAllLines( cacheFile, StandardCharsets.UTF_8 )

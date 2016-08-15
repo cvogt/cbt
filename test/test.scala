@@ -1,6 +1,6 @@
 import cbt._
 import java.util.concurrent.ConcurrentHashMap
-import java.io.File
+import java.nio.file._
 import java.net.URL
 
 // micro framework
@@ -10,7 +10,7 @@ object Main{
     val args = new Stage1ArgsParser(_args.toVector)
     implicit val logger: Logger = new Logger(args.enabledLoggers, System.currentTimeMillis)
     val lib = new Lib(logger)
-    val cbtHome = new File(System.getenv("CBT_HOME"))
+    val cbtHome = FileSystems.getDefault().getPath(System.getenv("CBT_HOME"))
     
     var successes = 0
     var failures = 0
@@ -39,7 +39,7 @@ object Main{
       val allArgs: Seq[String] = ((cbtHome.string ++ "/cbt") +: "direct" +: (_args ++ args.propsRaw))
       logger.test(allArgs.toString)
       val pb = new ProcessBuilder( allArgs :_* )
-      pb.directory(cbtHome ++ ("/test/" ++ path))
+      pb.directory( new File ( ( cbtHome ++ ("/test/" ++ path) ).string ) )
       val p = pb.start
       val berr = new BufferedReader(new InputStreamReader(p.getErrorStream));
       val bout = new BufferedReader(new InputStreamReader(p.getInputStream));
@@ -74,8 +74,8 @@ object Main{
 
     logger.test( "Running tests " ++ _args.toList.toString )
 
-    val cache = cbtHome ++ "/cache"
-    val mavenCache = cache ++ "/maven"
+    val cache = cbtHome ++ "cache"
+    val mavenCache = cache ++ "maven"
     val cbtHasChanged = true
     def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
 
@@ -94,7 +94,7 @@ object Main{
         cache,
         cbtHome,
         cbtHome,
-        cbtHome ++ "/compatibilityTarget",
+        cbtHome ++ "compatibilityTarget",
         null
       )
 
@@ -145,7 +145,7 @@ object Main{
         )
       ).classpath.strings
     ).foreach{
-      path => assert(new File(path).exists, path)
+      path => assert(FileSystems.getDefault().getPath(path).exists, path)
     }
 
     usage("nothing")
