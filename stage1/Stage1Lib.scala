@@ -112,6 +112,43 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
+  def mainClasses(compileTarget : File, classLoader : ClassLoader): Seq[String] = {
+    val targetLength = compileTarget.toString.length + 1 // compile target and slash
+
+    def className(file : File) : String = {
+      file.toString.dropRight(".class".length).drop(targetLength).replace(File.separator, ".")
+    }
+
+    /* for packaged applications */
+    def retrieveFiles(file: File): Seq[File] = {
+      file.listFiles.toSeq.map(currFile => {
+          if (currFile.isDirectory) retrieveFiles(currFile)
+          else Seq(currFile)
+        }
+      ).flatten
+    }
+
+    def classesWithMain(target : File, classLoader : ClassLoader): Seq[File]  = {
+      def hasMainClass(file : File) : Boolean = {
+        val name = className(file)
+        val inspectClass = classLoader.loadClass(name)
+        inspectClass.getDeclaredMethods().map(_.getName).contains("main")
+      }
+
+      // FIXME: Check if argument list has exactly one element of type Array[String]
+      def isInnerClass(file : File) : Boolean = file.toString.contains("$")
+      val files = retrieveFiles(target)
+
+      val classFiles = files.filter(file => file.toString.endsWith(".class") && !isInnerClass(file)).toSeq
+
+      classFiles.filter(hasMainClass(_))
+    }
+
+    val hasMain = classesWithMain(compileTarget, classLoader)
+
+    hasMain.map(className(_))
+  }
+
   implicit class ClassLoaderExtensions(classLoader: ClassLoader){
     def canLoad(className: String) = {
       try{
