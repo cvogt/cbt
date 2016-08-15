@@ -1,19 +1,20 @@
 package cbt
 import java.io._
+import java.nio._
 import java.nio.file._
 import java.net._
 trait Scaffold{
   def logger: Logger
 
-  private def createFile( projectDirectory: File, fileName: String, code: String ){
-    val outputFile = projectDirectory ++ ("/" ++ fileName)
+  private def createFile( projectDirectory: Path, fileName: String, code: String ){
+    val outputFile = projectDirectory ++ (fileName)
     Stage0Lib.write( outputFile, code, StandardOpenOption.CREATE_NEW )
     import scala.Console._
     println( GREEN ++ "Created " ++ fileName ++ RESET )
   }
 
   def createMain(
-    projectDirectory: File
+    projectDirectory: Path
   ): Unit = { 
     createFile(projectDirectory, "Main.scala", s"""object Main{
   def main( args: Array[String] ): Unit = {
@@ -25,7 +26,7 @@ trait Scaffold{
   }
 
   def createBuild(
-    projectDirectory: File
+    projectDirectory: Path
   ): Unit = { 
     createFile(projectDirectory, "build/build.scala", s"""import cbt._
 class Build(val context: Context) extends BaseBuild{

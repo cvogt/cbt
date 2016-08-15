@@ -1,4 +1,5 @@
 package cbt
+import java.nio._
 import java.nio.file._
 
 trait BuildBuild extends BaseBuild{
@@ -8,25 +9,25 @@ trait BuildBuild extends BaseBuild{
   )
 
   object plugins{
-    final val scalaTest = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalatest" )
-    final val sbtLayout = DirectoryDependency( managedContext.cbtHome ++ "/plugins/sbt_layout" )
-    final val scalaJs   = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalajs" )
-    final val scalariform = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalariform" )
-    final val scalafmt = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalafmt" )
-    final val uberJar = DirectoryDependency( managedContext.cbtHome ++ "/plugins/uber-jar" )
+    final val scalaTest = DirectoryDependency( managedContext.cbtHome ++ "plugins/scalatest" )
+    final val sbtLayout = DirectoryDependency( managedContext.cbtHome ++ "plugins/sbt_layout" )
+    final val scalaJs   = DirectoryDependency( managedContext.cbtHome ++ "plugins/scalajs" )
+    final val scalariform = DirectoryDependency( managedContext.cbtHome ++ "plugins/scalariform" )
+    final val scalafmt = DirectoryDependency( managedContext.cbtHome ++ "plugins/scalafmt" )
+    final val uberJar = DirectoryDependency( managedContext.cbtHome ++ "plugins/uber-jar" )
   }
 
   override def dependencies =
     super.dependencies :+ context.cbtDependency
-  def managedBuildDirectory: java.io.File = lib.realpath( projectDirectory.parent )
+  def managedBuildDirectory: Path = lib.realpath( projectDirectory.getParent )
   private object managedBuildCache extends Cache[BuildInterface]
   def managedBuild = managedBuildCache{
     try{
-      val managedBuildFile = projectDirectory++"/build.scala"
+      val managedBuildFile = projectDirectory++"build.scala"
       logger.composition("Loading build at "++managedContext.projectDirectory.toString)
       (
-        if(managedBuildFile.exists){
-          val contents = new String(Files.readAllBytes(managedBuildFile.toPath))
+        if(Files.exists( managedBuildFile, LinkOption.NOFOLLOW_LINKS ) ){
+          val contents = new String(Files.readAllBytes(managedBuildFile))
           val cbtUrl = ("cbt:"++GitDependency.GitUrl.regex++"#[a-z0-9A-Z]+").r
           cbtUrl
             .findFirstIn(contents)

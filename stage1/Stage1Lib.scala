@@ -12,6 +12,8 @@ import java.util.{Set=>_,Map=>_,_}
 import java.util.concurrent.ConcurrentHashMap
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
+import scala.collection.JavaConverters._
+
 // CLI interop
 case class ExitCode(integer: Int)
 object ExitCode{
@@ -30,7 +32,7 @@ object CatchTrappedExitCode{
 }
 
 class BaseLib{
-  def realpath(name: File) = new File(java.nio.file.Paths.get(name.getAbsolutePath).normalize.toString)
+  def realpath(name: Path) = Paths.get(java.nio.file.Paths.get(name.toString).normalize.toString)
 }
 
 class Stage1Lib( val logger: Logger ) extends BaseLib{
@@ -52,14 +54,15 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   def blue(string: String) = scala.Console.BLUE++string++scala.Console.RESET
   def green(string: String) = scala.Console.GREEN++string++scala.Console.RESET
 
-  def write(file: File, content: String, options: OpenOption*): File = Stage0Lib.write(file, content, options:_*)
+  def write(file: Path, content: String, options: OpenOption*): Path = Stage0Lib.write(file, content, options:_*)
 
-  def download(url: URL, target: File, sha1: Option[String]): Boolean = {
+  def download(url: URL, target: Path, sha1: Option[String]): Boolean = {
     if( target.exists ){
       logger.resolver(green("found ") ++ url.string)
       true
     } else {
-      val incomplete = ( target ++ ".incomplete" ).toPath;
+      val incomplete = ( FileSystems.getDefault().getPath( target.string ++ ".incomplete" ) )
+      println(url)
       val connection = Stage0Lib.openConnectionConsideringProxy(url)
       if(connection.getResponseCode != HttpURLConnection.HTTP_OK){
         logger.resolver(blue("not found: ") ++ url.string)
@@ -67,7 +70,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       } else {
         System.err.println(blue("downloading ") ++ url.string)
         logger.resolver(blue("to ") ++ target.string)
-        target.getParentFile.mkdirs
+        Files createDirectories target.getParent
         val stream = connection.getInputStream
         try{
           Files.copy(stream, incomplete, StandardCopyOption.REPLACE_EXISTING)
@@ -81,15 +84,17 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
             assert( expected == actual, s"$expected == $actual" )
             logger.resolver( green("verified") ++ " checksum for " ++ target.string)
         }
-        Files.move(incomplete, target.toPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        Files.move(incomplete, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         true
       }
     }
   }
 
-  def listFilesRecursive(f: File): Seq[File] = {
+  def listFilesRecursive(f: Path): Seq[Path] = {
     f +: (
-      if( f.isDirectory ) f.listFiles.flatMap(listFilesRecursive).toVector else Seq[File]()
+      if( f.isDirectory )
+        f.listFiles.flatMap(file => listFilesRecursive(file) ).toVector
+      else Seq[Path]()
     )
   }
 
@@ -123,24 +128,28 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
-  def needsUpdate( sourceFiles: Seq[File], statusFile: File ) = {
-    val lastCompile = statusFile.lastModified
-    sourceFiles.filter(_.lastModified > lastCompile).nonEmpty
+  def needsUpdate( sourceFiles: Seq[Path], statusFile: Path ) = {
+    try {
+      val lastCompile = statusFile.lastModified
+      sourceFiles.filter(f => ( f.lastModified compareTo lastCompile) > 0).nonEmpty
+    } catch {
+      case e: Throwable => true
+    }
   }
 
   def compile(
     cbtHasChanged: Boolean,
     needsRecompile: Boolean,
-    files: Seq[File],
-    compileTarget: File,
-    statusFile: File,
+    files: Seq[Path],
+    compileTarget: Path,
+    statusFile: Path,
     classpath: ClassPath,
-    mavenCache: File,
+    mavenCache: Path,
     scalacOptions: Seq[String] = Seq(),
     classLoaderCache: ClassLoaderCache,
     zincVersion: String,
     scalaVersion: String
-  ): Option[File] = {
+  ): Option[Path] = {
 
     val cp = classpath.string
     if(classpath.files.isEmpty)
@@ -232,7 +241,7 @@ ${files.sorted.mkString(" \\\n")}
           // write version and when last compilation started so we can trigger
           // recompile if cbt version changed or newer source files are seen
           write(statusFile, "")//cbtVersion.getBytes)
-          Files.setLastModifiedTime(statusFile.toPath, FileTime.fromMillis(start) )
+          Files.setLastModifiedTime(statusFile, FileTime.fromMillis(start) )
         } else {
           System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
         }
@@ -271,14 +280,14 @@ ${files.sorted.mkString(" \\\n")}
     )
 
   def cacheOnDisk[T]
-    ( cbtHasChanged: Boolean, cacheFile: File )
+    ( cbtHasChanged: Boolean, cacheFile: Path )
     ( deserialize: String => T )
     ( serialize: T => String )
     ( compute: => Seq[T] ) = {
-    if(!cbtHasChanged && cacheFile.exists){
+    if(!cbtHasChanged &&  cacheFile.exists ){
       import collection.JavaConversions._
       Files
-        .readAllLines( cacheFile.toPath, StandardCharsets.UTF_8 )
+        .readAllLines( cacheFile, StandardCharsets.UTF_8 )
         .toStream
         .map(deserialize)
     } else {

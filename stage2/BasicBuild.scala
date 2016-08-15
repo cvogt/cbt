@@ -2,12 +2,13 @@ package cbt
 
 import java.io._
 import java.net._
-import java.nio.file.{Path =>_,_}
+import java.nio.file._
 import java.nio.file.Files.readAllBytes
 import java.security.MessageDigest
 import java.util.jar._
 
 import scala.util._
+import scala.collection.JavaConverters._
 
 class BasicBuild(val context: Context) extends BaseBuild
 trait BaseBuild extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
@@ -22,8 +23,8 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   // ========== general stuff ==========
 
   def enableConcurrency = false
-  final def projectDirectory: File = lib.realpath(context.projectDirectory)
-  assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
+  final def projectDirectory: Path = lib.realpath(context.projectDirectory)
+  assert( Files.exists( projectDirectory, LinkOption.NOFOLLOW_LINKS ), "projectDirectory does not exist: " ++ projectDirectory.toString )
   final def usage: String = lib.usage(this.getClass, show)
 
   // ========== meta data ==========
@@ -46,35 +47,35 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
     )
 
   // ========== paths ==========
-  final private val defaultSourceDirectory = projectDirectory ++ "/src"
+  final private val defaultSourceDirectory = projectDirectory ++ "src"
 
   /** base directory where stuff should be generated */
-  def target: File = projectDirectory ++ "/target"
+  def target: Path = projectDirectory ++ "target"
   /** base directory where stuff should be generated for this scala version*/
-  def scalaTarget: File = target ++ s"/scala-$scalaMajorVersion"
+  def scalaTarget: Path = target ++ s"scala-$scalaMajorVersion"
   /** directory where jars (and the pom file) should be put */
-  def jarTarget: File = scalaTarget
+  def jarTarget: Path = scalaTarget
   /** directory where the scaladoc should be put */
-  def apiTarget: File = scalaTarget ++ "/api"
+  def apiTarget: Path = scalaTarget ++ "api"
   /** directory where the class files should be put (in package directories) */
-  def compileTarget: File = scalaTarget ++ "/classes"
+  def compileTarget: Path = scalaTarget ++ "classes"
   /**
   File which cbt uses to determine if it needs to trigger an incremental re-compile.
   Last modified date is the time when the last successful compilation started.
   Contents is the cbt version git hash.
   */
-  def compileStatusFile: File = compileTarget ++ ".last-success"
+  def compileStatusFile: Path = Paths.get(compileTarget.toString + ".last-success")
 
   /** Source directories and files. Defaults to .scala and .java files in src/ and top-level. */
-  def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(lib.sourceFileFilter)
+  def sources: Seq[Path] = Seq(defaultSourceDirectory) ++ Files.newDirectoryStream(projectDirectory).iterator.asScala.filter(lib.sourceFileFilter)
 
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
-  final def sourceFiles: Seq[File] = lib.sourceFiles(sources)
+  final def sourceFiles: Seq[Path] = lib.sourceFiles(sources)
 
   protected def logEmptySourceDirectories(): Unit = {
     val nonExisting =
       sources
-        .filterNot( _.exists )
+        .filterNot( f => Files.exists(f, LinkOption.NOFOLLOW_LINKS) )
         .diff( Seq(defaultSourceDirectory) )
     if(!nonExisting.isEmpty) logger.stage2("Some sources do not exist: \n"++nonExisting.mkString("\n"))
   }
@@ -87,16 +88,16 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
     scalaVersion: String = scalaMajorVersion
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
-  final def DirectoryDependency(path: File) = cbt.DirectoryDependency(
+  final def DirectoryDependency(path: Path) = cbt.DirectoryDependency(
     context.copy( projectDirectory = path, args = Seq() )
   )
 
-  def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
+  def triggerLoopFiles: Seq[Path] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
 
-  def localJars           : Seq[File] =
-    Seq(projectDirectory ++ "/lib")
-      .filter(_.exists)
-      .flatMap(_.listFiles)
+  def localJars           : Seq[Path] =
+    Seq(projectDirectory ++ "lib")
+      .filter(f => Files.exists(f, LinkOption.NOFOLLOW_LINKS) )
+      .flatMap( f => Files.newDirectoryStream(f).iterator.asScala.toSeq )
       .filter(_.toString.endsWith(".jar"))
 
   override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
@@ -122,8 +123,8 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
     || transitiveDependencies.filterNot(_ == context.parentBuild).exists(_.needsUpdate)
   )
 
-  private object compileCache extends Cache[Option[File]]
-  def compile: Option[File] = compileCache{
+  private object compileCache extends Cache[Option[Path]]
+  def compile: Option[Path] = compileCache{
     lib.compile(
       context.cbtHasChanged,
       needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),

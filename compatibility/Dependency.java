@@ -1,10 +1,11 @@
 package cbt;
-import java.io.*;
+import java.nio.*;
+import java.nio.file.*;
 
 public interface Dependency{
   public abstract String show();
   public abstract Boolean needsUpdateCompat();
   public abstract Dependency[] dependenciesArray();
-  public abstract File[] dependencyClasspathArray();
-  public abstract File[] exportedClasspathArray();
+  public abstract Path[] dependencyClasspathArray();
+  public abstract Path[] exportedClasspathArray();
 }

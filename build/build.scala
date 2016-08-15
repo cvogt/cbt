@@ -1,4 +1,6 @@
 import cbt._
+import java.nio._
+import java.nio.file._
 
 class Build(val context: Context) extends Publish{
   // FIXME: somehow consolidate this with cbt's own boot-strapping from source.
@@ -12,7 +14,7 @@ class Build(val context: Context) extends Publish{
   }
   override def sources = Seq(
     "nailgun_launcher", "stage1", "stage2", "compatibility"
-  ).map(d => projectDirectory ++ ("/" + d))
+  ).map(d => Paths.get( projectDirectory.toString + ("/" + d) ) )
 
   def groupId: String = "org.cvogt"
 

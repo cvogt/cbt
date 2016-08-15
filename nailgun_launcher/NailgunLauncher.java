@@ -1,5 +1,7 @@
 package cbt;
 import java.io.*;
+import java.nio.file.*;
+import java.nio.*;
 import java.lang.reflect.*;
 import java.net.*;
 import java.security.*;
@@ -31,9 +33,9 @@ public class NailgunLauncher{
     BuildStage1Result res = buildStage1(
       (Boolean) get(context, "cbtHasChangedCompat"),
       (Long) get(context, "startCompat"),
-      ((File) get(context, "cache")).toString() + "/",
-      ((File) get(context, "cbtHome")).toString(),
-      ((File) get(context, "compatibilityTarget")).toString() + "/",
+      ((Path) get(context, "cache")).toString() + "/",
+      ((Path) get(context, "cbtHome")).toString(),
+      ((Path) get(context, "compatibilityTarget")).toString() + "/",
       new ClassLoaderCache2<ClassLoader>(
         (ConcurrentHashMap<String,Object>) get(context, "permanentKeys"),
         (ConcurrentHashMap<Object,ClassLoader>) get(context, "permanentClassLoaders")
@@ -73,13 +75,13 @@ public class NailgunLauncher{
           .loadClass("cbt.Stage1")
           .getMethod(
             "run",
-            String[].class, File.class, File.class, Boolean.class,
-            File.class, Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
+            String[].class, Path.class, Path.class, Boolean.class,
+            Path.class, Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
           )
           .invoke(
             null,
-            (Object) args, new File(cache), new File(CBT_HOME), res.changed,
-            new File(compatibilityTarget), start, classLoaderCache.keys, classLoaderCache.values
+            (Object) args, Paths.get(cache), Paths.get(CBT_HOME), res.changed,
+            Paths.get(compatibilityTarget), start, classLoaderCache.keys, classLoaderCache.values
           )
       );
     } catch (Exception e) {
@@ -104,7 +106,7 @@ public class NailgunLauncher{
     String nailgunTarget = cbtHome + "/" + NAILGUN + TARGET;
     String stage1Sources = cbtHome + "/" + STAGE1;
     String stage1Target = stage1Sources + TARGET;
-    File compatibilitySources = new File(cbtHome + "/compatibility");
+    Path compatibilitySources = Paths.get(cbtHome + "/compatibility");
     String mavenCache = cache + "maven";
     String mavenUrl = "https://repo1.maven.org/maven2";
 
@@ -115,12 +117,14 @@ public class NailgunLauncher{
     if(!compatibilityTarget.startsWith(cbtHome)){
       compatibilityClassLoader = classLoaderCache.get( compatibilityTarget );
     } else {
-      List<File> compatibilitySourceFiles = new ArrayList<File>();
-      for( File f: compatibilitySources.listFiles() ){
-        if( f.isFile() && (f.toString().endsWith(".scala") || f.toString().endsWith(".java")) ){
-          compatibilitySourceFiles.add(f);
+      List<Path> compatibilitySourceFiles = new ArrayList<Path>();
+      try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get(compatibilitySources.toString()))) {
+      for (Path f : directoryStream) {
+          if( ! Files.isDirectory(f, LinkOption.NOFOLLOW_LINKS) && f.toString().endsWith(".java") ){
+            compatibilitySourceFiles.add(f);
+          }
         }
-      }
+      } catch (IOException ex) {ex.printStackTrace();}
       changed = compile(changed, start, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles, defaultSecurityManager);
       
       if( classLoaderCache.contains( compatibilityTarget ) ){
@@ -141,12 +145,15 @@ public class NailgunLauncher{
       append( append( nailgunClasspathArray, compatibilityTarget ), stage1Target );
     String stage1Classpath = classpath( stage1ClasspathArray );
 
-    List<File> stage1SourceFiles = new ArrayList<File>();
-    for( File f: new File(stage1Sources).listFiles() ){
-      if( f.isFile() && f.toString().endsWith(".scala") ){
-        stage1SourceFiles.add(f);
+    List<Path> stage1SourceFiles = new ArrayList<Path>();
+    try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get(stage1Sources))) {
+      for (Path f : directoryStream) {
+        if( ! Files.isDirectory(f, LinkOption.NOFOLLOW_LINKS) && f.toString().endsWith(".scala") ){
+          stage1SourceFiles.add(f);
+        }
       }
-    }
+    } catch (IOException ex) {ex.printStackTrace();}
+  
     changed = compile(changed, start, stage1Classpath, stage1Target, earlyDeps, stage1SourceFiles, defaultSecurityManager);
 
     ClassLoader stage1classLoader;

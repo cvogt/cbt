@@ -3,6 +3,7 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.net.*;
 import java.nio.*;
+import java.nio.file.attribute.*;
 import java.nio.file.*;
 import java.security.*;
 import java.util.*;
@@ -46,23 +47,29 @@ public class Stage0Lib{
     return join( pathSeparator, files );
   }
 
-  public static File write(File file, String content, OpenOption... options) throws Exception{
-    file.getParentFile().mkdirs();
-    Files.write(file.toPath(), content.getBytes(), options);
+  public static Path write(Path file, String content, OpenOption... options) throws Exception{
+    Files.createDirectories(file.getParent());
+    Files.write(file, content.getBytes(), options);
     return file;
   }
 
   public static Boolean compile(
     Boolean changed, Long start, String classpath, String target,
-    EarlyDependencies earlyDeps, List<File> sourceFiles, SecurityManager defaultSecurityManager
+    EarlyDependencies earlyDeps, List<Path> sourceFiles, SecurityManager defaultSecurityManager
   ) throws Exception{
-    File statusFile = new File( new File(target) + ".last-success" );
-    Long lastSuccessfullCompile = statusFile.lastModified();
-    for( File file: sourceFiles ){
-      if( file.lastModified() > lastSuccessfullCompile ){
-        changed = true;
-        break;
+    Path statusFile = Paths.get(target.substring(0, target.length() - 1) + ".last-success" );
+    try{
+      FileTime lastSuccessfullCompile = Files.getLastModifiedTime(statusFile, LinkOption.NOFOLLOW_LINKS );
+      for( Path file: sourceFiles ){
+        FileTime lastModified = Files.getLastModifiedTime( file, LinkOption.NOFOLLOW_LINKS );
+        if( lastModified.compareTo(lastSuccessfullCompile) > 0 ){
+          changed = true;
+          break;
+        }
       }
+    } catch (Exception e) {
+      // throws exception if status file isn't found
+      changed = true;
     }
     if(changed){
       List<String> zincArgs = new ArrayList<String>(
@@ -82,17 +89,16 @@ public class Stage0Lib{
         )
       );
 
-      for( File f: sourceFiles ){
+      for( Path f: sourceFiles ){
         zincArgs.add(f.toString());
       }
-
       PrintStream oldOut = System.out;
       try{
         System.setOut(System.err);
         int exitCode = runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc, defaultSecurityManager );
         if( exitCode == 0 ){
           write( statusFile, "" );
-          Files.setLastModifiedTime( statusFile.toPath(), FileTime.fromMillis(start) );
+          Files.setLastModifiedTime( statusFile, FileTime.fromMillis(start) );
         } else {
           System.exit( exitCode );
         }
@@ -158,7 +164,7 @@ public class Stage0Lib{
   public static void download(URL urlString, Path target, String sha1) throws Exception {
     final Path unverified = Paths.get(target+".unverified");
     if(!Files.exists(target)) {
-      new File(target.toString()).getParentFile().mkdirs();
+      Files.createDirectories(target.getParent());
       System.err.println("downloading " + urlString);
       System.err.println("to " + target);
       final InputStream stream = openConnectionConsideringProxy(urlString).getInputStream();

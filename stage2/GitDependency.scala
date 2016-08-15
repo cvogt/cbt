@@ -1,5 +1,7 @@
 package cbt
 import java.io._
+import java.nio._
+import java.nio.file._
 import java.net._
 import org.eclipse.jgit.api._
 import org.eclipse.jgit.lib.Ref
@@ -17,17 +19,17 @@ case class GitDependency(
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
   private val GitUrl( _, domain, path ) = url  
 
-  private object checkoutCache extends Cache[File]
-  def checkout: File = checkoutCache{
-    val checkoutDirectory = context.cache ++ s"/git/$domain/$path/$ref"
-    if(checkoutDirectory.exists){
+  private object checkoutCache extends Cache[Path]
+  def checkout: Path = checkoutCache{
+    val checkoutDirectory = context.cache ++ s"git/$domain/$path/$ref"
+    if(Files.exists( checkoutDirectory, LinkOption.NOFOLLOW_LINKS ) ){
       logger.git(s"Found existing checkout of $url#$ref in $checkoutDirectory")
     } else {
       logger.git(s"Cloning $url into $checkoutDirectory")
       val git =
         Git.cloneRepository()
           .setURI(url)
-          .setDirectory(checkoutDirectory)
+          .setDirectory( new File ( checkoutDirectory.toString ) )
           .call()
       
       logger.git(s"Checking out ref $ref")
@@ -41,7 +43,7 @@ case class GitDependency(
   def dependency = dependencyCache{
     DirectoryDependency(
       context.copy(
-        projectDirectory = checkout ++ subDirectory.map("/" ++ _).getOrElse("")
+        projectDirectory = checkout ++ subDirectory.getOrElse("")
       )
     )
   }

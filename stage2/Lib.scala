@@ -3,7 +3,8 @@ package cbt
 import java.io._
 import java.net._
 import java.lang.reflect.InvocationTargetException
-import java.nio.file.{Path =>_,_}
+import java.nio._
+import java.nio.file._
 import java.nio.file.Files.readAllBytes
 import java.security.MessageDigest
 import java.util.jar._
@@ -37,9 +38,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   */
   def loadRoot(context: Context, default: Context => BuildInterface = new BasicBuild(_)): BuildInterface = {
     context.logger.composition( context.logger.showInvocation("Build.loadRoot",context.projectDirectory) )
-    def findStartDir(projectDirectory: File): File = {
-      val buildDir = realpath( projectDirectory ++ "/build" )
-      if(buildDir.exists) findStartDir(buildDir) else projectDirectory
+    def findStartDir(projectDirectory: Path): Path = {
+      val buildDir = realpath( projectDirectory ++ "build" )
+      if( Files.exists( buildDir, LinkOption.NOFOLLOW_LINKS) ) findStartDir(buildDir) else projectDirectory
     }
 
     val start = findStartDir(context.projectDirectory)
@@ -55,16 +56,16 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-  def srcJar(sourceFiles: Seq[File], artifactId: String, scalaMajorVersion: String, version: String, jarTarget: File): Option[File] = {
+  def srcJar(sourceFiles: Seq[Path], artifactId: String, scalaMajorVersion: String, version: String, jarTarget: Path): Option[Path] = {
     lib.jarFile(
-      jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-sources.jar"),
+      jarTarget ++ (artifactId++"_"++scalaMajorVersion++"-"++version++"-sources.jar"),
       sourceFiles
     )
   }
 
-  def jar(artifactId: String, scalaMajorVersion: String, version: String, compileTarget: File, jarTarget: File): Option[File] = {
+  def jar(artifactId: String, scalaMajorVersion: String, version: String, compileTarget: Path, jarTarget: Path): Option[Path] = {
     lib.jarFile(
-      jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++".jar"),
+      jarTarget ++ ( artifactId++"_"++scalaMajorVersion++"-"++version++".jar"),
       Seq(compileTarget)
     )
   }
@@ -72,21 +73,21 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def docJar(
     cbtHasChanged: Boolean,
     scalaVersion: String,
-    sourceFiles: Seq[File],
+    sourceFiles: Seq[Path],
     dependencyClasspath: ClassPath,
-    apiTarget: File,
-    jarTarget: File,
+    apiTarget: Path,
+    jarTarget: Path,
     artifactId: String,
     scalaMajorVersion: String,
     version: String,
     compileArgs: Seq[String],
     classLoaderCache: ClassLoaderCache,
-    mavenCache: File
-  ): Option[File] = {
+    mavenCache: Path
+  ): Option[Path] = {
     if(sourceFiles.isEmpty){
       None
     } else {
-      apiTarget.mkdirs
+      Files.createDirectory(apiTarget)
       val args = Seq(
         // FIXME: can we use compiler dependency here?
         "-cp", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
@@ -101,7 +102,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         )
       }
       lib.jarFile(
-        jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-javadoc.jar"),
+        jarTarget ++ ( artifactId++"_"++scalaMajorVersion++"-"++version++"-javadoc.jar" ),
         Vector(apiTarget)
       )
     }
@@ -200,27 +201,27 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   // file system helpers
-  def basename(path: File): String = path.toString.stripSuffix("/").split("/").last
-  def dirname(path: File): File = new File(realpath(path).string.stripSuffix("/").split("/").dropRight(1).mkString("/"))
-  def nameAndContents(file: File) = basename(file) -> readAllBytes(file.toPath)
+  def basename(path: Path): String = path.toString.stripSuffix("/").split("/").last
+  def dirname(path: Path): Path = Paths.get(realpath(path).string.stripSuffix("/").split("/").dropRight(1).mkString("/"))
+  def nameAndContents(file: Path) = basename(file) -> readAllBytes(file)
 
   /** Which file endings to consider being source files. */
-  def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
+  def sourceFileFilter(file: Path): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
 
-  def sourceFiles( sources: Seq[File], sourceFileFilter: File => Boolean = sourceFileFilter ): Seq[File] = {
+  def sourceFiles( sources: Seq[Path], sourceFileFilter: Path => Boolean = sourceFileFilter ): Seq[Path] = {
     for {
-      base <- sources.filter(_.exists).map(lib.realpath)
-      file <- lib.listFilesRecursive(base) if file.isFile && sourceFileFilter(file)
+      base <- sources.filter(f => Files.exists(f) ).map(lib.realpath)
+      file <- lib.listFilesRecursive(base) if !Files.isDirectory(file) && sourceFileFilter(file)
     } yield file    
   }
 
-  def jarFile( jarFile: File, files: Seq[File], mainClass: Option[String] = None ): Option[File] = {
-    Files.deleteIfExists(jarFile.toPath)
+  def jarFile( jarFile: Path, files: Seq[Path], mainClass: Option[String] = None ): Option[Path] = {
+    Files.deleteIfExists(jarFile)
     if( files.isEmpty ){
       None
     } else {
-      jarFile.getParentFile.mkdirs
-      logger.lib("Start packaging "++jarFile.string)
+      Files createDirectory jarFile.getParent
+      logger.lib("Start packaging "++jarFile.toString)
       val manifest = new Manifest()
       manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
       manifest.getMainAttributes.putValue("Created-By",
@@ -228,19 +229,19 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       mainClass foreach { className =>
         manifest.getMainAttributes.put(Attributes.Name.MAIN_CLASS, className)
       }
-      val jar = new JarOutputStream(new FileOutputStream(jarFile), manifest)
+      val jar = new JarOutputStream(Files.newOutputStream(jarFile, StandardOpenOption.READ), manifest)
       try{
         val names = for {
-          base <- files.filter(_.exists).map(realpath)
-          file <- listFilesRecursive(base) if file.isFile
+          base <- files.filter(f => Files.exists(f, LinkOption.NOFOLLOW_LINKS)).map(realpath)
+          file <- listFilesRecursive(base) if !Files.isDirectory(file)
         } yield {
-            val name = if(base.isDirectory){
+            val name = if(Files.isDirectory(base)){
               file.toString stripPrefix (base.toString ++ File.separator)
             } else file.toString
             val entry = new JarEntry( name )
-            entry.setTime(file.lastModified)
+            entry.setTime( Files.getLastModifiedTime(file, LinkOption.NOFOLLOW_LINKS).toMillis )
             jar.putNextEntry(entry)
-            jar.write( readAllBytes( file.toPath ) )
+            jar.write( readAllBytes( file ) )
             jar.closeEntry()
             name
         }
@@ -267,7 +268,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       "GPG Passphrase please:"
     ).mkString
 
-  def sign(file: File): File = {
+  def sign(file: Path): Path = {
     //http://stackoverflow.com/questions/16662408/correct-way-to-sign-and-verify-signature-using-bouncycastle
     val statusCode =
       new ProcessBuilder( "gpg", "--batch", "--yes", "-a", "-b", "-s", "--passphrase", passphrase, file.toString )
@@ -295,8 +296,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     inceptionYear: Int,
     organization: Option[Organization],
     dependencies: Seq[Dependency],
-    jarTarget: File
-  ): File = {
+    jarTarget: Path
+  ): Path = {
     val xml =
 <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
     <modelVersion>4.0.0</modelVersion>
@@ -350,7 +351,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 </project>
     // FIXME: do not build this file name including scalaMajorVersion in multiple places
     val path = jarTarget.toString ++ ( "/" ++ artifactId++ "_" ++ scalaMajorVersion ++ "-" ++ version  ++ ".pom" )
-    val file = new File(path)
+    val file = Paths.get(path)
     write(file, "<?xml version='1.0' encoding='UTF-8'?>\n" ++ xml.toString)
   }
 
@@ -359,32 +360,32 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     else items.map(projection)
   }
 
-  def publishUnsigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
+  def publishUnsigned( sourceFiles: Seq[Path], artifacts: Seq[Path], url: URL, credentials: Option[String] = None ): Unit = {
     if(sourceFiles.nonEmpty){
       publish( artifacts, url, credentials )
     }
   }
 
-  def publishLocal( sourceFiles: Seq[File], artifacts: Seq[File], mavenCache: File, releaseFolder: String ): Unit = {
+  def publishLocal( sourceFiles: Seq[Path], artifacts: Seq[Path], mavenCache: Path, releaseFolder: String ): Unit = {
     if(sourceFiles.nonEmpty){
       val targetDir = mavenCache ++ releaseFolder.stripSuffix("/")
-      targetDir.mkdirs
+      Files createDirectory targetDir
       artifacts.foreach{ a =>
-        val target = targetDir ++ ("/" ++ a.getName)
-        System.err.println(blue("publishing ") ++ target.getPath)
-        Files.copy( a.toPath, target.toPath, StandardCopyOption.REPLACE_EXISTING )
+        val target = targetDir ++ a.getFileName.toString
+        System.err.println(blue("publishing ") ++ target.toString)
+        Files.copy( a, target, StandardCopyOption.REPLACE_EXISTING )
       }
     }
   }
 
-  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
+  def publishSigned( sourceFiles: Seq[Path], artifacts: Seq[Path], url: URL, credentials: Option[String] = None ): Unit = {
     // TODO: make concurrency configurable here
     if(sourceFiles.nonEmpty){
       publish( artifacts ++ artifacts.map(sign), url, credentials )
     }
   }
 
-  private def publish(artifacts: Seq[File], url: URL, credentials: Option[String]): Unit = {
+  private def publish(artifacts: Seq[Path], url: URL, credentials: Option[String]): Unit = {
     val files = artifacts.map(nameAndContents)
     lazy val checksums = files.flatMap{
       case (name, content) => Seq(
@@ -422,7 +423,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
 
   // code for continuous compile
-  def watch(files: Seq[File])(action: PartialFunction[File, Unit]): Unit = {
+  def watch(files: Seq[Path])(action: PartialFunction[File, Unit]): Unit = {
     import com.barbarysoftware.watchservice._
     import scala.collection.JavaConversions._
     val watcher = WatchService.newWatchService
@@ -431,10 +432,10 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     realFiles.map{
       // WatchService can only watch folders
-      case file if file.isFile => dirname(file)
+      case file if !( Files isDirectory file ) => dirname(file)
       case file => file
     }.distinct.map{ file =>
-      val watchableFile = new WatchableFile(file)
+      val watchableFile = new WatchableFile( new File ( file.toString ) )
       val key = watchableFile.register(
         watcher,
         StandardWatchEventKind.ENTRY_CREATE,

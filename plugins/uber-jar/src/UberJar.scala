@@ -1,7 +1,7 @@
 package cbt
 
 import java.io.File
-import java.nio.file.{FileSystems, Files, Path}
+import java.nio.file._
 import java.util.jar.JarFile
 
 trait UberJar extends BaseBuild {
@@ -35,7 +35,7 @@ class UberJarLib(logger: Logger) {
     * @param mainClass     optional main class
     * @param jarName       name of resulting jar file
     */
-  def create(target: File,
+  def create(target: Path,
              classpath: ClassPath,
              mainClass: Option[String],
              jarName: String): Unit = {
@@ -44,7 +44,7 @@ class UberJarLib(logger: Logger) {
     log(s"Jar name is: $jarName")
     mainClass foreach (c => log(s"Main class is is: $c"))
 
-    val (jars, dirs) = classpath.files partition (f => jarFileMatcher.matches(f.toPath))
+    val (jars, dirs) = classpath.files partition (f => jarFileMatcher.matches(f))
     log(s"Found ${jars.length} jar dependencies: \n ${jars mkString "\n"}")
     log(s"Found ${dirs.length} directories in classpath: \n ${dirs mkString "\n"}")
 
@@ -53,7 +53,7 @@ class UberJarLib(logger: Logger) {
     log("Extracting jars - DONE")
 
     log("Writing jar file...")
-    val uberJarPath = target.toPath.resolve(jarName)
+    val uberJarPath = target.resolve(jarName)
     val uberJar = lib.jarFile(uberJarPath.toFile, dirs :+ extractedJarsRoot, mainClass) getOrElse {
         throw new Exception("Jar file wasn't created!")
       }
@@ -90,9 +90,9 @@ class UberJarLib(logger: Logger) {
     * @param destDir destination directory
     * @param log     logger
     */
-  private def extractJar(jarFile: File, destDir: Path)(log: String => Unit): Unit = {
+  private def extractJar(jarFile: Path, destDir: Path)(log: String => Unit): Unit = {
     log(s"Extracting jar: $jarFile")
-    val jar = new JarFile(jarFile)
+    val jar = new JarFile( new File ( jarFile.string ) )
     val enumEntries = jar.entries
     while (enumEntries.hasMoreElements) {
       val entry = enumEntries.nextElement()
@@ -101,7 +101,7 @@ class UberJarLib(logger: Logger) {
       if (excludeFileMatcher.matches(entryPath)) {
         log(s"Excluded file ${entryPath.getFileName} from jar: $jarFile")
       } else {
-        val exists = Files.exists(entryPath)
+        val exists = entryPath.exists
         if (entry.isDirectory) {
           if (!exists) {
             Files.createDirectory(entryPath)
