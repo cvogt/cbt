@@ -137,8 +137,13 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
 
   def clean = {
-    val arg = if (context.args.length > 1) context.args(1) else ""
-    lib.clean(scalaTarget, arg)
+    lib.clean(
+      target,
+      context.args.contains("force"),
+      context.args.contains("dry-run"),
+      context.args.contains("list"),
+      context.args.contains("help")
+    )
   }
 
   def test: Option[ExitCode] = 

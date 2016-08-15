@@ -1,6 +1,7 @@
 import cbt._
 import java.util.concurrent.ConcurrentHashMap
 import java.io.File
+import java.nio.file._
 import java.net.URL
 
 // micro framework
@@ -73,9 +74,22 @@ object Main{
     }
 
     def clean(path: String)(implicit logger: Logger) = {
-      val res = runCbt(path, Seq("clean", "-f"))
-      val debugToken = "clean " ++ path ++ " "
+      val res = runCbt(path, Seq("clean", "dry-run", "force"))
+      val debugToken = "\n"++lib.red("Deleting") ++ " " ++ Paths.get("test/"++path++"/target").toAbsolutePath.toString++"\n"
+      val debugToken2 = "\n"++lib.red("Deleting") ++ " " ++ Paths.get("test/"++path).toAbsolutePath.toString++"\n"
       assertSuccess(res,debugToken)
+      assert(res.out == "", debugToken ++ " " ++ res.toString)
+      assert(res.err.contains(debugToken), debugToken ++ " " ++ res.toString)
+      assert(
+        !res.err.contains(debugToken2),
+        "Tried to delete too much: " ++ debugToken2 ++ " " ++ res.toString
+      )
+      res.err.split("\n").filter(_.startsWith(lib.red("Deleting"))).foreach{ line =>
+        assert(
+          line.size >= debugToken2.trim.size,
+          "Tried to delete too much: " ++ line
+        )
+      }
     }
 
     logger.test( "Running tests " ++ _args.toList.toString )
@@ -156,7 +170,7 @@ object Main{
 
     usage("nothing")
     compile("nothing")
-    clean("nothing")
+    //clean("nothing")
     usage("multi-build")
     compile("multi-build")
     clean("multi-build")
@@ -165,7 +179,6 @@ object Main{
     clean("simple")
     usage("simple-fixed")
     compile("simple-fixed")
-    clean("simple-fixed")
     
     compile("../plugins/sbt_layout")
     compile("../plugins/scalafmt")

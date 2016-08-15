@@ -4,7 +4,7 @@ import java.io._
 import java.net._
 import java.lang.reflect.InvocationTargetException
 import java.nio.file.{Path =>_,_}
-import java.nio.file.Files.{readAllBytes, deleteIfExists}
+import java.nio.file.Files.{readAllBytes, deleteIfExists, delete}
 import java.security.MessageDigest
 import java.util.jar._
 import java.lang.reflect.Method
@@ -199,42 +199,57 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-  def clean (compileTarget : File, option: String) : ExitCode = {
-    /* recursively deletes folders*/
-    def deleteRecursive(file: File): Boolean = {
-      if (file.isDirectory) {
-        file.listFiles.map(deleteRecursive(_))
-      }
-      deleteIfExists(file.toPath)
+  def clean(target: File, force: Boolean, dryRun: Boolean, list: Boolean, help: Boolean): ExitCode = {
+    def depthFirstFileStream(file: File): Vector[File] = {
+      (
+        if (file.isDirectory) {
+          file.listFiles.toVector.flatMap(depthFirstFileStream(_))
+        } else Vector()
+      ) :+ file
     }
+    lazy val files = depthFirstFileStream( target )
 
-    def listFilesToDelete(file: File): Unit = {
-      if (file.isDirectory) {
-        file.listFiles.map(listFilesToDelete(_))
-      }
-      println(file.toString)
-    }
-    listFilesToDelete(compileTarget)
-    val delete = if (option != "-f") {
-      Option(System.console).getOrElse(
-        throw new Exception("Can't access Console. Try running `cbt direct clean` or `cbt clean -f`.")
-      ).readLine(
-        "Delete file(s) [y/n]: "
-      ).head.toLower
-    } else 'y'
-
-    if (delete == 'y') {
-      logger.lib(s"""Cleaning ${compileTarget}""")
-      if (!compileTarget.exists) return ExitCode.Success
-      if (deleteRecursive(compileTarget)) {
-        logger.lib("Succeeded")
-        ExitCode.Success
-      } else {
-        logger.lib("Failed")
-        ExitCode.Failure
-      }
+    if( help ){
+      System.err.println( s"""
+  list      lists files to be delete
+  force     does not ask for confirmation
+  dry-run   does not actually delete files
+""" )
+      ExitCode.Success
+    } else if (!target.exists){
+      System.err.println( "Nothing to clean. Does not exist: " ++ target.string )
+      ExitCode.Success
+    } else if( list ){
+      files.map(_.string).foreach( println )
+      ExitCode.Success
     } else {
-      ExitCode.Failure
+      val performDelete = (
+        force || {
+          val console = Option(System.console).getOrElse(
+            throw new Exception("Can't access Console. Try running `cbt direct clean` or `cbt clean list` or `cbt clean force`.")
+          )
+          System.err.println("Files to be deleted:\n\n")
+          files.foreach( System.err.println )
+          System.err.println("")
+          System.err.print("To delete the above files type 'delete': ")
+          console.readLine() == "delete"
+        }
+      )
+
+      if( !performDelete ) {
+        System.err.println( "Ok, not cleaning." )
+        ExitCode.Failure
+      } else {
+        // use same Vector[File] that was displayed earlier as a safety measure
+        files.foreach{ file => 
+          System.err.println( red("Deleting") ++ " " ++ file.string )
+          if(!dryRun){
+            delete( file.toPath )
+          }
+        }
+        System.err.println( "Done." )
+        ExitCode.Success
+      }
     }
   }
 
