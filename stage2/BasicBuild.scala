@@ -136,7 +136,12 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
     )
   }
 
-  def runClass: String = "Main"
+  def runClass: String = lib.mainClasses ( compileTarget, classLoader(context.classLoaderCache) ) match {
+    case f if f.length == 1 => f.head
+    case f if f.length > 2  => System.err.println( " Multiple main classes defined in project." ); "None"
+    case _                  => "Main"
+  }
+
   def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
 
   def clean = {
