@@ -4,7 +4,7 @@ import java.io._
 import java.net._
 import java.lang.reflect.InvocationTargetException
 import java.nio.file.{Path =>_,_}
-import java.nio.file.Files.readAllBytes
+import java.nio.file.Files.{readAllBytes, deleteIfExists, delete}
 import java.security.MessageDigest
 import java.util.jar._
 import java.lang.reflect.Method
@@ -195,6 +195,60 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         taskName.map{ _ =>
           ExitCode.Failure
         }.getOrElse( ExitCode.Success )
+      }
+    }
+  }
+
+  def clean(target: File, force: Boolean, dryRun: Boolean, list: Boolean, help: Boolean): ExitCode = {
+    def depthFirstFileStream(file: File): Vector[File] = {
+      (
+        if (file.isDirectory) {
+          file.listFiles.toVector.flatMap(depthFirstFileStream(_))
+        } else Vector()
+      ) :+ file
+    }
+    lazy val files = depthFirstFileStream( target )
+
+    if( help ){
+      System.err.println( s"""
+  list      lists files to be delete
+  force     does not ask for confirmation
+  dry-run   does not actually delete files
+""" )
+      ExitCode.Success
+    } else if (!target.exists){
+      System.err.println( "Nothing to clean. Does not exist: " ++ target.string )
+      ExitCode.Success
+    } else if( list ){
+      files.map(_.string).foreach( println )
+      ExitCode.Success
+    } else {
+      val performDelete = (
+        force || {
+          val console = Option(System.console).getOrElse(
+            throw new Exception("Can't access Console. Try running `cbt direct clean` or `cbt clean list` or `cbt clean force`.")
+          )
+          System.err.println("Files to be deleted:\n\n")
+          files.foreach( System.err.println )
+          System.err.println("")
+          System.err.print("To delete the above files type 'delete': ")
+          console.readLine() == "delete"
+        }
+      )
+
+      if( !performDelete ) {
+        System.err.println( "Ok, not cleaning." )
+        ExitCode.Failure
+      } else {
+        // use same Vector[File] that was displayed earlier as a safety measure
+        files.foreach{ file => 
+          System.err.println( red("Deleting") ++ " " ++ file.string )
+          if(!dryRun){
+            delete( file.toPath )
+          }
+        }
+        System.err.println( "Done." )
+        ExitCode.Success
       }
     }
   }

@@ -1,6 +1,7 @@
 import cbt._
 import java.util.concurrent.ConcurrentHashMap
 import java.io.File
+import java.nio.file._
 import java.net.URL
 
 // micro framework
@@ -70,6 +71,25 @@ object Main{
       val debugToken = name ++ " " ++ path ++ " "
       assertSuccess(res,debugToken)
       // assert(res.err == "", res.err) // FIXME: enable this
+    }
+
+    def clean(path: String)(implicit logger: Logger) = {
+      val res = runCbt(path, Seq("clean", "dry-run", "force"))
+      val debugToken = "\n"++lib.red("Deleting") ++ " " ++ Paths.get("test/"++path++"/target").toAbsolutePath.toString++"\n"
+      val debugToken2 = "\n"++lib.red("Deleting") ++ " " ++ Paths.get("test/"++path).toAbsolutePath.toString++"\n"
+      assertSuccess(res,debugToken)
+      assert(res.out == "", debugToken ++ " " ++ res.toString)
+      assert(res.err.contains(debugToken), debugToken ++ " " ++ res.toString)
+      assert(
+        !res.err.contains(debugToken2),
+        "Tried to delete too much: " ++ debugToken2 ++ " " ++ res.toString
+      )
+      res.err.split("\n").filter(_.startsWith(lib.red("Deleting"))).foreach{ line =>
+        assert(
+          line.size >= debugToken2.trim.size,
+          "Tried to delete too much: " ++ line
+        )
+      }
     }
 
     logger.test( "Running tests " ++ _args.toList.toString )
@@ -150,10 +170,13 @@ object Main{
 
     usage("nothing")
     compile("nothing")
+    //clean("nothing")
     usage("multi-build")
     compile("multi-build")
+    clean("multi-build")
     usage("simple")
     compile("simple")
+    clean("simple")
     usage("simple-fixed")
     compile("simple-fixed")
     
@@ -172,6 +195,7 @@ object Main{
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
     compile("../examples/uber-jar-example")
+    
 
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
