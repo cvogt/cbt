@@ -7,6 +7,7 @@
 # - reduce code size by moving more of this into type-checked Java/Scala code (if possible without performance loss).
 # - reduction of dependencies
 # - performance improvements
+shopt -qs extglob
 
 seconds() {
 	date +"%s"
