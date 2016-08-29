@@ -1,7 +1,9 @@
 package cbt
 import java.io._
+import java.nio.file.Files.readAllBytes
 import java.net._
 import org.eclipse.jgit.api._
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.eclipse.jgit.lib.Ref
 
 object GitDependency{
@@ -17,6 +19,8 @@ case class GitDependency(
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
   private val GitUrl( _, domain, path ) = url  
 
+  private val credentialsFile = context.projectDirectory ++ "/git.login"
+
   private object checkoutCache extends Cache[File]
   def checkout: File = checkoutCache{
     val checkoutDirectory = context.cache ++ s"/git/$domain/$path/$ref"
@@ -24,16 +28,28 @@ case class GitDependency(
       logger.git(s"Found existing checkout of $url#$ref in $checkoutDirectory")
     } else {
       logger.git(s"Cloning $url into $checkoutDirectory")
-      val git =
-        Git.cloneRepository()
+      val git = {
+        val _git = Git
+          .cloneRepository()
           .setURI(url)
           .setDirectory(checkoutDirectory)
-          .call()
       
+        if(!credentialsFile.exists){
+          _git
+        } else {
+          val (user, password) = {
+            // TODO: implement safer method than reading credentials from plain text file
+            val c = new String(readAllBytes(credentialsFile.toPath)).split("\n").head.trim.split(":")
+            (c(0), c.drop(1).mkString(":"))
+          }
+          _git.setCredentialsProvider( new UsernamePasswordCredentialsProvider(user, password) )
+        }
+      }.call()
+
       logger.git(s"Checking out ref $ref")
       git.checkout()
-          .setName(ref)
-          .call()
+         .setName(ref)
+         .call()
     }
     checkoutDirectory
   }
