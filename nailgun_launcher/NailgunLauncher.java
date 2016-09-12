@@ -82,10 +82,8 @@ public class NailgunLauncher{
             new File(compatibilityTarget), start, classLoaderCache.keys, classLoaderCache.values
           )
       );
-    } catch (Exception e) {
-      Throwable t = unwrapInvocationTargetException(e);
-      t.printStackTrace();
-      System.exit(1);
+    } catch (java.lang.reflect.InvocationTargetException e) {
+      throw unwrapInvocationTargetException(e);
     }
   }
 
