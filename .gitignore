@@ -12,3 +12,7 @@ realpath/realpath
 node_modules
 *fastopt*
 *fullopt*
+
+# idea specific files
+.idea/
+*.iml
