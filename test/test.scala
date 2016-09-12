@@ -196,6 +196,11 @@ object Main{
     task("fullOptJS","../examples/scalajs-react-example/js")
     compile("../examples/uber-jar-example")
     
+    {
+      val res = runCbt("forgot-extend", Seq("run"))
+      assert(!res.exit0)
+      assert(res.err contains "Build cannot be cast to cbt.BuildInterface", res.err)
+    }
 
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
