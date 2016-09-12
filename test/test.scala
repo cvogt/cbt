@@ -75,8 +75,8 @@ object Main{
 
     def clean(path: String)(implicit logger: Logger) = {
       val res = runCbt(path, Seq("clean", "dry-run", "force"))
-      val debugToken = "\n"++lib.red("Deleting") ++ " " ++ Paths.get("test/"++path++"/target").toAbsolutePath.toString++"\n"
-      val debugToken2 = "\n"++lib.red("Deleting") ++ " " ++ Paths.get("test/"++path).toAbsolutePath.toString++"\n"
+      val debugToken = "\n"++lib.red("Deleting") ++ " " ++ (cbtHome ++("/test/"++path++"/target")).toPath.toAbsolutePath.toString++"\n"
+      val debugToken2 = "\n"++lib.red("Deleting") ++ " " ++ (cbtHome ++("/test/"++path)).toPath.toAbsolutePath.toString++"\n"
       assertSuccess(res,debugToken)
       assert(res.out == "", debugToken ++ " " ++ res.toString)
       assert(res.err.contains(debugToken), debugToken ++ " " ++ res.toString)
@@ -87,7 +87,7 @@ object Main{
       res.err.split("\n").filter(_.startsWith(lib.red("Deleting"))).foreach{ line =>
         assert(
           line.size >= debugToken2.trim.size,
-          "Tried to delete too much: " ++ line
+          "Tried to delete too much: " ++ line ++"   debugToken2: " ++ debugToken2
         )
       }
     }
@@ -196,6 +196,11 @@ object Main{
     task("fullOptJS","../examples/scalajs-react-example/js")
     compile("../examples/uber-jar-example")
     
+    {
+      val res = runCbt("forgot-extend", Seq("run"))
+      assert(!res.exit0)
+      assert(res.err contains "Build cannot be cast to cbt.BuildInterface", res.err)
+    }
 
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
