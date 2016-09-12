@@ -19,7 +19,7 @@ public class Stage0Lib{
     }
   }
 
-  public static int runMain(String cls, String[] args, ClassLoader cl, SecurityManager defaultSecurityManager) throws Exception{
+  public static int runMain(String cls, String[] args, ClassLoader cl, SecurityManager defaultSecurityManager) throws Throwable{
     try{
       System.setSecurityManager( new TrapSecurityManager() );
       cl.loadClass(cls)
@@ -37,7 +37,7 @@ public class Stage0Lib{
     }
   }
 
-  public static Object get(Object object, String method) throws Exception{
+  public static Object get(Object object, String method) throws Throwable{
     return object.getClass().getMethod( method ).invoke(object);
   }
 
@@ -46,7 +46,7 @@ public class Stage0Lib{
     return join( pathSeparator, files );
   }
 
-  public static File write(File file, String content, OpenOption... options) throws Exception{
+  public static File write(File file, String content, OpenOption... options) throws Throwable{
     file.getParentFile().mkdirs();
     Files.write(file.toPath(), content.getBytes(), options);
     return file;
@@ -55,7 +55,7 @@ public class Stage0Lib{
   public static Boolean compile(
     Boolean changed, Long start, String classpath, String target,
     EarlyDependencies earlyDeps, List<File> sourceFiles, SecurityManager defaultSecurityManager
-  ) throws Exception{
+  ) throws Throwable{
     File statusFile = new File( new File(target) + ".last-success" );
     Long lastSuccessfullCompile = statusFile.lastModified();
     for( File file: sourceFiles ){
@@ -103,12 +103,12 @@ public class Stage0Lib{
     return changed;
   }
 
-  public static ClassLoader classLoader( String file ) throws Exception{
+  public static ClassLoader classLoader( String file ) throws Throwable{
     return new CbtURLClassLoader(
       new URL[]{ new URL("file:"+file) }
     );
   }
-  public static ClassLoader classLoader( String file, ClassLoader parent ) throws Exception{
+  public static ClassLoader classLoader( String file, ClassLoader parent ) throws Throwable{
     return new CbtURLClassLoader(
       new URL[]{ new URL("file:"+file) }, parent
     );
@@ -155,7 +155,7 @@ public class Stage0Lib{
     return (HttpURLConnection) urlString.openConnection(proxy);
   }
 
-  public static void download(URL urlString, Path target, String sha1) throws Exception {
+  public static void download(URL urlString, Path target, String sha1) throws Throwable {
     final Path unverified = Paths.get(target+".unverified");
     if(!Files.exists(target)) {
       new File(target.toString()).getParentFile().mkdirs();
@@ -174,7 +174,7 @@ public class Stage0Lib{
     }
   }
 
-  public static String sha1(byte[] bytes) throws Exception {
+  public static String sha1(byte[] bytes) throws Throwable {
     final MessageDigest sha1 = MessageDigest.getInstance("SHA1");
     sha1.update(bytes, 0, bytes.length);
     return (new HexBinaryAdapter()).marshal(sha1.digest());

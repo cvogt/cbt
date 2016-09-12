@@ -27,7 +27,7 @@ public class NailgunLauncher{
   private static String STAGE1 = "stage1/";
   
   @SuppressWarnings("unchecked")
-  public static Object getBuild( Object context ) throws Exception{
+  public static Object getBuild( Object context ) throws Throwable{
     BuildStage1Result res = buildStage1(
       (Boolean) get(context, "cbtHasChangedCompat"),
       (Long) get(context, "startCompat"),
@@ -47,7 +47,7 @@ public class NailgunLauncher{
         .invoke(null, context, res.changed);
   }
 
-  public static void main( String[] args ) throws Exception {
+  public static void main( String[] args ) throws Throwable {
     Long _start = System.currentTimeMillis();
     if(args[0].equals("check-alive")){
       System.exit(33);
@@ -99,7 +99,7 @@ public class NailgunLauncher{
 
   public static BuildStage1Result buildStage1(
     Boolean changed, long start, String cache, String cbtHome, String compatibilityTarget, ClassLoaderCache2<ClassLoader> classLoaderCache
-  ) throws Exception {
+  ) throws Throwable {
     _assert(TARGET != null, "environment variable TARGET not defined");
     String nailgunTarget = cbtHome + "/" + NAILGUN + TARGET;
     String stage1Sources = cbtHome + "/" + STAGE1;
