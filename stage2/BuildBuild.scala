@@ -54,11 +54,17 @@ trait BuildBuild extends BaseBuild{
                 .newInstance(managedContext)
               } catch {
                 case e: ClassNotFoundException if e.getMessage == lib.buildClassName => 
-                  throw new Exception("You need to remove the directory or define a class Build in: "+context.projectDirectory)
+                  throw new Exception("You need to define a class Build in build.scala in: "+context.projectDirectory)
               }
           }
+      } else if( projectDirectory.listFiles.exists( _.getName.endsWith(".scala") ) ){
+        throw new Exception(
+          "No file build.scala (lower case) found in " ++ projectDirectory.getPath
+        )
+      } else if( projectDirectory.getParentFile.getName == "build" ){
+        new BasicBuild( managedContext ) with BuildBuild
       } else {
-        new BasicBuild(managedContext)
+        new BasicBuild( managedContext )
       }
     )
     try{
