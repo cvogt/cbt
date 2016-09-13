@@ -197,6 +197,12 @@ object Main{
     compile("../examples/uber-jar-example")
     
     {
+      val res = runCbt("simple", Seq("printArgs","1","2","3"))
+      assert(res.exit0)
+      assert(res.out == "1 2 3", res.out)
+    }
+
+    {
       val res = runCbt("forgot-extend", Seq("run"))
       assert(!res.exit0)
       assert(res.err contains "Build cannot be cast to cbt.BuildInterface", res.err)

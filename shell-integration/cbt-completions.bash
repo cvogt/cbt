@@ -5,7 +5,7 @@ __cbt()
   COMPREPLY=()
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
-  opts="$(cbt usage)"
+  opts="$(cbt taskNames)"
   COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
   return 0
 }

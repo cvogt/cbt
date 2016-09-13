@@ -32,7 +32,7 @@ object Stage2 extends Stage2Base{
     val context: Context = ContextImplementation(
       args.cwd,
       args.cwd,
-      args.args.drop( taskIndex ).toArray,
+      args.args.drop( taskIndex +1 ).toArray,
       logger.enabledLoggers.toArray,
       logger.start,
       args.cbtHasChanged,

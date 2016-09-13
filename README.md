@@ -192,3 +192,8 @@ for f in ~/.bash_completion.d/*; do
     source $f
 done
 ```
+
+Fish shell completions
+----------------
+copy this line into your fish configuration, on OSX: /.config/fish/config.fish
+complete -c cbt -a '(cbt taskNames)'
