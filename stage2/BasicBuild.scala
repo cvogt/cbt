@@ -25,6 +25,8 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   final def projectDirectory: File = lib.realpath(context.projectDirectory)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   final def usage: String = lib.usage(this.getClass, show)
+  
+  final def taskNames: String = lib.taskNames(this.getClass).sorted.mkString("\n")
 
   // ========== meta data ==========
 
