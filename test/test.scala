@@ -185,6 +185,7 @@ object Main{
     compile("../plugins/scalajs")
     compile("../plugins/scalariform")
     compile("../plugins/scalatest")
+    compile("../plugins/wartremover")
     compile("../plugins/uber-jar")
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
@@ -218,6 +219,13 @@ object Main{
       val res = runCbt("empty-build-file", Seq("run"))
       assert(!res.exit0)
       assert(res.err contains "You need to define a class Build in build.scala in", res.err)
+    }
+
+    {
+      val res = runCbt("../examples/wartremover-example", Seq("compile"))
+      assert(!res.exit0)
+      assert(res.err.contains("var is disabled"), res.out)
+      assert(res.err.contains("null is disabled"), res.out)
     }
 
     System.err.println(" DONE!")
