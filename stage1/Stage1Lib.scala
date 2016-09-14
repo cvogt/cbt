@@ -78,7 +78,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
           hash =>
             val expected = hash
             val actual = this.sha1(Files.readAllBytes(incomplete))
-            assert( expected == actual, s"$expected == $actual" )
+            assert(expected.toLowerCase == actual.toLowerCase, s"$expected == $actual" )
             logger.resolver( green("verified") ++ " checksum for " ++ target.string)
         }
         Files.move(incomplete, target.toPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
