@@ -195,7 +195,6 @@ object Main{
     compile("../examples/multi-project-example")
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
-    compile("../examples/wartremover-example")
     compile("../examples/uber-jar-example")
     
     {
@@ -220,6 +219,13 @@ object Main{
       val res = runCbt("empty-build-file", Seq("run"))
       assert(!res.exit0)
       assert(res.err contains "You need to define a class Build in build.scala in", res.err)
+    }
+
+    {
+      val res = runCbt("../examples/wartremover-example", Seq("compile"))
+      assert(!res.exit0)
+      assert(res.err.contains("var is disabled"), res.out)
+      assert(res.err.contains("null is disabled"), res.out)
     }
 
     System.err.println(" DONE!")
