@@ -13,6 +13,7 @@ trait BuildBuild extends BaseBuild{
     final lazy val scalaJs   = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalajs" )
     final lazy val scalariform = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalariform" )
     final lazy val scalafmt = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalafmt" )
+    final lazy val wartremover = DirectoryDependency( managedContext.cbtHome ++ "/plugins/wartremover" )
     final lazy val uberJar = DirectoryDependency( managedContext.cbtHome ++ "/plugins/uber-jar" )
   }
 

@@ -185,6 +185,7 @@ object Main{
     compile("../plugins/scalajs")
     compile("../plugins/scalariform")
     compile("../plugins/scalatest")
+    compile("../plugins/wartremover")
     compile("../plugins/uber-jar")
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
@@ -194,6 +195,7 @@ object Main{
     compile("../examples/multi-project-example")
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
+    compile("../examples/wartremover-example")
     compile("../examples/uber-jar-example")
     
     {
