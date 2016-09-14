@@ -276,9 +276,8 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       jarFile.getParentFile.mkdirs
       logger.lib("Start packaging "++jarFile.string)
       val manifest = new Manifest()
-      manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
-      manifest.getMainAttributes.putValue("Created-By",
-        Option(System.getProperty("java.runtime.version")) getOrElse "1.7.0_06 (Oracle Corporation)")
+      manifest.getMainAttributes.put( Attributes.Name.MANIFEST_VERSION, "1.0" )
+      manifest.getMainAttributes.putValue( "Created-By", "Chris' Build Tool" )
       mainClass foreach { className =>
         manifest.getMainAttributes.put(Attributes.Name.MAIN_CLASS, className)
       }
