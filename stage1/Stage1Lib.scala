@@ -251,14 +251,16 @@ ${files.sorted.mkString(" \\\n")}
   }
 
   def trapExitCode( code: => ExitCode ): ExitCode = {
+    val trapExitCodeBefore = NailgunLauncher.trapExitCode.get
     try{
-      System.setSecurityManager( new TrapSecurityManager )
+      NailgunLauncher.trapExitCode.set(true)
       code
     } catch {
       case CatchTrappedExitCode(exitCode) =>
+        logger.stage1(s"caught exit code $exitCode")
         exitCode
     } finally {
-      System.setSecurityManager(NailgunLauncher.defaultSecurityManager)
+      NailgunLauncher.trapExitCode.set(trapExitCodeBefore)
     }
   }
 
