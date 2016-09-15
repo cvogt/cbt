@@ -25,6 +25,10 @@ class Build(val context: cbt.Context) extends BaseBuild{
       // currently fails, let's see if because of a bug
       // io.spray:spray-http:1.3.3
     ) ++
+    Resolver( new java.net.URL("http://maven.spikemark.net/roundeights") ).bind(
+      // Check that lower case checksums work
+      ScalaDependency("com.roundeights","hasher","1.2.0")
+    ) ++
     Resolver(
       mavenCentral,
       bintray("tpolecat"),

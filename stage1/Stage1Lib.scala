@@ -45,8 +45,8 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     val hex = new java.math.BigInteger(1, array).toString(16)
     ("0" * (padTo-hex.size)) ++ hex
   }
-  def md5( bytes: Array[Byte] ): String = array2hex(32, MessageDigest.getInstance("MD5").digest(bytes))
-  def sha1( bytes: Array[Byte] ): String = array2hex(40, MessageDigest.getInstance("SHA-1").digest(bytes))
+  def md5( bytes: Array[Byte] ): String = array2hex(32, MessageDigest.getInstance("MD5").digest(bytes)).toUpperCase
+  def sha1( bytes: Array[Byte] ): String = array2hex(40, MessageDigest.getInstance("SHA-1").digest(bytes)).toUpperCase
 
   def red(string: String) = scala.Console.RED++string++scala.Console.RESET
   def blue(string: String) = scala.Console.BLUE++string++scala.Console.RESET
@@ -76,7 +76,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         }
         sha1.foreach{
           hash =>
-            val expected = hash
+            val expected = hash.toUpperCase
             val actual = this.sha1(Files.readAllBytes(incomplete))
             assert( expected == actual, s"$expected == $actual" )
             logger.resolver( green("verified") ++ " checksum for " ++ target.string)

@@ -178,7 +178,7 @@ public class Stage0Lib{
   public static String sha1(byte[] bytes) throws Throwable {
     final MessageDigest sha1 = MessageDigest.getInstance("SHA1");
     sha1.update(bytes, 0, bytes.length);
-    return (new HexBinaryAdapter()).marshal(sha1.digest());
+    return (new HexBinaryAdapter()).marshal(sha1.digest()).toUpperCase();
   }
 
   public static String join(String separator, String[] parts){
