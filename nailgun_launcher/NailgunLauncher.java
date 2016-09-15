@@ -20,7 +20,15 @@ public class NailgunLauncher{
     new ConcurrentHashMap<Object,ClassLoader>()
   );
 
-  public final static SecurityManager defaultSecurityManager = System.getSecurityManager();
+  public final static SecurityManager initialSecurityManager
+    = System.getSecurityManager();
+
+  public final static ThreadLocal<Boolean> trapExitCode = 
+    new ThreadLocal<Boolean>() {
+      @Override protected Boolean initialValue() {
+        return false;
+      }
+    };
 
   public static String TARGET = System.getenv("TARGET");
   private static String NAILGUN = "nailgun_launcher/";
@@ -54,6 +62,7 @@ public class NailgunLauncher{
       return;
     }
 
+    System.setSecurityManager( new TrapSecurityManager() );
     installProxySettings();
     String[] diff = args[0].split("\\.");
     long start = _start - (Long.parseLong(diff[0]) * 1000L) - Long.parseLong(diff[1]);
@@ -119,7 +128,7 @@ public class NailgunLauncher{
           compatibilitySourceFiles.add(f);
         }
       }
-      changed = compile(changed, start, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles, defaultSecurityManager);
+      changed = compile(changed, start, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles);
       
       if( classLoaderCache.contains( compatibilityTarget ) ){
         compatibilityClassLoader = classLoaderCache.get( compatibilityTarget );
@@ -145,7 +154,7 @@ public class NailgunLauncher{
         stage1SourceFiles.add(f);
       }
     }
-    changed = compile(changed, start, stage1Classpath, stage1Target, earlyDeps, stage1SourceFiles, defaultSecurityManager);
+    changed = compile(changed, start, stage1Classpath, stage1Target, earlyDeps, stage1SourceFiles);
 
     ClassLoader stage1classLoader;
     if( !changed && classLoaderCache.contains( stage1Classpath ) ){

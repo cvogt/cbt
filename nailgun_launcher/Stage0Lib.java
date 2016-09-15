@@ -19,9 +19,10 @@ public class Stage0Lib{
     }
   }
 
-  public static int runMain(String cls, String[] args, ClassLoader cl, SecurityManager defaultSecurityManager) throws Throwable{
+  public static int runMain(String cls, String[] args, ClassLoader cl) throws Throwable{
+    Boolean trapExitCodeBefore = NailgunLauncher.trapExitCode.get();
     try{
-      System.setSecurityManager( new TrapSecurityManager() );
+      NailgunLauncher.trapExitCode.set(true);
       cl.loadClass(cls)
         .getMethod("main", String[].class)
         .invoke( null, (Object) args);
@@ -33,7 +34,7 @@ public class Stage0Lib{
       }
       throw exception;
     } finally {
-      System.setSecurityManager(defaultSecurityManager);
+      NailgunLauncher.trapExitCode.set(trapExitCodeBefore);
     }
   }
 
@@ -54,7 +55,7 @@ public class Stage0Lib{
 
   public static Boolean compile(
     Boolean changed, Long start, String classpath, String target,
-    EarlyDependencies earlyDeps, List<File> sourceFiles, SecurityManager defaultSecurityManager
+    EarlyDependencies earlyDeps, List<File> sourceFiles
   ) throws Throwable{
     File statusFile = new File( new File(target) + ".last-success" );
     Long lastSuccessfullCompile = statusFile.lastModified();
@@ -89,7 +90,7 @@ public class Stage0Lib{
       PrintStream oldOut = System.out;
       try{
         System.setOut(System.err);
-        int exitCode = runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc, defaultSecurityManager );
+        int exitCode = runMain( "com.typesafe.zinc.Main", zincArgs.toArray(new String[zincArgs.size()]), earlyDeps.zinc );
         if( exitCode == 0 ){
           write( statusFile, "" );
           Files.setLastModifiedTime( statusFile.toPath(), FileTime.fromMillis(start) );
@@ -177,7 +178,7 @@ public class Stage0Lib{
   public static String sha1(byte[] bytes) throws Throwable {
     final MessageDigest sha1 = MessageDigest.getInstance("SHA1");
     sha1.update(bytes, 0, bytes.length);
-    return (new HexBinaryAdapter()).marshal(sha1.digest());
+    return (new HexBinaryAdapter()).marshal(sha1.digest()).toUpperCase();
   }
 
   public static String join(String separator, String[] parts){
