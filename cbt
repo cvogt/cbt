@@ -75,14 +75,12 @@ fi
 # 	exit 1
 # fi
 
-which ng 2>&1 > /dev/null
-ng_installed=$?
-which ng-server 2>&1 > /dev/null
-ng_server_installed=$?
+NG_EXECUTABLE=$(which ng || which ng-nailgun)
+NG_SERVER=$(which ng-server || ls /usr/share/java/nailgun-server-*.jar 2>/dev/null | awk '{print "java -jar " $0}')
 nailgun_installed=0
-if [ ! $ng_installed -eq 0 ] || [ ! $ng_server_installed -eq 0 ]; then
+if [ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER" == "" ]; then
 	nailgun_installed=1
-	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun'.)" 1>&2
+	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun' or 'apt install nailgun'.)" 1>&2
 fi
 which realpath 2>&1 > /dev/null
 realpath_installed=$?
@@ -100,7 +98,7 @@ if [ ! $gpg_installed -eq 0 ]; then
 fi
 
 NAILGUN_PORT=4444
-NG="ng --nailgun-port $NAILGUN_PORT"
+NG="$NG_EXECUTABLE --nailgun-port $NAILGUN_PORT"
 
 CWD=$(pwd)
 _DIR=$(dirname $(readlink "$0") 2>/dev/null || dirname "$0" 2>/dev/null )
@@ -160,10 +158,10 @@ fi
 if [ $use_nailgun -eq 0 ] && [ ! $server_up -eq 0 ]; then
 	log "Starting up nailgun server." $*
 	# try to start nailgun-server, just in case it's not up
-	ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
+	$NG_SERVER 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
 fi
 
-stage1 () {	
+stage1 () {
 	log "Checking for changes in cbt/nailgun_launcher" $*
 	NAILGUN_INDICATOR=$NAILGUN$TARGET/cbt/NailgunLauncher.class
 	changed=0
@@ -191,7 +189,7 @@ stage1 () {
 	fi
 
 	log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." $*
-	
+
 	if [ $use_nailgun -eq 1 ]
 	then
 		log "Running JVM directly" $*
