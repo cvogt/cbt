@@ -57,7 +57,7 @@ class Build(val context: cbt.Context) extends PackageJars {
         ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
         MavenDependency("joda-time", "joda-time", "2.9.2")
       )
-  
+
   override def compile = {
     println("Compiling...")
     super.compile
@@ -101,7 +101,7 @@ cbt.BasicBuild.
 
 A folder `build/` can have its own folder `build/` inside in order
 to add source or maven dependencies to your build. Eventually
-you'll be able to also choose the CBT and Scala versions for 
+you'll be able to also choose the CBT and Scala versions for
 target builds. Make sure you extend cbt.BuilBuild instead of
 cbt.Build, in order to automatically trigger building of the
 target build.
@@ -186,7 +186,7 @@ mkdir ~/.bash_completion.d/
 cp shell-integration/cbt-completions.bash ~/.bash_completion.d/
 ```
 
-Add this to you .bashrc
+Add this to your .bashrc
 ```
 for f in ~/.bash_completion.d/*; do
     source $f
@@ -197,3 +197,21 @@ Fish shell completions
 ----------------
 copy this line into your fish configuration, on OSX: /.config/fish/config.fish
 complete -c cbt -a '(cbt taskNames)'
+
+Zsh completions
+---------------
+##### Manual installation
+Add the following to your `.zshrc`
+```
+source /path/to/cbt/shell-integration/cbt-completions.zsh
+```
+##### oh-my-zsh
+If using oh-my-zsh, you can install it as a plugin:
+```
+mkdir ~/.oh-my-zsh/custom/plugins/cbt
+cp shell-integration/cbt-completions.zsh ~/.oh-my-zsh/custom/plugins/cbt/cbt.plugin.zsh
+```
+Then enable it in your `.zshrc`:
+```
+plugins=( ... cbt)
+```
