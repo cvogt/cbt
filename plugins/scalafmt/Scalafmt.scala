@@ -1,5 +1,6 @@
 package cbt
 
+import org.scalafmt.Error.Incomplete
 import org.scalafmt.{FormatResult, ScalafmtStyle}
 
 import java.io.File
@@ -41,10 +42,10 @@ object Scalafmt {
               write(path, formatted.getBytes)
               reformattedCount += 1
             }
+          case FormatResult.Failure(e: Incomplete) =>
+            System.err.println(s"Couldn't complete file reformat: $path")
           case FormatResult.Failure(e) =>
             System.err.println(s"Failed to format file: $path, cause: ${e}")
-          case FormatResult.Incomplete(e) =>
-            System.err.println(s"Couldn't complete file reformat: $path")
         }
       }
     }
