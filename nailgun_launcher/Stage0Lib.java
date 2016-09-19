@@ -166,7 +166,7 @@ public class Stage0Lib{
       Files.copy(stream, unverified, StandardCopyOption.REPLACE_EXISTING);
       stream.close();
       final String checksum = sha1(Files.readAllBytes(unverified));
-      if(sha1 == null || sha1.toUpperCase().equals(checksum)) {
+      if(sha1 == null || sha1.toLowerCase().equals(checksum)) {
         Files.move(unverified, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
       } else {
         System.err.println(target + " checksum does not match.\nExpected: |" + sha1 + "|\nFound:    |" + checksum + "|");
@@ -178,7 +178,7 @@ public class Stage0Lib{
   public static String sha1(byte[] bytes) throws Throwable {
     final MessageDigest sha1 = MessageDigest.getInstance("SHA1");
     sha1.update(bytes, 0, bytes.length);
-    return (new HexBinaryAdapter()).marshal(sha1.digest()).toUpperCase();
+    return (new HexBinaryAdapter()).marshal(sha1.digest()).toLowerCase();
   }
 
   public static String join(String separator, String[] parts){

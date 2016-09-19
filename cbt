@@ -132,7 +132,7 @@ foo(){
 foo $@
 
 if [ "$1" = "kill" ]; then
-	echo "Stopping nailgun" 1>&2
+	echo "Stopping background process (nailgun)" 1>&2
 	$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
 	exit 1
 fi
@@ -156,7 +156,7 @@ if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ] || [ "$2" = "publi
 fi
 
 if [ $use_nailgun -eq 0 ] && [ ! $server_up -eq 0 ]; then
-	log "Starting up nailgun server." $*
+	log "Starting background process (nailgun)" $*
 	# try to start nailgun-server, just in case it's not up
 	$NG_SERVER 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
 fi
@@ -179,10 +179,10 @@ stage1 () {
 			break
 		fi
 		if [ $use_nailgun -eq 0 ]; then
-			echo "Stopping nailgun" 1>&2
+			echo "Stopping background process (nailgun)" 1>&2
 			$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
 			sleep 1
-			echo "Restarting nailgun" 1>&2
+			echo "Restarting background process (nailgun)" 1>&2
 			ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
 			sleep 1
 		fi
@@ -196,7 +196,7 @@ stage1 () {
 		# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
 		java $JAVA_OPTS -Xmx6072m -Xss10M -cp $NAILGUN$TARGET cbt.NailgunLauncher $(time_taken) "$CWD" $*
 	else
-		log "Running via nailgun." $*
+		log "Running via background process (nailgun)" $*
 		for i in 0 1 2 3 4 5 6 7 8 9; do
 			log "Adding classpath." $*
 			$NG ng-cp $NAILGUN$TARGET >> $nailgun_out 2>> $nailgun_err
