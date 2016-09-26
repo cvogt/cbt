@@ -193,6 +193,8 @@ object Main{
     compile("../examples/scalajs-react-example/js")
     compile("../examples/scalajs-react-example/jvm")
     compile("../examples/multi-project-example")
+    compile("../examples/dotty-example")
+    task("run","../examples/dotty-example")
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
     compile("../examples/uber-jar-example")
