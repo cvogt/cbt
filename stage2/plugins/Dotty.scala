@@ -5,7 +5,7 @@ import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
 trait Dotty extends BaseBuild{
-  def dottyVersion: String = "0.1-20160925-b2b475d-NIGHTLY"
+  def dottyVersion: String = "0.1-20160926-ec28ea1-NIGHTLY"
   def dottyOptions: Seq[String] = Seq()
 
   private lazy val dottyLib = new DottyLib(
