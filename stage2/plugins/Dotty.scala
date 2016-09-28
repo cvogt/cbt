@@ -5,7 +5,9 @@ import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
 trait Dotty extends BaseBuild{
-  override def scalacOptions: Seq[String] = Seq()
+  def dottyVersion: String = "0.1-20160925-b2b475d-NIGHTLY"
+  def dottyOptions: Seq[String] = Seq()
+
 
   private object compileCache extends Cache[Option[File]]
   override def compile: Option[File] = compileCache{
@@ -13,7 +15,8 @@ trait Dotty extends BaseBuild{
       context.cbtHasChanged,
       needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
       sourceFiles, compileTarget, compileStatusFile, dependencyClasspath ++ compileClasspath,
-      context.paths.mavenCache, scalacOptions, context.classLoaderCache
+      context.paths.mavenCache, scalacOptions, context.classLoaderCache,
+      dottyOptions = dottyOptions, dottyVersion = dottyVersion
     )
   }
 }
@@ -31,7 +34,9 @@ class DottyLib(logger: Logger){
     classpath: ClassPath,
     mavenCache: File,
     scalacOptions: Seq[String] = Seq(),
-    classLoaderCache: ClassLoaderCache
+    classLoaderCache: ClassLoaderCache,
+    dottyOptions: Seq[String],
+    dottyVersion: String
   ): Option[File] = {
 
     if(classpath.files.isEmpty)
@@ -43,7 +48,7 @@ class DottyLib(logger: Logger){
       if( needsRecompile ){
         def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
         val dotty = Resolver(mavenCentral).bindOne(
-          MavenDependency("ch.epfl.lamp","dotty_2.11","0.1-20160925-b2b475d-NIGHTLY")
+          MavenDependency("ch.epfl.lamp","dotty_2.11",dottyVersion)
         )
 
         val cp = classpath ++ dotty.classpath
@@ -55,7 +60,7 @@ class DottyLib(logger: Logger){
           Seq(
             "-d", compileTarget.toString
           )
-        val singleArgs = scalacOptions.map( "-S" ++ _ )
+        val singleArgs = dottyOptions.map( "-S" ++ _ )
 
         val code = 
           try{
