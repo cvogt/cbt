@@ -8,15 +8,17 @@ trait Dotty extends BaseBuild{
   def dottyVersion: String = "0.1-20160925-b2b475d-NIGHTLY"
   def dottyOptions: Seq[String] = Seq()
 
+  private lazy val dottyLib = new DottyLib(
+    logger, context.cbtHasChanged, context.paths.mavenCache,
+    context.classLoaderCache, dottyVersion = dottyVersion
+  )
 
   private object compileCache extends Cache[Option[File]]
   override def compile: Option[File] = compileCache{
-    new DottyLib(logger).compile(
-      context.cbtHasChanged,
+    dottyLib.compile(
       needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
       sourceFiles, compileTarget, compileStatusFile, dependencyClasspath ++ compileClasspath,
-      context.paths.mavenCache, scalacOptions, context.classLoaderCache,
-      dottyOptions = dottyOptions, dottyVersion = dottyVersion
+      dottyOptions
     )
   }
 
@@ -25,22 +27,28 @@ trait Dotty extends BaseBuild{
   )
 }
 
-class DottyLib(logger: Logger){
+class DottyLib(
+  logger: Logger,
+  cbtHasChanged: Boolean,
+  mavenCache: File,
+  classLoaderCache: ClassLoaderCache,
+  dottyVersion: String
+){
   val lib = new Lib(logger)
   import lib._
 
+  private def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
+  private lazy val dottyDependency = Resolver(mavenCentral).bindOne(
+    MavenDependency("ch.epfl.lamp","dotty_2.11",dottyVersion)
+  )
+
   def compile(
-    cbtHasChanged: Boolean,
     needsRecompile: Boolean,
     files: Seq[File],
     compileTarget: File,
     statusFile: File,
     classpath: ClassPath,
-    mavenCache: File,
-    scalacOptions: Seq[String] = Seq(),
-    classLoaderCache: ClassLoaderCache,
-    dottyOptions: Seq[String],
-    dottyVersion: String
+    dottyOptions: Seq[String]
   ): Option[File] = {
 
     if(classpath.files.isEmpty)
@@ -50,10 +58,7 @@ class DottyLib(logger: Logger){
       None
     }else{
       if( needsRecompile ){
-        def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
-        val dotty = Resolver(mavenCentral).bindOne(
-          MavenDependency("ch.epfl.lamp","dotty_2.11",dottyVersion)
-        )
+        val dotty = dottyDependency
 
         val cp = classpath ++ dotty.classpath
         
