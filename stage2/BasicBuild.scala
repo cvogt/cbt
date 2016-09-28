@@ -57,7 +57,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   /** directory where jars (and the pom file) should be put */
   def jarTarget: File = scalaTarget
   /** directory where the scaladoc should be put */
-  def apiTarget: File = scalaTarget ++ "/api"
+  def docTarget: File = scalaTarget ++ "/api"
   /** directory where the class files should be put (in package directories) */
   def compileTarget: File = scalaTarget ++ "/classes"
   /**
@@ -104,7 +104,8 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
 
   protected def compileDependencies: Seq[Dependency] = Nil
-  final def compileClasspath : ClassPath = ClassPath( compileDependencies.flatMap(_.exportedClasspath.files).distinct )
+  final def compileClasspath : ClassPath =
+    dependencyClasspath ++ ClassPath( compileDependencies.flatMap(_.exportedClasspath.files).distinct )
 
   def exportedClasspath   : ClassPath = ClassPath(compile.toSeq)
   def targetClasspath = ClassPath(Seq(compileTarget))
@@ -129,7 +130,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
     lib.compile(
       context.cbtHasChanged,
       needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
-      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath ++ compileClasspath,
+      sourceFiles, compileTarget, compileStatusFile, compileClasspath,
       context.paths.mavenCache, scalacOptions, context.classLoaderCache,
       zincVersion = zincVersion, scalaVersion = scalaVersion
     )

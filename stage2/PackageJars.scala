@@ -24,7 +24,7 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
   def docJar: Option[File] = cacheDocBasicBuild{
     lib.docJar(
       context.cbtHasChanged,
-      scalaVersion, sourceFiles, dependencyClasspath, apiTarget,
+      scalaVersion, sourceFiles, compileClasspath, docTarget,
       jarTarget, artifactId, scalaMajorVersion, version,
       scalacOptions, context.classLoaderCache, context.paths.mavenCache
     )

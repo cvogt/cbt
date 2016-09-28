@@ -74,7 +74,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     scalaVersion: String,
     sourceFiles: Seq[File],
     dependencyClasspath: ClassPath,
-    apiTarget: File,
+    docTarget: File,
     jarTarget: File,
     artifactId: String,
     scalaMajorVersion: String,
@@ -86,11 +86,11 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     if(sourceFiles.isEmpty){
       None
     } else {
-      apiTarget.mkdirs
+      docTarget.mkdirs
       val args = Seq(
         // FIXME: can we use compiler dependency here?
         "-cp", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
-        "-d",  apiTarget.toString
+        "-d",  docTarget.toString
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
       redirectOutToErr{
@@ -102,7 +102,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
       }
       lib.jarFile(
         jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-javadoc.jar"),
-        Vector(apiTarget)
+        Vector(docTarget)
       )
     }
   }
