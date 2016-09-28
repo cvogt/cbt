@@ -19,6 +19,10 @@ trait Dotty extends BaseBuild{
       dottyOptions = dottyOptions, dottyVersion = dottyVersion
     )
   }
+
+  override def dependencies = Resolver(mavenCentral).bind(
+    ScalaDependency( "org.scala-lang.modules", "scala-java8-compat", "0.8.0-RC7" )
+  )
 }
 
 class DottyLib(logger: Logger){
