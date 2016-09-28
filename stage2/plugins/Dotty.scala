@@ -22,6 +22,8 @@ trait Dotty extends BaseBuild{
     )
   }
 
+  def repl = dottyLib.repl(context.args, classpath)
+
   override def dependencies = Resolver(mavenCentral).bind(
     ScalaDependency( "org.scala-lang.modules", "scala-java8-compat", "0.8.0-RC7" )
   )
@@ -41,6 +43,20 @@ class DottyLib(
   private lazy val dottyDependency = Resolver(mavenCentral).bindOne(
     MavenDependency("ch.epfl.lamp","dotty_2.11",dottyVersion)
   )
+
+  def repl(args: Seq[String], classpath: ClassPath) = {
+    consoleOrFail("Use `cbt direct repl` instead")
+    lib.runMain(
+      "dotty.tools.dotc.repl.Main",
+      Seq(
+        "-bootclasspath",
+        dottyDependency.classpath.string,
+        "-classpath",
+        classpath.string
+      ) ++ args,
+      dottyDependency.classLoader(classLoaderCache)
+    )
+  }
 
   def compile(
     needsRecompile: Boolean,
