@@ -199,6 +199,12 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
+  def consoleOrFail(msg: String) = {
+    Option(System.console).getOrElse(
+      throw new Exception(msg + ". java.io.Console == null. See https://github.com/cvogt/cbt/issues/236")
+    )
+  }
+
   def clean(target: File, force: Boolean, dryRun: Boolean, list: Boolean, help: Boolean): ExitCode = {
     def depthFirstFileStream(file: File): Vector[File] = {
       (
@@ -225,9 +231,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     } else {
       val performDelete = (
         force || {
-          val console = Option(System.console).getOrElse(
-            throw new Exception("Can't access Console. Try running `cbt direct clean` or `cbt clean list` or `cbt clean force`.")
-          )
+          val console = consoleOrFail("Use `cbt direct clean` or `cbt clean help`")
           System.err.println("Files to be deleted:\n\n")
           files.foreach( System.err.println )
           System.err.println("")
@@ -314,11 +318,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   lazy val passphrase =
-    Option(System.console).getOrElse(
-      throw new Exception("Can't access Console. This probably shouldn't be run through Nailgun.")
-    ).readPassword(
-      "GPG Passphrase please:"
-    ).mkString
+    consoleOrFail( "Use `cbt direct <task>`" ).readPassword( "GPG Passphrase please:" ).mkString
 
   def sign(file: File): File = {
     //http://stackoverflow.com/questions/16662408/correct-way-to-sign-and-verify-signature-using-bouncycastle
