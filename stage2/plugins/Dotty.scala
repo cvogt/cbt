@@ -102,7 +102,7 @@ class DottyLib(
             }
           } catch {
             case e: Exception =>
-            System.err.println(red("Dotty crashed. Try running it by hand:"))
+            System.err.println(red("Dotty crashed. See https://github.com/lampepfl/dotty/issues. To reproduce run:"))
             System.out.println(s"""
 java -cp \\
 ${dotty.classpath.strings.mkString(":\\\n")} \\
