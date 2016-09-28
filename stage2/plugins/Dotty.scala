@@ -23,6 +23,11 @@ trait Dotty extends BaseBuild{
     )
   }
 
+  def doc: ExitCode =
+    dottyLib.doc(
+      sourceFiles, compileClasspath, docTarget, dottyOptions
+    )
+
   def repl = dottyLib.repl(context.args, classpath)
 
   override def dependencies = Resolver(mavenCentral).bind(
@@ -57,6 +62,33 @@ class DottyLib(
       ) ++ args,
       dottyDependency.classLoader(classLoaderCache)
     )
+  }
+
+  def doc(
+    sourceFiles: Seq[File],
+    dependencyClasspath: ClassPath,
+    docTarget: File,
+    compileArgs: Seq[String]
+  ): ExitCode = {
+    if(sourceFiles.isEmpty){
+      ExitCode.Success
+    } else {
+      docTarget.mkdirs
+      val args = Seq(
+        // FIXME: can we use compiler dependency here?
+        "-bootclasspath", dottyDependency.classpath.string, // FIXME: does this break for builds that don't have scalac dependencies?
+        "-classpath", (dependencyClasspath ++ dottyDependency.classpath).string, // FIXME: does this break for builds that don't have scalac dependencies?
+        "-d",  docTarget.toString
+      ) ++ compileArgs ++ sourceFiles.map(_.toString)
+      logger.lib("creating docs for source files "+args.mkString(", "))
+      redirectOutToErr{
+        runMain(
+          "dotty.tools.dottydoc.DottyDoc",
+          args,
+          dottyDependency.classLoader(classLoaderCache)
+        )
+      }
+    }
   }
 
   def compile(
