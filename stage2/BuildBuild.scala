@@ -15,6 +15,7 @@ trait BuildBuild extends BaseBuild{
     final lazy val scalafmt = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalafmt" )
     final lazy val wartremover = DirectoryDependency( managedContext.cbtHome ++ "/plugins/wartremover" )
     final lazy val uberJar = DirectoryDependency( managedContext.cbtHome ++ "/plugins/uber-jar" )
+    final lazy val sonatypeRelease = DirectoryDependency( managedContext.cbtHome ++ "/plugins/sonatype-release" )
   }
 
   override def dependencies =
