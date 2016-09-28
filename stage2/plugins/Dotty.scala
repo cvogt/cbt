@@ -7,7 +7,8 @@ import java.nio.file.attribute.FileTime
 trait Dotty extends BaseBuild{
   def dottyVersion: String = "0.1-20160926-ec28ea1-NIGHTLY"
   def dottyOptions: Seq[String] = Seq()
-
+  override def scalaTarget: File = target ++ s"/dotty-$dottyVersion"
+  
   private lazy val dottyLib = new DottyLib(
     logger, context.cbtHasChanged, context.paths.mavenCache,
     context.classLoaderCache, dottyVersion = dottyVersion
@@ -17,7 +18,7 @@ trait Dotty extends BaseBuild{
   override def compile: Option[File] = compileCache{
     dottyLib.compile(
       needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
-      sourceFiles, compileTarget, compileStatusFile, dependencyClasspath ++ compileClasspath,
+      sourceFiles, compileTarget, compileStatusFile, compileClasspath,
       dottyOptions
     )
   }
