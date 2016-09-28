@@ -57,7 +57,7 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
   /** directory where jars (and the pom file) should be put */
   def jarTarget: File = scalaTarget
   /** directory where the scaladoc should be put */
-  def apiTarget: File = scalaTarget ++ "/api"
+  def docTarget: File = scalaTarget ++ "/api"
   /** directory where the class files should be put (in package directories) */
   def compileTarget: File = scalaTarget ++ "/classes"
   /**
