@@ -77,11 +77,11 @@ class DottyLib(
       val args = Seq(
         // FIXME: can we use compiler dependency here?
         "-bootclasspath", dottyDependency.classpath.string, // FIXME: does this break for builds that don't have scalac dependencies?
-        "-classpath", (dependencyClasspath ++ dottyDependency.classpath).string, // FIXME: does this break for builds that don't have scalac dependencies?
+        "-classpath", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
         "-d",  docTarget.toString
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
-      redirectOutToErr{
+      val exitCode = redirectOutToErr{
         runMain(
           "dotty.tools.dottydoc.api.java.Dottydoc",
           args,
@@ -89,6 +89,8 @@ class DottyLib(
           fakeInstance = true // this is a hack as Dottydoc's main method is not static
         )
       }
+      System.err.println("done")
+      exitCode
     }
   }
 
