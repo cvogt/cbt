@@ -107,10 +107,6 @@ class DottyLib(
       None
     }else{
       if( needsRecompile ){
-        val dotty = dottyDependency
-
-        val cp = classpath ++ dotty.classpath
-        
         val start = System.currentTimeMillis
 
         val _class = "dotty.tools.dotc.Main"
@@ -128,9 +124,10 @@ class DottyLib(
               lib.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ Seq(
-                  "-classpath", cp.string // let's put cp last. It so long
+                  "-bootclasspath", dottyDependency.classpath.string, // let's put cp last. It so long
+                  "-classpath", classpath.string // let's put cp last. It so long
                 ) ++ files.map(_.toString),
-                dotty.classLoader(classLoaderCache)
+                dottyDependency.classLoader(classLoaderCache)
               )
             }
           } catch {
@@ -138,7 +135,7 @@ class DottyLib(
             System.err.println(red("Dotty crashed. See https://github.com/lampepfl/dotty/issues. To reproduce run:"))
             System.out.println(s"""
 java -cp \\
-${dotty.classpath.strings.mkString(":\\\n")} \\
+${dottyDependency.classpath.strings.mkString(":\\\n")} \\
 \\
 ${_class} \\
 \\
@@ -146,8 +143,10 @@ ${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
 \\
 ${singleArgs.mkString(" \\\n")} \\
 \\
+-bootclasspath \\
+${dottyDependency.classpath.strings.mkString(":\\\n")} \\
 -classpath \\
-${cp.strings.mkString(":\\\n")} \\
+${classpath.strings.mkString(":\\\n")} \\
 \\
 ${files.sorted.mkString(" \\\n")}
 """
