@@ -147,20 +147,25 @@ object Main{
     }
 
     (
-      Dependencies(
-        Resolver( mavenCentral, bintray("tpolecat") ).bind(
-          lib.ScalaDependency("org.tpolecat","tut-core","0.4.2", scalaMajorVersion="2.11")
-        )
-      ).classpath.strings
-      ++
+      (
+        if(System.getenv("CIRCLECI") == null){
+          // tenporarily disable on circleci as it seems to have trouble reliably
+          // downloading from bintray
+          Dependencies(
+            Resolver( bintray("tpolecat") ).bind(
+              lib.ScalaDependency("org.tpolecat","tut-core","0.4.2", scalaMajorVersion="2.11")
+            )
+          ).classpath.strings
+        } else Nil
+      ) ++
      Dependencies(
-      Resolver(sonatypeReleases).bind(
-        MavenDependency("org.cvogt","play-json-extensions_2.11","0.8.0")
+      Resolver( sonatypeReleases ).bind(
+        MavenDependency("org.cvogt","scala-extensions_2.11","0.5.1")
       )
     ).classpath.strings
       ++
       Dependencies(
-        Resolver( mavenCentral, sonatypeSnapshots ).bind(
+        Resolver( mavenCentral ).bind(
           MavenDependency("ai.x","lens_2.11","1.0.0")
         )
       ).classpath.strings
@@ -193,6 +198,13 @@ object Main{
     compile("../examples/scalajs-react-example/js")
     compile("../examples/scalajs-react-example/jvm")
     compile("../examples/multi-project-example")
+    if(sys.props("java.version").startsWith("1.7")){
+      System.err.println("\nskipping dotty tests on Java 7")
+    } else {
+      compile("../examples/dotty-example")
+      task("run","../examples/dotty-example")
+      task("doc","../examples/dotty-example")
+    }
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
     compile("../examples/uber-jar-example")
