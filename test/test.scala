@@ -193,9 +193,13 @@ object Main{
     compile("../examples/scalajs-react-example/js")
     compile("../examples/scalajs-react-example/jvm")
     compile("../examples/multi-project-example")
-    compile("../examples/dotty-example")
-    task("run","../examples/dotty-example")
-    task("doc","../examples/dotty-example")
+    if(sys.props("java.version").startsWith("1.7")){
+      System.err.println("\nskipping dotty tests on Java 7")
+    } else {
+      compile("../examples/dotty-example")
+      task("run","../examples/dotty-example")
+      task("doc","../examples/dotty-example")
+    }
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
     compile("../examples/uber-jar-example")
