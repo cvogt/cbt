@@ -83,9 +83,10 @@ class DottyLib(
       logger.lib("creating docs for source files "+args.mkString(", "))
       redirectOutToErr{
         runMain(
-          "dotty.tools.dottydoc.DottyDoc",
+          "dotty.tools.dottydoc.api.java.Dottydoc",
           args,
-          dottyDependency.classLoader(classLoaderCache)
+          dottyDependency.classLoader(classLoaderCache),
+          fakeInstance = true // this is a hack as Dottydoc's main method is not static
         )
       }
     }

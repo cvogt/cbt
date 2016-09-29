@@ -101,13 +101,19 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     } else ExitCode.Success
   }
 
-  def runMain(cls: String, args: Seq[String], classLoader: ClassLoader ): ExitCode = {
+  def runMain( cls: String, args: Seq[String], classLoader: ClassLoader, fakeInstance: Boolean = false ): ExitCode = {
+    import java.lang.reflect.Modifier
     logger.lib(s"Running $cls.main($args) with classLoader: " ++ classLoader.toString)
     trapExitCode{
-      classLoader
-        .loadClass(cls)
-        .getMethod( "main", classOf[Array[String]] )
-        .invoke( null, args.toArray.asInstanceOf[AnyRef] )
+      val c = classLoader.loadClass(cls)
+      val m = c.getMethod( "main", classOf[Array[String]] )
+      val instance = 
+        if(!fakeInstance) null else c.newInstance
+      assert(
+        fakeInstance || (m.getModifiers & java.lang.reflect.Modifier.STATIC) > 0,
+        "Cannot run non-static method " ++ cls+".main"
+      )
+      m.invoke( instance, args.toArray.asInstanceOf[AnyRef] )
       ExitCode.Success
     }
   }
