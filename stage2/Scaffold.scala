@@ -26,17 +26,17 @@ trait Scaffold{
 
   def createBuild(
     projectDirectory: File
-  ): Unit = { 
+  ): Unit = {
     createFile(projectDirectory, "build/build.scala", s"""import cbt._
 class Build(val context: Context) extends BaseBuild{
-  /*
   override def dependencies =
-    super.dependencies ++ // don't forget super.dependencies here
-    Seq(    
+    super.dependencies ++ // don't forget super.dependencies here for scala-library, etc.
+    Seq(
       // source dependency
       // DirectoryDependency( projectDirectory ++ "/subProject" )
     ) ++
-    Resolver( mavenCentral ).bind(
+    // pick resolvers explicitly for individual dependencies (and their transitive dependencies)
+    Resolver( mavenCentral, sonatypeReleases ).bind(
       // CBT-style Scala dependencies
       // ScalaDependency( "com.lihaoyi", "ammonite-ops", "0.5.5" )
       // MavenDependency( "com.lihaoyi", "ammonite-ops_2.11", "0.5.5" )
@@ -45,7 +45,6 @@ class Build(val context: Context) extends BaseBuild{
       // "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
       // "com.lihaoyi" % "ammonite-ops_2.11" % "0.5.5"
     )
-  */
 }
 """
     )
