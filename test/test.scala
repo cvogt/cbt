@@ -159,13 +159,13 @@ object Main{
         } else Nil
       ) ++
      Dependencies(
-      Resolver(sonatypeReleases).bind(
-        MavenDependency("org.cvogt","play-json-extensions_2.11","0.8.0")
+      Resolver( sonatypeReleases ).bind(
+        MavenDependency("org.cvogt","scala-extensions_2.11","0.5.1")
       )
     ).classpath.strings
       ++
       Dependencies(
-        Resolver( mavenCentral, sonatypeSnapshots ).bind(
+        Resolver( mavenCentral ).bind(
           MavenDependency("ai.x","lens_2.11","1.0.0")
         )
       ).classpath.strings
