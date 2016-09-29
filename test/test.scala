@@ -147,12 +147,17 @@ object Main{
     }
 
     (
-      Dependencies(
-        Resolver( mavenCentral, bintray("tpolecat") ).bind(
-          lib.ScalaDependency("org.tpolecat","tut-core","0.4.2", scalaMajorVersion="2.11")
-        )
-      ).classpath.strings
-      ++
+      (
+        if(System.getenv("CIRCLECI") == null){
+          // tenporarily disable on circleci as it seems to have trouble reliably
+          // downloading from bintray
+          Dependencies(
+            Resolver( bintray("tpolecat") ).bind(
+              lib.ScalaDependency("org.tpolecat","tut-core","0.4.2", scalaMajorVersion="2.11")
+            )
+          ).classpath.strings
+        } else Nil
+      ) ++
      Dependencies(
       Resolver(sonatypeReleases).bind(
         MavenDependency("org.cvogt","play-json-extensions_2.11","0.8.0")

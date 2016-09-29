@@ -35,7 +35,6 @@ class Build(val context: cbt.Context) extends BaseBuild{
       sonatypeSnapshots
     ).bind(
       "org.cvogt" %% "play-json-extensions" % "0.8.0",
-      "org.tpolecat" %% "tut-core" % "0.4.2",
       "ai.x" %% "lens" % "1.0.0"
     )
   )
