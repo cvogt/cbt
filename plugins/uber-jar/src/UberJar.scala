@@ -13,7 +13,7 @@ trait UberJar extends BaseBuild {
     ExitCode.Success
   }
 
-  def uberJarMainClass: Option[String] = Some(runClass)
+  def uberJarMainClass: Option[String] = runClass
 
   def uberJarName: String = projectName + ".jar"
 

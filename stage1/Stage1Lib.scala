@@ -8,7 +8,7 @@ import java.nio.file._
 import java.nio.file.attribute.FileTime
 import javax.tools._
 import java.security._
-import java.util.{Set=>_,Map=>_,_}
+import java.util.{Set=>_,Map=>_,List=>_,_}
 import java.util.concurrent.ConcurrentHashMap
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
@@ -95,12 +95,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   // ========== compilation / execution ==========
 
-  def runMainIfFound(cls: String, args: Seq[String], classLoader: ClassLoader ): ExitCode = {
-    if( classLoader.canLoad(cls) ){
-      runMain(cls, args, classLoader )
-    } else ExitCode.Success
-  }
-
   def runMain( cls: String, args: Seq[String], classLoader: ClassLoader, fakeInstance: Boolean = false ): ExitCode = {
     import java.lang.reflect.Modifier
     logger.lib(s"Running $cls.main($args) with classLoader: " ++ classLoader.toString)
@@ -116,6 +110,67 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       m.invoke( instance, args.toArray.asInstanceOf[AnyRef] )
       ExitCode.Success
     }
+  }
+
+  /** shows an interactive dialogue in the shell asking the user to pick one of many choices */
+  def pickOne[T]( msg: String, choices: Seq[T] )( show: T => String ): Option[T] = {
+    if(choices.size == 0) None else if(choices.size == 1) Some(choices.head) else {
+      Option(System.console).map{
+        console =>
+        val indexedChoices: Map[Int, T] = choices.zipWithIndex.toMap.mapValues(_+1).map(_.swap)
+        System.err.println(
+          indexedChoices.map{ case (index,choice) => s"[${index}] "++show(choice)}.mkString("\n")
+        )
+        val range = s"1 - ${indexedChoices.size}"
+        System.err.println()
+        System.err.println( msg ++ " [" ++ range ++ "] " )
+        val answer = console.readLine()
+        val choice = try{
+          Some(Integer.parseInt(answer))
+        }catch{
+          case e:java.lang.NumberFormatException => None
+        }
+
+        choice.flatMap(indexedChoices.get).orElse{
+          System.err.println("Not in range "++range)
+          None
+        }
+      }.getOrElse{
+        System.err.println("Using '"++show(choices.head)++"' because System.console() == null. Use `cbt direct <task>` or see https://github.com/cvogt/cbt/issues/236")
+        None
+      }
+    }
+  }
+
+  /** interactively pick one main class */
+  def runClass( mainClasses: Seq[Class[_]] ): Option[Class[_]] = {
+    pickOne( "Which one do you want to run?", mainClasses )( _.toString )
+  }
+
+  def mainClasses( targetDirectory: File, classLoader : ClassLoader ): Seq[Class[_]] = {
+    val arrayClass = classOf[Array[String]]
+    val unitClass = classOf[Unit]
+
+    listFilesRecursive(targetDirectory)
+      .filter(_.isFile)
+      .map(_.getPath)
+      .collect{
+        // no $ to avoid inner classes
+        case path if !path.contains("$") && path.endsWith(".class") =>
+          classLoader.loadClass(
+            path
+              .stripSuffix(".class")
+              .stripPrefix(targetDirectory.getPath)
+              .stripPrefix(File.separator) // 1 for the slash
+              .replace(File.separator, ".")
+          )
+      }.filter(
+        _.getDeclaredMethods().exists( m =>
+          m.getName == "main"
+            && m.getParameterTypes.toList == List(arrayClass)
+            && m.getReturnType == unitClass
+        )
+      )
   }
 
   implicit class ClassLoaderExtensions(classLoader: ClassLoader){
