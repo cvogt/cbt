@@ -1,7 +1,7 @@
 import cbt._
 import org.scalafmt.ScalafmtStyle
 
-class Build(val context: Context) extends BuildBuild with Scalafmt {
+class Build(val context: Context) extends BaseBuild with Scalafmt {
   override def compile = {
     scalafmt
     super.compile
