@@ -119,9 +119,7 @@ object SonatypeLib {
       case Failure(e) => throw new Exception(s"Failed to get info for profile: $profileName", e)
     }
 
-    val repos = sonatypeApi.getStagingRepos(profile).toList
-
-    repos match {
+    sonatypeApi.getStagingRepos(profile).toList match {
       case Nil =>
         System.err.println(lib.red("No staging repositories found, you need to publish artifacts first."))
         ExitCode.Failure
@@ -129,18 +127,11 @@ object SonatypeLib {
         sonatypeApi.finishRelease(repo, profile)
         System.err.println(lib.green(s"Successfully released ${groupId}/${artifactId} v:${version}"))
         ExitCode.Success
-      case _ =>
-        val desc = (repos.zipWithIndex map { case (r, i) =>
-          s"  [${i + 1}] ${r.repositoryId} in state: ${r.state}"
-        }).mkString("\n", "\n", "\n")
+      case repos =>
+        val showRepo = { r: StagingRepository => s"${r.repositoryId} in state: ${r.state}" }
+        val toRelease = lib.pickOne(lib.blue(s"More than one staging repo found. Select one of them:"), repos)(showRepo)
 
-        lazy val repoNumber =
-          lib
-            .consoleOrFail(lib.red("Provide name of one repository you want to release via comand line args, like `cbt sonatypeRelease myawesomeprofile-1004`"))
-            .readLine(lib.blue(s"More than one staging repo detected. Select one by it's number:") + desc)
-            .mkString
-
-        Try(repos(repoNumber.toInt - 1)) match {
+        Try(toRelease.get) match {
           case Success(repo) =>
             sonatypeApi.finishRelease(repo, profile)
             System.err.println(lib.green(s"Successfully released ${groupId}/${artifactId} v:${version}"))
