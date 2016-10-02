@@ -4,7 +4,6 @@ import java.io.File
 // would love to call this just `Package` but that conflicts with scala package objects.
 trait PackageJars extends BaseBuild with ArtifactInfo{
   def name: String
-  // TODO: why not final?
   def artifactId = name
   def defaultVersion: String
   final def version = context.version getOrElse defaultVersion
