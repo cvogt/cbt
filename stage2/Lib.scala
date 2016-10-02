@@ -201,7 +201,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
   def consoleOrFail(msg: String) = {
     Option(System.console).getOrElse(
-      throw new Exception(msg + ". java.io.Console == null. See https://github.com/cvogt/cbt/issues/236")
+      throw new Exception(msg + ". System.console() == null. See https://github.com/cvogt/cbt/issues/236")
     )
   }
 
