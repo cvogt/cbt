@@ -136,7 +136,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
           None
         }
       }.getOrElse{
-        System.err.println("Using '"++show(choices.head)++"' because System.console() == null. Use `cbt direct <task>` or see https://github.com/cvogt/cbt/issues/236")
+        System.err.println("System.console() == null. Use `cbt direct <task>` or see https://github.com/cvogt/cbt/issues/236")
         None
       }
     }
