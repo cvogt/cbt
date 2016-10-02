@@ -5,7 +5,7 @@ import java.net.URL
 import java.nio.file.Files._
 import java.nio.file.Paths
 
-import cbt.{ ExitCode, Lib, Logger }
+import cbt.{ ExitCode, Lib }
 
 import scala.util.{ Failure, Success, Try }
 
@@ -18,6 +18,7 @@ import scala.util.{ Failure, Success, Try }
   * • promote staging repository
   * • drop staging repository
   */
+
 object SonatypeLib {
 
   val sonatypeServiceURI: String = "https://oss.sonatype.org/service/local"
@@ -50,6 +51,15 @@ object SonatypeLib {
           "or in ~/.cbt/sonatype-credentials file as login:password"
       ))
   }
+}
+
+final class SonatypeLib(
+                         sonatypeServiceURI: String,
+                         sonatypeSnapshotsURI: String,
+                         sonatypeCredentials: String,
+                         profileName: String)(lib: Lib) {
+
+  private val sonatypeApi = new SonatypeHttpApi(sonatypeServiceURI, sonatypeCredentials, profileName)(sonatypeLogger)
 
   /*
    * Signed publish steps:
@@ -60,23 +70,16 @@ object SonatypeLib {
   def sonatypePublishSigned(
                              sourceFiles: Seq[File],
                              artifacts: Seq[File],
-                             sonatypeServiceURI: String,
-                             sonatypeSnapshotsURI: String,
-                             profileName: String,
                              groupId: String,
                              artifactId: String,
                              version: String,
                              isSnapshot: Boolean,
                              scalaMajorVersion: String
-                                 )(lib:Lib): ExitCode = {
+                                 ): ExitCode = {
     if(sourceFiles.nonEmpty) {
       System.err.println(lib.blue("Staring publishing to Sonatype."))
-      val sonatypeApi = new SonatypeHttpApi(sonatypeServiceURI, sonatypeCredentials, profileName)(log(lib.logger))
 
-      val profile = Try(sonatypeApi.getStagingProfile) match {
-        case Success(p) => p
-        case Failure(e) => throw new Exception(s"Failed to get info for profile: $profileName", e)
-      }
+      val profile = getStagingProfile()
 
       val deployURI = (if (isSnapshot) {
         sonatypeSnapshotsURI
@@ -106,18 +109,11 @@ object SonatypeLib {
     * • drop this repo.
     */
   def sonatypeRelease(
-                     sonatypeURI: String,
-                     profileName: String,
                      groupId: String,
                      artifactId: String,
                      version: String
-                     )(lib: Lib): ExitCode = {
-    val sonatypeApi = new SonatypeHttpApi(sonatypeURI, sonatypeCredentials, profileName)(log(lib.logger))
-
-    val profile = Try(sonatypeApi.getStagingProfile) match {
-      case Success(p) => p
-      case Failure(e) => throw new Exception(s"Failed to get info for profile: $profileName", e)
-    }
+                     ): ExitCode = {
+    val profile = getStagingProfile()
 
     sonatypeApi.getStagingRepos(profile).toList match {
       case Nil =>
@@ -143,6 +139,13 @@ object SonatypeLib {
     }
   }
 
-  private def log(logger: Logger): String => Unit = logger.log("Sonatype", _)
+  private def getStagingProfile() =
+    try {
+      sonatypeApi.getStagingProfile
+    } catch {
+      case e: Exception => throw new Exception(s"Failed to get info for profile: $profileName", e)
+    }
+
+  private def sonatypeLogger: String => Unit = lib.logger.log("Sonatype", _)
 
 }
