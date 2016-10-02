@@ -1,4 +1,5 @@
-import cbt._
+package cbt
+package test
 import java.util.concurrent.ConcurrentHashMap
 import java.io.File
 import java.nio.file._

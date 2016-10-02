@@ -136,13 +136,15 @@ trait BaseBuild extends DependencyImplementation with BuildInterface with Trigge
     )
   }
 
-  def runClass: String = lib.mainClasses ( compileTarget, classLoader(context.classLoaderCache) ) match {
-    case f if f.length == 1 => f.head
-    case f if f.length > 2  => System.err.println( " Multiple main classes defined in project." ); "None"
-    case _                  => "Main"
-  }
+  
+  def mainClasses: Seq[Class[_]] = compile.toSeq.flatMap( lib.mainClasses( _, classLoader(classLoaderCache) ) )
 
-  def run: ExitCode = lib.runMainIfFound( runClass, context.args, classLoader(context.classLoaderCache) )
+  def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
+
+  def run: ExitCode = runClass.map( lib.runMain( _, context.args, classLoader(context.classLoaderCache) ) ).getOrElse{
+    logger.task( "No main class found for " ++ projectDirectory.string )
+    ExitCode.Success
+  }
 
   def clean = {
     lib.clean(
