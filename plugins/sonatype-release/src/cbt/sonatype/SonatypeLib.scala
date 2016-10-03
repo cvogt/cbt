@@ -7,8 +7,6 @@ import java.nio.file.Paths
 
 import cbt.{ ExitCode, Lib }
 
-import scala.util.{ Failure, Success, Try }
-
 /**
   * Sonatype release process is:
   * • get your profile info to publish artifacts
@@ -127,14 +125,13 @@ final class SonatypeLib(
         val showRepo = { r: StagingRepository => s"${r.repositoryId} in state: ${r.state}" }
         val toRelease = lib.pickOne(lib.blue(s"More than one staging repo found. Select one of them:"), repos)(showRepo)
 
-        Try(toRelease.get) match {
-          case Success(repo) =>
-            sonatypeApi.finishRelease(repo, profile)
-            System.err.println(lib.green(s"Successfully released ${groupId}/${artifactId} v:${version}"))
-            ExitCode.Success
-          case Failure(_) =>
-            System.err.println(lib.red("Wrong repository number, try again please."))
-            ExitCode.Failure
+        toRelease map { repo =>
+          sonatypeApi.finishRelease(repo, profile)
+          System.err.println(lib.green(s"Successfully released ${groupId}/${artifactId} v:${version}"))
+          ExitCode.Success
+        } getOrElse {
+          System.err.println(lib.red("Wrong repository number, try again please."))
+          ExitCode.Failure
         }
     }
   }

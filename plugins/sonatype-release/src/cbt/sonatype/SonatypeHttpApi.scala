@@ -2,7 +2,6 @@ package cbt.sonatype
 
 import java.util.Base64
 
-import scala.util.{ Failure, Success, Try }
 import scala.xml.XML
 
 /**
@@ -125,9 +124,9 @@ private final class SonatypeHttpApi(sonatypeURI: String, sonatypeCredentials: St
     log(s"Promoting staging repo: ${repoId.repositoryId}")
     val responseCode = withRetry {
       // need to get fresh info about this repo
-      val repoState = Try(getStagingRepoById(repoId)) match {
-        case Success(s) => s
-        case Failure(e) => throw new Exception(s"Repository with id ${repoId.repositoryId} not found. Maybe it was dropped already", e)
+      val repoState = try getStagingRepoById(repoId) catch {
+        case e: Exception =>
+          throw new Exception(s"Repository with id ${repoId.repositoryId} not found. Maybe it was dropped already", e)
       }
 
       if(repoState.state == Closed) {
@@ -158,10 +157,9 @@ private final class SonatypeHttpApi(sonatypeURI: String, sonatypeCredentials: St
     log(s"Dropping staging repo: ${repoId.repositoryId}")
     val responseCode = withRetry {
       // need to get fresh info about this repo
-
-      val repoState = Try(getStagingRepoById(repoId)) match {
-        case Success(s) => s
-        case Failure(e) => throw new Exception(s"Repository with id ${repoId.repositoryId} not found. Maybe it was dropped already", e)
+      val repoState = try getStagingRepoById(repoId) catch {
+        case e: Exception =>
+          throw new Exception(s"Repository with id ${repoId.repositoryId} not found. Maybe it was dropped already", e)
       }
 
       if (repoState.state == Released) {
