@@ -1,5 +1,6 @@
 package cbt
 import java.io.File
+
 // would love to call this just `Package` but that conflicts with scala package objects.
 trait PackageJars extends BaseBuild with ArtifactInfo{
   def name: String

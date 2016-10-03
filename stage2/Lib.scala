@@ -272,6 +272,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     } yield file    
   }
 
+  // FIXME: for some reason it includes full path in docs
   def jarFile( jarFile: File, files: Seq[File], mainClass: Option[String] = None ): Option[File] = {
     Files.deleteIfExists(jarFile.toPath)
     if( files.isEmpty ){
@@ -430,11 +431,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     }
   }
 
-  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
+  def publishSigned( artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
     // TODO: make concurrency configurable here
-    if(sourceFiles.nonEmpty){
-      publish( artifacts ++ artifacts.map(sign), url, credentials )
-    }
+    publish( artifacts ++ artifacts.map(sign), url, credentials )
   }
 
   private def publish(artifacts: Seq[File], url: URL, credentials: Option[String]): Unit = {
@@ -450,12 +449,12 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: Option[String] = None ): Unit =
-    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials ) }
+    nameAndContents.foreach { case (name, content) => upload(name, content, url, credentials ) }
 
   def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: Option[String] = None): Unit = {
     import java.net._
     import java.io._
-    val url = baseUrl ++ fileName
+    val url = baseUrl ++ "/" ++ fileName
     System.err.println(blue("uploading ") ++ url.toString)
     val httpCon = Stage0Lib.openConnectionConsideringProxy(url)
     httpCon.setDoOutput(true)
