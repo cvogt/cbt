@@ -1,12 +1,11 @@
 import cbt._
 
-// cbt:https://github.com/cvogt/cbt.git#ca412e26d70a6615153136019b7966acb9939446
 class Build(context: cbt.Context) extends BasicBuild(context){
   override def dependencies = (
     super.dependencies
     ++
     Seq(
-      GitDependency("https://github.com/xdotai/diff.git", "7ad3920158828d72b9ecb1ba9746fe83e2643824")
+      GitDependency("https://github.com/cvogt/cbt.git", "908e05e296974fe67d8aaf9f094d97ff986905af", Some("test/library-test"))
     )
     ++
     Resolver(mavenCentral).bind(
