@@ -10,7 +10,7 @@ import java.util.jar._
 import scala.util._
 
 class BasicBuild(val context: Context) extends BaseBuild
-trait BaseBuild extends DependencyImplementation with BuildInterface with TriggerLoop with SbtDependencyDsl{
+trait BaseBuild extends BuildInterface with DependencyImplementation with TriggerLoop with SbtDependencyDsl{
   def context: Context
   
   // library available to builds
