@@ -1,5 +1,6 @@
 package cbt
-import java.io._
+
+import scala.collection.JavaConverters._
 
 object Stage2 extends Stage2Base{
   def getBuild(__context: java.lang.Object, _cbtChanged: java.lang.Boolean) = {
@@ -32,6 +33,7 @@ object Stage2 extends Stage2Base{
     val context: Context = ContextImplementation(
       args.cwd,
       args.cwd,
+      args.props.asJava,
       args.args.drop( taskIndex +1 ).toArray,
       logger.enabledLoggers.toArray,
       logger.start,
@@ -46,6 +48,10 @@ object Stage2 extends Stage2Base{
       args.compatibilityTarget,
       null
     )
+
+    // set System.properties passed as argument to task.
+    context.propsMap().asScala foreach { case (k, v) => System.setProperty(k, v) }
+
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
@@ -55,7 +61,7 @@ object Stage2 extends Stage2Base{
           v => new lib.ReflectBuild(
             build.copy(context.copy(scalaVersion = Some(v)))
           ).callNullary(task)
-        }.filter(_ != ExitCode.Success).headOption getOrElse ExitCode.Success
+        }.find(_ != ExitCode.Success) getOrElse ExitCode.Success
       } else {
         new lib.ReflectBuild(build).callNullary(task)
       }
@@ -65,7 +71,7 @@ object Stage2 extends Stage2Base{
       if (loop) {
         // TODO: this should allow looping over task specific files, like test files as well
         val triggerFiles = first.triggerLoopFiles.map(lib.realpath)
-        val triggerCbtFiles = Seq( nailgun, stage1, stage2 ).map(lib.realpath _)
+        val triggerCbtFiles = Seq( nailgun, stage1, stage2 ).map(lib.realpath)
         val allTriggerFiles = triggerFiles ++ triggerCbtFiles
 
         logger.loop("Looping change detection over:\n - "++allTriggerFiles.mkString("\n - "))

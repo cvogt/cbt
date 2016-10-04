@@ -2,8 +2,8 @@ package cbt
 package test
 import java.util.concurrent.ConcurrentHashMap
 import java.io.File
-import java.nio.file._
 import java.net.URL
+import java.util
 
 // micro framework
 object Main{
@@ -104,6 +104,7 @@ object Main{
       val noContext = ContextImplementation(
         cbtHome ++ "/test/nothing",
         cbtHome,
+        new util.HashMap[String, String](),
         Array(),
         Array(),
         start,

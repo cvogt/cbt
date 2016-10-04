@@ -2,12 +2,6 @@ package cbt
 
 import java.io._
 import java.net._
-import java.nio.file.{Path =>_,_}
-import java.nio.file.Files.readAllBytes
-import java.security.MessageDigest
-import java.util.jar._
-
-import scala.util._
 
 class BasicBuild(val context: Context) extends BaseBuild
 trait BaseBuild extends BuildInterface with DependencyImplementation with TriggerLoop with SbtDependencyDsl{
@@ -156,7 +150,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     )
   }
 
-  def test: Option[ExitCode] = 
+  def test: Option[ExitCode] =
     Some(new lib.ReflectBuild(
       DirectoryDependency(projectDirectory++"/test").build
     ).callNullary(Some("run")))

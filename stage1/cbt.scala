@@ -1,8 +1,9 @@
 package cbt
+
 import java.io._
-import java.nio.file._
 import java.net._
-import java.util.concurrent.ConcurrentHashMap
+
+import scala.collection.JavaConverters._
 
 object `package`{
   val mavenCentral = new URL("https://repo1.maven.org/maven2")
@@ -58,6 +59,7 @@ object `package`{
       import paths._
       CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)
     }
+    def props: Map[String, String] = propsMap.asScala.toMap
     def args: Seq[String] = argsArray.to
     def enabledLoggers: Set[String] = enabledLoggersArray.to
     def scalaVersion = Option(scalaVersionOrNull)
@@ -68,6 +70,7 @@ object `package`{
 
     def copy(
       projectDirectory: File = projectDirectory,
+      props: Map[String, String] = props,
       args: Seq[String] = args,
       enabledLoggers: Set[String] = enabledLoggers,
       cbtHasChanged: Boolean = cbtHasChanged,
@@ -79,19 +82,20 @@ object `package`{
     ): Context = ContextImplementation(
       projectDirectory,
       cwd,
+      props.asJava,
       args.to,
       enabledLoggers.to,
       startCompat,
       cbtHasChangedCompat,
-      version.getOrElse(null),
-      scalaVersion.getOrElse(null),
+      version.orNull,
+      scalaVersion.orNull,
       permanentKeys,
       permanentClassLoaders,
       cache,
       cbtHome,
       cbtRootHome,
       compatibilityTarget,
-      parentBuild.getOrElse(null)
+      parentBuild.orNull
     )
   }
 }

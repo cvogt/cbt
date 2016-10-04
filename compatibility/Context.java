@@ -1,11 +1,13 @@
 package cbt;
 import java.io.*;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 // TODO: try to reduce the number of members
 public abstract class Context{
   public abstract File projectDirectory();
   public abstract File cwd();
+  public abstract Map<String, String> propsMap();
   public abstract String[] argsArray();
   public abstract String[] enabledLoggersArray();
   public abstract Long startCompat();

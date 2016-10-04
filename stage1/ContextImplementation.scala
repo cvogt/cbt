@@ -6,6 +6,7 @@ import java.lang._
 case class ContextImplementation(
   projectDirectory: File,
   cwd: File,
+  propsMap: java.util.Map[String, String],
   argsArray: Array[String],
   enabledLoggersArray: Array[String],
   startCompat: Long,

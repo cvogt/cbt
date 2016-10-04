@@ -20,11 +20,15 @@ final case class Stage1ArgsParser(__args: Seq[String]) {
   /**
    * Parsed properties, as a map of keys to values.
   **/
-  val props = propsRaw
-    .map(_.drop(2).split("=")).map({
-      case Array(key, value) =>
-        key -> value
-    }).toMap ++ System.getProperties.asScala
+  val props: Map[String, String] = {
+    val customProperties =
+      propsRaw.map(_.drop(2).split("=") match {
+        case Array(k, v) => k -> v
+        case Array(k) => k -> ""
+      }).toMap
+//    System.getProperties.asScala.toMap ++ // Why would we need system properties? They are already set!
+    customProperties
+  }
 
   val enabledLoggers = props.get("log")
 
@@ -38,6 +42,7 @@ abstract class Stage2Base{
 
 case class Stage2Args(
   cwd: File,
+  props: Map[String, String],
   args: Seq[String],
   cbtHasChanged: Boolean,
   classLoaderCache: ClassLoaderCache,
@@ -165,6 +170,7 @@ object Stage1{
 
     val stage2Args = Stage2Args(
       new File( args.args(0) ),
+      args.props,
       args.args.drop(1).toVector,
       // launcher changes cause entire nailgun restart, so no need for them here
       cbtHasChanged = cbtHasChanged,
