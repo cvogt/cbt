@@ -28,7 +28,7 @@ trait Dotty extends BaseBuild{
       sourceFiles, compileClasspath, docTarget, dottyOptions
     )
 
-  def repl = dottyLib.repl(context.args, classpath)
+  override def repl = dottyLib.repl(context.args, classpath)
 
   override def dependencies = Resolver(mavenCentral).bind(
     ScalaDependency( "org.scala-lang.modules", "scala-java8-compat", "0.8.0-RC7" )

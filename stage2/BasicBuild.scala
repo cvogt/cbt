@@ -2,12 +2,6 @@ package cbt
 
 import java.io._
 import java.net._
-import java.nio.file.{Path =>_,_}
-import java.nio.file.Files.readAllBytes
-import java.security.MessageDigest
-import java.util.jar._
-
-import scala.util._
 
 class BasicBuild(val context: Context) extends BaseBuild
 trait BaseBuild extends BuildInterface with DependencyImplementation with TriggerLoop with SbtDependencyDsl{
@@ -146,7 +140,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     ExitCode.Success
   }
 
-  def clean = {
+  def clean: ExitCode = {
     lib.clean(
       target,
       context.args.contains("force"),
@@ -156,7 +150,29 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     )
   }
 
-  def test: Option[ExitCode] = 
+  def repl: ExitCode = {
+    lib.consoleOrFail("Use `cbt direct repl` instead")
+
+    val colorized = "scala.color"
+    if(Option(System.getProperty(colorized)).isEmpty) {
+      // set colorized REPL, if user didn't pass own value
+      System.setProperty(colorized, "true")
+    }
+
+    val scalac = new ScalaCompilerDependency(context.cbtHasChanged, context.paths.mavenCache, scalaVersion)
+    lib.runMain(
+      "scala.tools.nsc.MainGenericRunner",
+      Seq(
+        "-bootclasspath",
+        scalac.classpath.string,
+        "-classpath",
+        classpath.string
+      ) ++ context.args,
+      scalac.classLoader(classLoaderCache)
+    )
+  }
+
+  def test: Option[ExitCode] =
     Some(new lib.ReflectBuild(
       DirectoryDependency(projectDirectory++"/test").build
     ).callNullary(Some("run")))
