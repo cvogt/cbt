@@ -7,7 +7,7 @@ import scala.xml._
 import scala.concurrent._
 import scala.concurrent.duration._
 
-abstract class DependencyImplementation extends Dependency{
+trait DependencyImplementation extends Dependency{
   implicit protected def logger: Logger
   protected def lib = new Stage1Lib(logger)
 
@@ -196,7 +196,7 @@ object MavenDependency{
 // FIXME: take MavenResolver instead of mavenCache and repositories separately
 case class BoundMavenDependency(
   cbtHasChanged: Boolean, mavenCache: File, mavenDependency: MavenDependency, repositories: Seq[URL]
-)(implicit val logger: Logger) extends DependencyImplementation with ArtifactInfo{
+)(implicit val logger: Logger) extends ArtifactInfo with DependencyImplementation{
   val MavenDependency( groupId, artifactId, version, classifier ) = mavenDependency
   assert(
     Option(groupId).collect{
