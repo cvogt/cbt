@@ -19,9 +19,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   lib =>
 
   val buildClassName = "Build"
-  val buildBuildClassName = "BuildBuild"
+  val metaBuildClassName = "MetaBuild"
 
-  def copy(cls: Class[_], context: Context) = 
+  def copy(cls: Class[_], context: Context) =
     cls
     .getConstructor(classOf[Context])
     .newInstance(context)
@@ -33,7 +33,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
   /**
   Loads whatever Build needs to be executed first in order to eventually build the build for the given context.
-  This can either the Build itself, of if exists a BuildBuild or a BuildBuild for a BuildBuild and so on.
+  This can either the Build itself, or if exists a MetaBuild or a MetaBuild for a MetaBuild and so on.
   */
   def loadRoot(context: Context, default: Context => BuildInterface = new BasicBuild(_)): BuildInterface = {
     context.logger.composition( context.logger.showInvocation("Build.loadRoot",context.projectDirectory) )
@@ -44,11 +44,11 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     val start = findStartDir(context.projectDirectory)
 
-    val useBasicBuildBuild = context.projectDirectory == start
+    val useBasicMetaBuild = context.projectDirectory == start
 
-    val rootBuildClassName = if( useBasicBuildBuild ) buildBuildClassName else buildClassName
+    val rootBuildClassName = if( useBasicMetaBuild ) metaBuildClassName else buildClassName
     try{
-      if(useBasicBuildBuild) default( context ) else new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuild
+      if(useBasicMetaBuild) default( context ) else new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with MetaBuild
     } catch {
       case e:ClassNotFoundException if e.getMessage == rootBuildClassName =>
         throw new Exception(s"no class $rootBuildClassName found in " ++ start.string)

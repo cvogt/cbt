@@ -148,11 +148,11 @@ CBT can help you with that. Execute:
 $ cbt tools createBuild
 ```
 
-Now there should be a file `build/build.scala` with a sample `Build class.
+Now there should be a file `build/build.scala` with a sample `Build` class.
 
 Btw., a build file can have it's own build and so on recursively like in SBT.
 When you create a file `build/build/build.scala` and change `Build` class in there
-to extend `BuildBuild`, it will be used to build your `build/build.scala`. You can
+to extend `MetaBuild`, it will be used to build your `build/build.scala`. You can
 add built-time dependencies like plugins this way.
 
 ### Adding dependencies
