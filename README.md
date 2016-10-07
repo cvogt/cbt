@@ -1,9 +1,11 @@
+[![Join us on gitter](http://badges.gitter.im/cvogt/cbt.png)](https://gitter.im/cvogt/cbt)
+
 (For a tutorial scroll down.)
 
 Chris' Build Tool (CBT) for Scala
 ============================================
 
-Easy to learn and master, lightning fast and backed by a thriving community of enthusiasts and contributors. [Join us on gitter](https://gitter.im/cvogt/cbt). For talks, development roadmap, projects using cbt, etc see the wiki.
+Easy to learn and master, lightning fast and backed by a thriving community of enthusiasts and contributors. For talks, development roadmap, projects using cbt, etc see the wiki.
 
 What is CBT?
 ----------------------------------------------
