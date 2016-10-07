@@ -43,7 +43,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def array2hex(padTo: Int, array: Array[Byte]): String = {
     val hex = new java.math.BigInteger(1, array).toString(16)
-    ("0" * (padTo-hex.size)) ++ hex
+    ("0" * (padTo-hex.length)) ++ hex
   }
   def md5( bytes: Array[Byte] ): String = array2hex(32, MessageDigest.getInstance("MD5").digest(bytes)).toLowerCase
   def sha1( bytes: Array[Byte] ): String = array2hex(40, MessageDigest.getInstance("SHA-1").digest(bytes)).toLowerCase
@@ -59,7 +59,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       logger.resolver(green("found ") ++ url.string)
       true
     } else {
-      val incomplete = ( target ++ ".incomplete" ).toPath;
+      val incomplete = ( target ++ ".incomplete" ).toPath
       val connection = Stage0Lib.openConnectionConsideringProxy(url)
       if(connection.getResponseCode != HttpURLConnection.HTTP_OK){
         logger.resolver(blue("not found: ") ++ url.string)
@@ -96,7 +96,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   // ========== compilation / execution ==========
 
   def runMain( cls: String, args: Seq[String], classLoader: ClassLoader, fakeInstance: Boolean = false ): ExitCode = {
-    import java.lang.reflect.Modifier
     logger.lib(s"Running $cls.main($args) with classLoader: " ++ classLoader.toString)
     trapExitCode{
       val c = classLoader.loadClass(cls)
@@ -114,12 +113,12 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   /** shows an interactive dialogue in the shell asking the user to pick one of many choices */
   def pickOne[T]( msg: String, choices: Seq[T] )( show: T => String ): Option[T] = {
-    if(choices.size == 0) None else if(choices.size == 1) Some(choices.head) else {
+    if(choices.isEmpty) None else if(choices.size == 1) Some(choices.head) else {
       Option(System.console).map{
         console =>
         val indexedChoices: Map[Int, T] = choices.zipWithIndex.toMap.mapValues(_+1).map(_.swap)
         System.err.println(
-          indexedChoices.map{ case (index,choice) => s"[${index}] "++show(choice)}.mkString("\n")
+          indexedChoices.map{ case (index,choice) => s"[$index] "++show(choice)}.mkString("\n")
         )
         val range = s"1 - ${indexedChoices.size}"
         System.err.println()
@@ -186,7 +185,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def needsUpdate( sourceFiles: Seq[File], statusFile: File ) = {
     val lastCompile = statusFile.lastModified
-    sourceFiles.filter(_.lastModified > lastCompile).nonEmpty
+    sourceFiles.exists(_.lastModified > lastCompile)
   }
 
   def compile(
