@@ -1,5 +1,5 @@
 import cbt._
 
-class Build(val context: Context) extends BuildBuild {
+class Build(val context: Context) extends MetaBuild {
   override def dependencies = super.dependencies :+ plugins.scalariform
 }

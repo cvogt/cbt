@@ -1,7 +1,7 @@
 package cbt
 import java.nio.file._
 
-trait BuildBuild extends BaseBuild{
+trait MetaBuild extends BaseBuild{
   private final val managedContext = context.copy(
     projectDirectory = managedBuildDirectory,
     parentBuild=Some(this)
@@ -55,7 +55,7 @@ trait BuildBuild extends BaseBuild{
                 .getConstructors.head
                 .newInstance(managedContext)
               } catch {
-                case e: ClassNotFoundException if e.getMessage == lib.buildClassName => 
+                case e: ClassNotFoundException if e.getMessage == lib.buildClassName =>
                   throw new Exception("You need to define a class Build in build.scala in: "+context.projectDirectory)
               }
           }
@@ -64,12 +64,12 @@ trait BuildBuild extends BaseBuild{
           "No file build.scala (lower case) found in " ++ projectDirectory.getPath
         )
       } else if( projectDirectory.getParentFile.getName == "build" ){
-        new BasicBuild( managedContext ) with BuildBuild
+        new BasicBuild( managedContext ) with MetaBuild
       } else {
         new BasicBuild( managedContext )
       }
     )
-    try{
+    try {
       build.asInstanceOf[BuildInterface]
     } catch {
       case e: ClassCastException if e.getMessage.contains("Build cannot be cast to cbt.BuildInterface") =>
