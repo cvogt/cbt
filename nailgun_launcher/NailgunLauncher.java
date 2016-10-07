@@ -23,13 +23,6 @@ public class NailgunLauncher{
   public final static SecurityManager initialSecurityManager
     = System.getSecurityManager();
 
-  public final static ThreadLocal<Boolean> trapExitCode = 
-    new ThreadLocal<Boolean>() {
-      @Override protected Boolean initialValue() {
-        return false;
-      }
-    };
-
   public static String TARGET = System.getenv("TARGET");
   private static String NAILGUN = "nailgun_launcher/";
   private static String STAGE1 = "stage1/";

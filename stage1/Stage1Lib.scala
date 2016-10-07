@@ -23,7 +23,7 @@ object CatchTrappedExitCode{
   def unapply(e: Throwable): Option[ExitCode] = {
     Option(e) flatMap {
       case i: InvocationTargetException => unapply(i.getTargetException)
-      case e: TrappedExitCode => Some( ExitCode(e.exitCode) )
+      case e if TrapSecurityManager.isTrappedExit(e) => Some( ExitCode(TrapSecurityManager.exitCode(e)) )
       case _ => None
     }
   }
@@ -312,16 +312,16 @@ ${files.sorted.mkString(" \\\n")}
   }
 
   def trapExitCode( code: => ExitCode ): ExitCode = {
-    val trapExitCodeBefore = NailgunLauncher.trapExitCode.get
+    val trapExitCodeBefore = TrapSecurityManager.trapExitCode().get
     try{
-      NailgunLauncher.trapExitCode.set(true)
+      TrapSecurityManager.trapExitCode().set(true)
       code
     } catch {
       case CatchTrappedExitCode(exitCode) =>
         logger.stage1(s"caught exit code $exitCode")
         exitCode
     } finally {
-      NailgunLauncher.trapExitCode.set(trapExitCodeBefore)
+      TrapSecurityManager.trapExitCode().set(trapExitCodeBefore)
     }
   }
 

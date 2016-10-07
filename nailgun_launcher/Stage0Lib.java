@@ -20,21 +20,21 @@ public class Stage0Lib{
   }
 
   public static int runMain(String cls, String[] args, ClassLoader cl) throws Throwable{
-    Boolean trapExitCodeBefore = NailgunLauncher.trapExitCode.get();
+    Boolean trapExitCodeBefore = TrapSecurityManager.trapExitCode().get();
     try{
-      NailgunLauncher.trapExitCode.set(true);
+      TrapSecurityManager.trapExitCode().set(true);
       cl.loadClass(cls)
         .getMethod("main", String[].class)
         .invoke( null, (Object) args);
       return 0;
     }catch( InvocationTargetException exception ){
       Throwable cause = exception.getCause();
-      if(cause instanceof TrappedExitCode){
-        return ((TrappedExitCode) cause).exitCode;
+      if(TrapSecurityManager.isTrappedExit(cause)){
+        return TrapSecurityManager.exitCode(cause);
       }
       throw exception;
     } finally {
-      NailgunLauncher.trapExitCode.set(trapExitCodeBefore);
+      TrapSecurityManager.trapExitCode().set(trapExitCodeBefore);
     }
   }
 
