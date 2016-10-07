@@ -69,10 +69,14 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         logger.resolver(blue("to ") ++ target.string)
         target.getParentFile.mkdirs
         val stream = connection.getInputStream
-        try{
-          Files.copy(stream, incomplete, StandardCopyOption.REPLACE_EXISTING)
-        } finally {
-          stream.close()
+        try {
+          try
+            Files.copy(stream, incomplete, StandardCopyOption.REPLACE_EXISTING)
+          finally
+            stream.close()
+        } catch {
+          case e: IOException =>
+            System.err.println(red("downloading failed ") ++ e.getMessage)
         }
         sha1.foreach{
           hash =>
