@@ -256,9 +256,9 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         val singleArgs = scalacOptions.map( "-S" ++ _ )
 
         val code = 
-          try{
+          redirectOutToErr{
             System.err.println("Compiling to " ++ compileTarget.toString)
-            redirectOutToErr{
+            try{
               lib.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ Seq(
@@ -266,27 +266,27 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
                 ) ++ files.map(_.toString),
                 zinc.classLoader(classLoaderCache)
               )
+            } catch {
+              case e: Exception =>
+              System.err.println(red("The Scala compiler crashed. Try running it by hand:"))
+              System.out.println(s"""
+  java -cp \\
+  ${zinc.classpath.strings.mkString(":\\\n")} \\
+  \\
+  ${_class} \\
+  \\
+  ${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
+  \\
+  ${singleArgs.mkString(" \\\n")} \\
+  \\
+  -cp \\
+  ${classpath.strings.mkString(":\\\n")} \\
+  \\
+  ${files.sorted.mkString(" \\\n")}
+  """
+              )
+              ExitCode.Failure
             }
-          } catch {
-            case e: Exception =>
-            System.err.println(red("The Scala compiler crashed. Try running it by hand:"))
-            System.out.println(s"""
-java -cp \\
-${zinc.classpath.strings.mkString(":\\\n")} \\
-\\
-${_class} \\
-\\
-${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
-\\
-${singleArgs.mkString(" \\\n")} \\
-\\
--cp \\
-${classpath.strings.mkString(":\\\n")} \\
-\\
-${files.sorted.mkString(" \\\n")}
-"""
-            )
-            ExitCode.Failure
           }
 
         if(code == ExitCode.Success){
