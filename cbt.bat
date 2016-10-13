@@ -124,9 +124,14 @@ SETLOCAL
 SET NAILGUN_INDICATOR=%NAILGUN%%TARGET%cbt\NailgunLauncher.class
 SET changed=0
 
-FOR %%i IN (%NAILGUN%*.java) DO (
-  FOR /F %%z IN ('DIR /B /O:D %%i%% %NAILGUN_INDICATOR% 2^> nul') DO SET NEWEST=%%z
-  if "%NEWEST:~-4%"=="java" ( SET changed=1 )
+IF EXIST %NAILGUN_INDICATOR% (
+  REM this should recompile nailgun_launcher/ if any .java file is newer than NailgunLauncher.class, FIXME doesn't work
+  FOR %%i IN (%NAILGUN%*.java) DO (
+    FOR /F %%z IN ('DIR /B /O:D %%i%% %NAILGUN_INDICATOR% 2^> nul') DO SET NEWEST=%%z
+    if "%NEWEST:~-4%"=="java" ( SET changed=1 )
+  )
+) ELSE (
+  SET changed=1
 )
 
 IF %changed%==1 (
@@ -135,17 +140,12 @@ IF %changed%==1 (
 
   echo Compiling cbt/nailgun_launcher
   
-  CD %NAILGUN%
-  
-  dir /B /A:-D *.java > %CBT_HOME%temp.txt
-  
-  CD %CWD%
+  dir /B /A:-D %NAILGUN%\*.java > %CBT_HOME%temp.txt
   
   FOR /F "tokens=*" %%j in (%CBT_HOME%temp.txt) do SET "files=!files! %NAILGUN%%%j"
 
-  ECHO javac -Xlint:deprecation -d %NAILGUN%%TARGET% !files!
-  GOTO :EOF
-  
+  javac -Xlint:deprecation -d %NAILGUN%%TARGET% !files!
+
   IF ERRORLEVEL 1 (
     REM triggers recompilation next time.
     DEL %NAILGUN%TARGET/cbt/*.class 2> NUL REM triggers recompilation next time.
@@ -160,8 +160,8 @@ IF %changed%==1 (
   )
 )
 
-
-IF %use_nailgun%==0 java -cp %NAILGUN%%TARGET% cbt.NailgunLauncher %CWD% %*
+REM TODO 0.0 should be replaced by actual spent time, see ./cbt
+IF %use_nailgun%==0 java -cp %NAILGUN%%TARGET% cbt.NailgunLauncher 0.0 %CWD% %*
 IF %use_nailgun%==0 GOTO :ENDIF
 
 SET /A counter=0
