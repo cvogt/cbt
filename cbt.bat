@@ -161,7 +161,7 @@ IF %changed%==1 (
 )
 
 REM TODO 0.0 should be replaced by actual spent time, see ./cbt
-IF %use_nailgun%==0 java -cp %NAILGUN%%TARGET% cbt.NailgunLauncher 0.0 %CWD% %*
+IF %use_nailgun%==0 java %JAVA_OPTS% -Xmx6072m -Xss10M -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp %NAILGUN%%TARGET% cbt.NailgunLauncher 0.0 %CWD% %*
 IF %use_nailgun%==0 GOTO :ENDIF
 
 SET /A counter=0
