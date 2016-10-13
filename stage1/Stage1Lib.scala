@@ -302,13 +302,36 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
   def redirectOutToErr[T](code: => T): T = {
-    val oldOut = System.out
-    try{
-      System.setOut(System.err)
-      code
-    } finally{
-      System.setOut(oldOut)
+    val ( out, err ) = try{
+      // trying nailgun's System.our/err wrapper
+      val field = System.out.getClass.getDeclaredField("streams")
+      assert(System.out.getClass.getName == "com.martiansoftware.nailgun.ThreadLocalPrintStream")
+      assert(System.err.getClass.getName == "com.martiansoftware.nailgun.ThreadLocalPrintStream")
+      field.setAccessible(true)
+      val out = field.get(System.out).asInstanceOf[ThreadLocal[PrintStream]]
+      val err = field.get(System.err).asInstanceOf[ThreadLocal[PrintStream]]
+      ( out, err )
+    } catch {
+      case e: NoSuchFieldException =>
+        // trying cbt's System.our/err wrapper
+        val field = classOf[FilterOutputStream].getDeclaredField("out")
+        field.setAccessible(true)
+        val outStream = field.get(System.out)
+        val errStream = field.get(System.err)
+        assert(outStream.getClass.getName == "cbt.ThreadLocalOutputStream")
+        assert(errStream.getClass.getName == "cbt.ThreadLocalOutputStream")
+        val field2 = outStream.getClass.getDeclaredField("threadLocal")
+        field2.setAccessible(true)
+        val out = field2.get(outStream).asInstanceOf[ThreadLocal[PrintStream]]
+        val err = field2.get(errStream).asInstanceOf[ThreadLocal[PrintStream]]
+        ( out, err )
     }
+
+    val oldOut: PrintStream = out.get
+    out.set( err.get: PrintStream )
+    val res = code
+    out.set( oldOut )
+    res
   }
 
   def trapExitCode( code: => ExitCode ): ExitCode = {
