@@ -71,6 +71,7 @@ object Main{
       val res = runCbt(path, Seq(name))
       val debugToken = name ++ " " ++ path ++ " "
       assertSuccess(res,debugToken)
+      res
       // assert(res.err == "", res.err) // FIXME: enable this
     }
 
@@ -209,6 +210,13 @@ object Main{
     task("fastOptJS","../examples/scalajs-react-example/js")
     task("fullOptJS","../examples/scalajs-react-example/js")
     compile("../examples/uber-jar-example")
+    
+    {
+      val res = task("docJar","library-test")
+      assert( res.out endsWith "library-test_2.11-0.1-javadoc.jar" )
+      assert( res.err startsWith "model contains" )
+      assert( res.err endsWith "documentable templates" )
+    }
     
     {
       val res = runCbt("simple", Seq("printArgs","1","2","3"))
