@@ -71,6 +71,7 @@ object Main{
       val res = runCbt(path, Seq(name))
       val debugToken = name ++ " " ++ path ++ " "
       assertSuccess(res,debugToken)
+      res
       // assert(res.err == "", res.err) // FIXME: enable this
     }
 
@@ -211,9 +212,22 @@ object Main{
     compile("../examples/uber-jar-example")
     
     {
+      val res = task("docJar","simple-fixed-cbt")
+      assert( res.out endsWith "simple-fixed-cbt_2.11-0.1-javadoc.jar", res.out )
+      assert( res.err contains "model contains", res.err )
+      assert( res.err endsWith "documentable templates", res.err )
+    }
+    
+    {
       val res = runCbt("simple", Seq("printArgs","1","2","3"))
       assert(res.exit0)
       assert(res.out == "1 2 3", res.out)
+    }
+
+    {
+      val res = runCbt("../examples/build-info-example", Seq("run"))
+      assert(res.exit0)
+      assert(res.out contains "version: 0.1", res.out)
     }
 
     {

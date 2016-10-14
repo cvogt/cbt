@@ -23,7 +23,7 @@ object CatchTrappedExitCode{
   def unapply(e: Throwable): Option[ExitCode] = {
     Option(e) flatMap {
       case i: InvocationTargetException => unapply(i.getTargetException)
-      case e: TrappedExitCode => Some( ExitCode(e.exitCode) )
+      case e if TrapSecurityManager.isTrappedExit(e) => Some( ExitCode(TrapSecurityManager.exitCode(e)) )
       case _ => None
     }
   }
@@ -256,9 +256,9 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         val singleArgs = scalacOptions.map( "-S" ++ _ )
 
         val code = 
-          try{
+          redirectOutToErr{
             System.err.println("Compiling to " ++ compileTarget.toString)
-            redirectOutToErr{
+            try{
               lib.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ Seq(
@@ -266,27 +266,27 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
                 ) ++ files.map(_.toString),
                 zinc.classLoader(classLoaderCache)
               )
+            } catch {
+              case e: Exception =>
+              System.err.println(red("The Scala compiler crashed. Try running it by hand:"))
+              System.out.println(s"""
+  java -cp \\
+  ${zinc.classpath.strings.mkString(":\\\n")} \\
+  \\
+  ${_class} \\
+  \\
+  ${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
+  \\
+  ${singleArgs.mkString(" \\\n")} \\
+  \\
+  -cp \\
+  ${classpath.strings.mkString(":\\\n")} \\
+  \\
+  ${files.sorted.mkString(" \\\n")}
+  """
+              )
+              ExitCode.Failure
             }
-          } catch {
-            case e: Exception =>
-            System.err.println(red("The Scala compiler crashed. Try running it by hand:"))
-            System.out.println(s"""
-java -cp \\
-${zinc.classpath.strings.mkString(":\\\n")} \\
-\\
-${_class} \\
-\\
-${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
-\\
-${singleArgs.mkString(" \\\n")} \\
-\\
--cp \\
-${classpath.strings.mkString(":\\\n")} \\
-\\
-${files.sorted.mkString(" \\\n")}
-"""
-            )
-            ExitCode.Failure
           }
 
         if(code == ExitCode.Success){
@@ -302,26 +302,49 @@ ${files.sorted.mkString(" \\\n")}
     }
   }
   def redirectOutToErr[T](code: => T): T = {
-    val oldOut = System.out
-    try{
-      System.setOut(System.err)
-      code
-    } finally{
-      System.setOut(oldOut)
+    val ( out, err ) = try{
+      // trying nailgun's System.our/err wrapper
+      val field = System.out.getClass.getDeclaredField("streams")
+      assert(System.out.getClass.getName == "com.martiansoftware.nailgun.ThreadLocalPrintStream")
+      assert(System.err.getClass.getName == "com.martiansoftware.nailgun.ThreadLocalPrintStream")
+      field.setAccessible(true)
+      val out = field.get(System.out).asInstanceOf[ThreadLocal[PrintStream]]
+      val err = field.get(System.err).asInstanceOf[ThreadLocal[PrintStream]]
+      ( out, err )
+    } catch {
+      case e: NoSuchFieldException =>
+        // trying cbt's System.our/err wrapper
+        val field = classOf[FilterOutputStream].getDeclaredField("out")
+        field.setAccessible(true)
+        val outStream = field.get(System.out)
+        val errStream = field.get(System.err)
+        assert(outStream.getClass.getName == "cbt.ThreadLocalOutputStream")
+        assert(errStream.getClass.getName == "cbt.ThreadLocalOutputStream")
+        val field2 = outStream.getClass.getDeclaredField("threadLocal")
+        field2.setAccessible(true)
+        val out = field2.get(outStream).asInstanceOf[ThreadLocal[PrintStream]]
+        val err = field2.get(errStream).asInstanceOf[ThreadLocal[PrintStream]]
+        ( out, err )
     }
+
+    val oldOut: PrintStream = out.get
+    out.set( err.get: PrintStream )
+    val res = code
+    out.set( oldOut )
+    res
   }
 
   def trapExitCode( code: => ExitCode ): ExitCode = {
-    val trapExitCodeBefore = NailgunLauncher.trapExitCode.get
+    val trapExitCodeBefore = TrapSecurityManager.trapExitCode().get
     try{
-      NailgunLauncher.trapExitCode.set(true)
+      TrapSecurityManager.trapExitCode().set(true)
       code
     } catch {
       case CatchTrappedExitCode(exitCode) =>
         logger.stage1(s"caught exit code $exitCode")
         exitCode
     } finally {
-      NailgunLauncher.trapExitCode.set(trapExitCodeBefore)
+      TrapSecurityManager.trapExitCode().set(trapExitCodeBefore)
     }
   }
 

@@ -1,7 +1,11 @@
 import cbt._
 
-// cbt:https://github.com/cvogt/cbt.git#1f4f6097d3ca682d6fd20a7cc6dd277832350827
-class Build(val context: Context) extends BaseBuild{
+// cbt:https://github.com/cvogt/cbt.git#bf4ea112fe668fb7e2e95a2baca4989b16384783
+class Build(val context: Context) extends BaseBuild with PackageJars{
+  def groupId = "cbt.test"
+  def defaultVersion = "0.1"
+  def name = "library-test"
+
   override def dependencies =
     super.dependencies ++ // don't forget super.dependencies here for scala-library, etc.
     Seq(

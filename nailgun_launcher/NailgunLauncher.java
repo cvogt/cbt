@@ -23,13 +23,6 @@ public class NailgunLauncher{
   public final static SecurityManager initialSecurityManager
     = System.getSecurityManager();
 
-  public final static ThreadLocal<Boolean> trapExitCode = 
-    new ThreadLocal<Boolean>() {
-      @Override protected Boolean initialValue() {
-        return false;
-      }
-    };
-
   public static String TARGET = System.getenv("TARGET");
   private static String NAILGUN = "nailgun_launcher/";
   private static String STAGE1 = "stage1/";
@@ -66,7 +59,24 @@ public class NailgunLauncher{
     installProxySettings();
     String[] diff = args[0].split("\\.");
     long start = _start - (Long.parseLong(diff[0]) * 1000L) - Long.parseLong(diff[1]);
-    
+
+    // if nailgun didn't install it's threadLocal stdout/err replacements, install CBT's.
+    // this hack allows to later swap out System.out/err while still affecting things like
+    // scala.Console, which captured them at startup
+    try{
+      System.out.getClass().getDeclaredField("streams"); // nailgun ThreadLocalPrintStream
+      assert(System.out.getClass().getName() == "com.martiansoftware.nailgun.ThreadLocalPrintStream");
+    } catch( NoSuchFieldException e ){
+      System.setOut( new PrintStream(new ThreadLocalOutputStream(System.out)) );
+    }
+    try{
+      System.err.getClass().getDeclaredField("streams"); // nailgun ThreadLocalPrintStream
+      assert(System.out.getClass().getName() == "com.martiansoftware.nailgun.ThreadLocalPrintStream");
+    } catch( NoSuchFieldException e ){
+      System.setErr( new PrintStream(new ThreadLocalOutputStream(System.err)) );
+    }
+    // ---------------------
+
     _assert(System.getenv("CBT_HOME") != null, "environment variable CBT_HOME not defined");
     String CBT_HOME = System.getenv("CBT_HOME");
     String cache = CBT_HOME + "/cache/";
