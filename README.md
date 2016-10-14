@@ -148,16 +148,16 @@ CBT can help you with that. Execute:
 $ cbt tools createBuild
 ```
 
-Now there should be a file `build/Build.scala` with a sample `Build` class.
+Now there should be a file `cbt-build/Build.scala` with a sample `Build` class.
 
 Btw., a build file can have it's own build and so on recursively like in SBT.
-When you create a file `build/build/Build.scala` and change `Build` class in there
-to extend `BuildBuild`, it will be used to build your `build/Build.scala`. You can
+When you create a file `cbt-build/cbt-build/Build.scala` and change `Build` class in there
+to extend `BuildBuild`, it will be used to build your `cbt-build/Build.scala`. You can
 add built-time dependencies like plugins this way.
 
 ### Adding dependencies
 
-In the generated `build/Build.scala` there are
+In the generated `cbt-build/Build.scala` there are
 several examples for dependencies. We recommend using the constructor syntax
 `ScalaDependency` (for automatically adding the scala version to the artifact id)
 or `MavenDependency` (for leaving the artifact id as is). The SBT-Style `%`-DSL

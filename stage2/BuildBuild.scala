@@ -63,7 +63,7 @@ trait BuildBuild extends BaseBuild{
         throw new Exception(
           "No file Build.scala (upper case) found in " ++ projectDirectory.getPath
         )
-      } else if( projectDirectory.getParentFile.getName == "build" ){
+      } else if( projectDirectory.getParentFile.getName == "cbt-build" ){
         new BasicBuild( managedContext ) with BuildBuild
       } else {
         new BasicBuild( managedContext )
