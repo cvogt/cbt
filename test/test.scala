@@ -239,13 +239,13 @@ object Main{
     {
       val res = runCbt("no-build-file", Seq("run"))
       assert(!res.exit0)
-      assert(res.err contains "No file build.scala (lower case) found in", res.err)
+      assert(res.err contains "No file Build.scala (upper case) found in", res.err)
     }
 
     {
       val res = runCbt("empty-build-file", Seq("run"))
       assert(!res.exit0)
-      assert(res.err contains "You need to define a class Build in build.scala in", res.err)
+      assert(res.err contains "You need to define a class Build in Build.scala in", res.err)
     }
 
     {

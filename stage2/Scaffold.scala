@@ -1,7 +1,6 @@
 package cbt
 import java.io._
 import java.nio.file._
-import java.net._
 trait Scaffold{
   def logger: Logger
 
@@ -27,7 +26,7 @@ trait Scaffold{
   def createBuild(
     projectDirectory: File
   ): Unit = {
-    createFile(projectDirectory, "build/build.scala", s"""import cbt._
+    createFile(projectDirectory, "build/Build.scala", s"""import cbt._
 class Build(val context: Context) extends BaseBuild{
   override def dependencies =
     super.dependencies ++ // don't forget super.dependencies here for scala-library, etc.
