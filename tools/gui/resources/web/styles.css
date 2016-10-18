@@ -1,0 +1,196 @@
+* {
+  outline: none;
+}
+
+body {
+  font-family: 'proxima nova', sans-serif;
+  font-size: 2em;
+  background: #002B36;
+  color: #fff;
+}
+
+::-moz-selection {
+  background-color: #fff;
+  color: #073642;
+}
+
+::selection {
+  background-color: #fff;
+  color: #073642;
+}
+
+h1 {
+  font-weight: normal;
+  margin: 8%;
+}
+
+hr {
+  border: none;
+  margin: 0.8em 0;
+  border-bottom: transparent solid 1px;
+}
+
+button, .small-btn {
+  background: #dc322f;
+  color: #fff;
+  font-size: 1em;
+  padding: 0.2em;
+  border: transparent solid 0.1em;
+  border-radius: 1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.small-btn {
+  font-size: 0.8em;
+  padding: 0 1em;
+}
+
+button:hover {
+  background: #073642;
+  border: #fff solid 0.1em;
+}
+
+button:active {
+  background: #dc322f;
+}
+
+button:disabled {
+  background: transparent;
+  cursor: default;
+}
+
+input[type="text"] {
+  background: #073642;
+  color: #fff;
+  border: none;
+  width: 33%;
+  font-size: 1em;
+}
+
+input[type="checkbox"] {
+  display: none;
+}
+
+input[type="checkbox"] + label {
+  position: relative;
+  padding-left: 1.6em;
+  cursor: pointer;
+  display: inline-block;
+}
+
+input[type="checkbox"] + label:before, input[type="checkbox"] + label:after {
+  content: '';
+  margin-top: 0.25em;
+  border-radius: 1em;
+  position: absolute;
+  left: 0;
+  height: 0.8em;
+  transition: all .2s;
+}
+
+input[type="checkbox"] + label:before {
+  width: 1.4em;
+  background: #073642;
+}
+
+input[type="checkbox"] + label:after {
+  width: 0.8em;
+  background: #fff;
+  border: #073642 solid 0.15em;
+  box-sizing: border-box;
+}
+
+input[type="checkbox"] + label:hover:before, input[type="checkbox"]:checked + label:before {
+  background-color: #dc322f;
+}
+
+input[type="checkbox"] + label:hover:after {
+  border-color: #dc322f;
+}
+
+input[type="checkbox"]:checked + label:after {
+  left: 0.6em;
+  border-color: #dc322f;
+}
+
+.container {
+  margin: 0 8%;
+  text-align: center;
+}
+
+button, .entry {
+  margin-bottom: 0.5em;
+}
+
+.entry span:first-child {
+  color: #27b3d9;
+}
+
+.removable:hover {
+  text-decoration: line-through;
+  cursor: pointer;
+}
+
+#popup {
+  position: fixed;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  background: #073642;
+  width: 84%;
+  max-height: 80%;
+  overflow-y: scroll;
+  text-align: center;
+  display: none;
+  z-index: 2;
+}
+
+#popup div:first-child {
+  position: fixed;
+  padding: 0 0.2em;
+  text-align: right;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+#popup div:first-child:hover {
+  color: #dc322f;
+}
+
+#popup table {
+  margin: 2%;
+  width: 96%;
+  border-collapse: collapse;
+}
+
+#popup td {
+  border-right: #fff solid 1px;
+}
+
+#popup td:last-child {
+  border-right: none;
+}
+
+#popup tr {
+  cursor: pointer;
+}
+
+#popup tr:hover {
+  color: #dc322f;
+}
+
+#popup tr:nth-child(even) {
+  background: #002B36;
+}
+
+#popup tr:first-child {
+  background: #fff;
+  color: #002B36;
+  cursor: default;
+}
+
+#popup tr:first-child:hover {
+  color: #002B36;
+}

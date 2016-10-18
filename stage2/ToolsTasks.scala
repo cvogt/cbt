@@ -17,6 +17,13 @@ class ToolsTasks(
   implicit val logger: Logger = lib.logger
   def createMain: Unit = lib.createMain( cwd )
   def createBuild: Unit = lib.createBuild( cwd )
+  def gui = NailgunLauncher.main(Array(
+    "0.0",
+    (cbtHome / "tools" / "gui").getAbsolutePath,
+    "run",
+    cwd.getAbsolutePath,
+    constants.scalaMajorVersion
+  ))
   def resolve = {
     ClassPath.flatten(
       args(1).split(",").toVector.map{
