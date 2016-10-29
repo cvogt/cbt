@@ -106,7 +106,10 @@ Add one to your `$PATH`, e.g. symlink it from `~/bin/cbt`.
 Check that it works by calling `cbt`. You should see CBT compiling itself
 and showing a list of built-in tasks.
 
-Great, you're all set up. Now, let's use cbt for an example project.
+Great, you're all set up. Now, let's use cbt for a new example project.
+Follow the below steps. (There is also an experimental GUI described
+later to create a project, but going through the steps this time will help
+you understand what exactly is going on.)
 
 ### Creating your first project
 
@@ -397,6 +400,24 @@ Then enable it in your `.zshrc`:
 ```
 plugins=( ... cbt)
 ```
+Experimental GUI
+--------------------
+
+### Creating a project via the GUI
+
+`cd` into the directory inside of which you want to create a new project directory and run `cbt tools gui`.
+
+E.g.
+
+```
+$ cd ~/my-projects
+$ cbt tools gui
+```
+
+This should start UI server at http://localhost:9080. There you can create Main class, CBT build,
+add libraries, plugins, readme and other things. Let's say you choose `my-project` as the project name.
+The GUI will create `~/my-projects/my-project` for you.
+
 
 Plugin-author guide
 --------------------

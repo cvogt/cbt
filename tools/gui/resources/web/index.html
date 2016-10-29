@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="author" content="tim-zh">
+  <title>CBT</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="popup">
+  <div onclick="hidePopup()">×</div>
+  <table id="popup-table"></table>
+</div>
+<div class="container">
+
+  <h1>CBT bootstrap</h1>
+
+  <div id="cwd" class="entry"><span>current dir:</span> </div>
+  <div class="entry"><input type="text" id="name" placeholder="project name"></div>
+  <div class="entry"><input type="text" id="package" placeholder="default package"></div>
+  <hr>
+
+  <div class="entry"><input type="text" id="query" placeholder="add maven dependency" onkeyup="handleSearchInput(event)"></div>
+  <button class="small-btn" onclick="search()">search</button>
+  <div id="dependencies"></div>
+  <hr>
+
+  <input type="checkbox" id="readme-flag"><label for="readme-flag">readme.md</label>
+  <input type="checkbox" id="dotty-flag"><label for="dotty-flag">dotty</label>
+  <input type="checkbox" id="uberJar-flag"><label for="uberJar-flag">uber jar</label>
+  <input type="checkbox" id="wartremover-flag"><label for="wartremover-flag">wartremover</label>
+  <hr>
+
+  <button id="create-project" onclick="createProject()">create project</button>
+
+</div>
+<script src="jquery-3.1.1.min.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

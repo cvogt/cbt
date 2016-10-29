@@ -20,6 +20,7 @@ object `package`{
       )
       new File( file.toString ++ s )
     }
+    def /(s: String): File = new File(file.getAbsolutePath + File.separator + s)
     def parent = lib.realpath(file ++ "/..")
     def string = file.toString
   }
