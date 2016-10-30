@@ -187,13 +187,11 @@ object Main{
     usage("simple-fixed")
     compile("simple-fixed")
     
-    compile("../plugins/sbt_layout")
     compile("../plugins/scalafmt")
     compile("../plugins/scalajs")
     compile("../plugins/scalariform")
     compile("../plugins/scalatest")
     compile("../plugins/wartremover")
-    compile("../plugins/uber-jar")
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")

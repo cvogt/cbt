@@ -1,6 +1,6 @@
 import cbt._
 
-class Build(val context: Context) extends BaseBuild with UberJar {
+class Build(val context: Context) extends UberJar {
 
   override def projectName: String = "uber-jar-example"
 

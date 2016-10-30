@@ -9,13 +9,10 @@ trait BuildBuild extends BaseBuild{
 
   object plugins{
     final lazy val scalaTest = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalatest" )
-    final lazy val sbtLayout = DirectoryDependency( managedContext.cbtHome ++ "/plugins/sbt_layout" )
     final lazy val scalaJs   = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalajs" )
     final lazy val scalariform = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalariform" )
     final lazy val scalafmt = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalafmt" )
     final lazy val wartremover = DirectoryDependency( managedContext.cbtHome ++ "/plugins/wartremover" )
-    final lazy val uberJar = DirectoryDependency( managedContext.cbtHome ++ "/plugins/uber-jar" )
-    final lazy val sonatypeRelease = DirectoryDependency( managedContext.cbtHome ++ "/plugins/sonatype-release" )
   }
 
   override def dependencies =

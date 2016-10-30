@@ -21,6 +21,13 @@ object `package`{
       new File( file.toString ++ s )
     }
     def /(s: String): File = new File(file.getAbsolutePath + File.separator + s)
+    def listFilesRec(): Array[File] = {
+      def _listRec(f: File): Array[File] = f.listFiles().flatMap(x => if (x.isDirectory) _listRec(x) else Array(x))
+      if (file.isDirectory)
+        _listRec(file)
+      else
+        Array()
+    }
     def parent = lib.realpath(file ++ "/..")
     def string = file.toString
   }

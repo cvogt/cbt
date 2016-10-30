@@ -88,7 +88,7 @@ object Stage1{
     import paths._
 
     val stage2sourceFiles = (
-      stage2.listFiles ++ (stage2 ++ "/plugins").listFiles
+      stage2.listFiles ++ (stage2 ++ "/plugins").listFilesRec()
     ).toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
     
     val cbtHasChanged = _cbtChanged || lib.needsUpdate(stage2sourceFiles, stage2StatusFile)
