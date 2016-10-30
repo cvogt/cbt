@@ -63,8 +63,6 @@ class ProjectBuilder(
 
   private val buildBuildDependencies = {
     var content = ""
-    if (flags.uberJar)
-      content += " :+ plugins.uberJar"
     if (flags.wartremover)
       content += " :+ plugins.wartremover"
     content
