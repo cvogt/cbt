@@ -40,12 +40,12 @@ rather than some restricted, declarative DSL. CBT shares this philosophy with SB
 (This also means that integration with external tools such as an IDE better happens
 programmatically through an api rather than a static data representation such as xml.)
 
-Like SBT, CBT chooses Scala as it's language of choice, trying to appeal to
+Like SBT, CBT chooses Scala as its language of choice, trying to appeal to
 Scala programmers allowing them to re-use their knowledge and the safety of the language.
 
 Unlike SBT 0.11 and later, CBT maps task execution to JVM method invocations.
-SBT implements it's own self-contained task graph model and interpreter.
-This allows SBT to have it's model exactly fit the requirements.
+SBT implements its own self-contained task graph model and interpreter.
+This allows SBT to have its model exactly fit the requirements.
 CBT instead uses existing JVM concepts for the solution and adds
 custom concepts only when necessary. CBT assumes this to lead to better
 ease of use due to familarity and better integration with existing tools
@@ -138,7 +138,7 @@ $ cbt run
 You should see how CBT first compiles your project, then runs it and prints
 `Hello World`. CBT created the file `Main.scala` top-level in your directory.
 You can alternatively place `.scala` or `.java` files in `src/`
-or any of it's subdirectories.
+or any of its subdirectories.
 
 ### Creating a build file
 
@@ -153,7 +153,7 @@ $ cbt tools createBuild
 
 Now there should be a file `build/build.scala` with a sample `Build` class.
 
-Btw., a build file can have it's own build and so on recursively like in SBT.
+Btw., a build file can have its own build and so on recursively like in SBT.
 When you create a file `build/build/build.scala` and change `Build` class in there
 to extend `BuildBuild`, it will be used to build your `build/build.scala`. You can
 add built-time dependencies like plugins this way.
@@ -311,7 +311,7 @@ to the point that even Scala beginners will be able to understand it. So
 don't be afraid to actually look under the hood and check out what's happening.
 
 And guess what, you already have the source code on your disk, because
-you installed CBT by cloning it's git repository. You can even debug CBT and
+you installed CBT by cloning its git repository. You can even debug CBT and
 your build files in an interactive debugger like IntelliJ after some minor setup.
 
 Finally, you can easily change CBT's code. Then CBT re-builds itself when you try
@@ -327,7 +327,7 @@ When debugging things, it can help to enable CBT's debug logging by passing
 Other design decisions
 --------------------
 
-CBT tries to couple it's code very loosely. OO is used for configuration in build files.
+CBT tries to couple its code very loosely. OO is used for configuration in build files.
 Interesting logic is in simple supporting library classes/objects, which can be used
 independently. You could even build a different configuration api than OO on top of them.
 
@@ -343,7 +343,7 @@ Known limitations
   Should be simple to add, consider a PR
 - test framework support is currently a bit spotty but actively being worked on
 - concurrent task and build execution is currently disabled
-- CBT uses it's own custom built maven resolver, which is really fast,
+- CBT uses its own custom built maven resolver, which is really fast,
   but likely does not work in some edge cases. Those may or may not be easy to fix.
   We should add optional coursier integration back for a more complete solution.
 
