@@ -23,7 +23,7 @@ trait BuildBuild extends BaseBuild{
   def managedBuildDirectory: java.io.File = lib.realpath( projectDirectory.parent )
   private object managedBuildCache extends Cache[BuildInterface]
   def managedBuild = managedBuildCache{
-    val managedBuildFile = projectDirectory++"/build.scala"
+    val managedBuildFile = projectDirectory++"/Build.scala"
     logger.composition("Loading build at "++managedContext.projectDirectory.toString)
     val build = (
       if(managedBuildFile.exists){
@@ -56,14 +56,14 @@ trait BuildBuild extends BaseBuild{
                 .newInstance(managedContext)
               } catch {
                 case e: ClassNotFoundException if e.getMessage == lib.buildClassName => 
-                  throw new Exception("You need to define a class Build in build.scala in: "+context.projectDirectory)
+                  throw new Exception("You need to define a class Build in Build.scala in: "+context.projectDirectory)
               }
           }
       } else if( projectDirectory.listFiles.exists( _.getName.endsWith(".scala") ) ){
         throw new Exception(
-          "No file build.scala (lower case) found in " ++ projectDirectory.getPath
+          "No file Build.scala (upper case) found in " ++ projectDirectory.getPath
         )
-      } else if( projectDirectory.getParentFile.getName == "build" ){
+      } else if( projectDirectory.getParentFile.getName == "cbt-build" ){
         new BasicBuild( managedContext ) with BuildBuild
       } else {
         new BasicBuild( managedContext )

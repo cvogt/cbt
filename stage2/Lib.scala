@@ -38,7 +38,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   def loadRoot(context: Context, default: Context => BuildInterface = new BasicBuild(_)): BuildInterface = {
     context.logger.composition( context.logger.showInvocation("Build.loadRoot",context.projectDirectory) )
     def findStartDir(projectDirectory: File): File = {
-      val buildDir = realpath( projectDirectory ++ "/build" )
+      val buildDir = realpath( projectDirectory ++ "/cbt-build" )
       if(buildDir.exists) findStartDir(buildDir) else projectDirectory
     }
 

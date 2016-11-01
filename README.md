@@ -151,16 +151,16 @@ CBT can help you with that. Execute:
 $ cbt tools createBuild
 ```
 
-Now there should be a file `build/build.scala` with a sample `Build` class.
+Now there should be a file `cbt-build/Build.scala` with a sample `Build` class.
 
 Btw., a build file can have it's own build and so on recursively like in SBT.
-When you create a file `build/build/build.scala` and change `Build` class in there
-to extend `BuildBuild`, it will be used to build your `build/build.scala`. You can
+When you create a file `cbt-build/cbt-build/Build.scala` and change `Build` class in there
+to extend `BuildBuild`, it will be used to build your `cbt-build/Build.scala`. You can
 add built-time dependencies like plugins this way.
 
 ### Adding dependencies
 
-In the generated `build/build.scala` there are
+In the generated `cbt-build/Build.scala` there are
 several examples for dependencies. We recommend using the constructor syntax
 `ScalaDependency` (for automatically adding the scala version to the artifact id)
 or `MavenDependency` (for leaving the artifact id as is). The SBT-Style `%`-DSL
@@ -250,7 +250,7 @@ we would have two classes with the same name on the classpath which can be very 
 Now that we have a Main file in our test project, we can add some assertions to it.
 In order for them to see the main projects code, we still need to do one more thing - 
 add a `DirectoryDependency` to your test project's build file. There is a similar example
-in the generated build.scala. What you need is this:
+in the generated `Build.scala`. What you need is this:
 
 ```
 override def dependencies = super.dependencies ++ Seq(
