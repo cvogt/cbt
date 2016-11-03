@@ -67,13 +67,13 @@ public class NailgunLauncher{
       System.out.getClass().getDeclaredField("streams"); // nailgun ThreadLocalPrintStream
       assert(System.out.getClass().getName() == "com.martiansoftware.nailgun.ThreadLocalPrintStream");
     } catch( NoSuchFieldException e ){
-      System.setOut( new PrintStream(new ThreadLocalOutputStream(System.out)) );
+      System.setOut( new PrintStream(new ThreadLocalOutputStream(System.out), true) );
     }
     try{
       System.err.getClass().getDeclaredField("streams"); // nailgun ThreadLocalPrintStream
-      assert(System.out.getClass().getName() == "com.martiansoftware.nailgun.ThreadLocalPrintStream");
+      assert(System.err.getClass().getName() == "com.martiansoftware.nailgun.ThreadLocalPrintStream");
     } catch( NoSuchFieldException e ){
-      System.setErr( new PrintStream(new ThreadLocalOutputStream(System.err)) );
+      System.setErr( new PrintStream(new ThreadLocalOutputStream(System.err), true) );
     }
     // ---------------------
 
