@@ -72,7 +72,7 @@ public class TrapSecurityManager extends ProxySecurityManager{
   }
 
   public static boolean isTrappedExit( Throwable t ){
-    return t instanceof RuntimeException && t.getMessage().startsWith(prefix);
+    return t instanceof RuntimeException && t.getMessage() != null && t.getMessage().startsWith(prefix);
   }
 
   public static int exitCode( Throwable t ){
