@@ -101,7 +101,11 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   final def compileClasspath : ClassPath =
     dependencyClasspath ++ ClassPath( compileDependencies.flatMap(_.exportedClasspath.files).distinct )
 
-  def exportedClasspath   : ClassPath = ClassPath(compile.toSeq)
+  def resourceClasspath: ClassPath = {
+    val resourcesDirectory = projectDirectory ++ "/resources"
+      ClassPath( if(resourcesDirectory.exists) Seq(resourcesDirectory) else Nil )
+  }
+  def exportedClasspath   : ClassPath = ClassPath(compile.toSeq) ++ resourceClasspath
   def targetClasspath = ClassPath(Seq(compileTarget))
   // ========== compile, run, test ==========
 
