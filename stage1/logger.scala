@@ -8,12 +8,21 @@ package cbt
  * We can replace this with something more sophisticated eventually.
  */
 case class Logger(enabledLoggers: Set[String], start: Long) {
-  def this(enabledLoggers: Option[String], start: Long) = this( enabledLoggers.toVector.flatMap( _.split(",") ).toSet, start )
+  def this(enabledLoggers: Option[String], start: Long) = {
+    this(
+      enabledLoggers.toVector.flatMap( _.split(",") ).toSet,
+      start
+    )
+  }
+
+  val disabledLoggers: Set[String] = enabledLoggers.filter(_.startsWith("-")).map(_.drop(1))
 
   def log(name: String, msg: => String) = {
     if(
+      (
       (enabledLoggers contains name)
         || (enabledLoggers contains "all")
+      ) && !(disabledLoggers contains name)
     ){
       logUnguarded(name, msg)
     }

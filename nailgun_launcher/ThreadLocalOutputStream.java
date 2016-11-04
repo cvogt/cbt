@@ -27,4 +27,8 @@ public class ThreadLocalOutputStream extends OutputStream{
     // so probably this is not a problem performance
     get().write(b);
   }
+
+  public void flush() throws IOException{
+    get().flush();
+  }
 }
