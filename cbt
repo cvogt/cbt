@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+# Launcher bash script that bootstraps CBT from source.
+# (Some of the code for reporting missing dependencies and waiting for nailgun to come up is a bit weird.)
+# This is intentionally kept as small as possible.
+# Welcome improvements to this file:
+# - reduce code size through better ideas
+# - reduce code size by moving more of this into type-checked Java/Scala code (if possible without performance loss).
+# - reduction of dependencies
+# - performance improvements
+shopt -qs extglob
+
+seconds() {
+	date +"%s"
+}
+
+nanos() {
+	n=$(date +"%N")
+	if [ "$n" = "N" ]; then
+		n=$(gdate +"%N" 2>/dev/null)
+	fi
+	if [ "$n" = "" ]; then
+		n="0"
+	fi
+	echo $n
+}
+
+start_seconds=$(seconds)
+start_nanos=1$(nanos)
+
+time_taken() {
+	i=$(( $(seconds) - start_seconds ))
+	n=$(( $(( 1$(nanos) - start_nanos )) / 1000000 ))
+	if [[ ( "$n" < 0 ) ]]; then
+		i=$(( i-1 ))
+		n=$(( n+1000 ))
+	fi
+	echo "$i.$n"
+}
+
+# utility function to log message to stderr with stating the time
+log () {
+	msg=$1
+	enabled=1
+	while test $# -gt 0; do
+		case "$1" in
+			"-Dlog=time") enabled=0 ;;
+			"-Dlog=all") enabled=0 ;;
+		esac
+		shift
+	done
+	if [ $enabled -eq 0 ]; then
+		delta=$(time_taken)
+		echo "[$delta] $msg" 1>&2
+	fi
+}
+
+log "Checking for dependencies" $*
+
+which javac 2>&1 > /dev/null
+javac_installed=$?
+if [ ! $javac_installed -eq 0 ]; then
+	echo "You need to install javac 1.7 or later! CBT needs it to bootstrap from Java sources into Scala." 1>&2
+	exit 1
+fi
+
+# log "cutting javac version" $*
+# javac_version=$(javac -version 2>&1) # e.g. "javac 1.8.0_u60"
+# javac_version_update=${javac_version/javac 1./} # e.g. "8.0_u60"
+# javac_version_minor_pointed=${javac_version_update%_*} # e.g. "8.0"
+# javac_version_minor=${javac_version_minor_pointed%.*} # e.g. "8"
+# log "cutting javac version done" $*
+# if [ ! "$javac_version_minor" -ge "7" ]; then
+# 	echo "You need to install javac version 1.7 or greater!" 2>&1
+# 	echo "Current javac version is $javac_version" 2>&1
+# 	exit 1
+# fi
+
+NG_EXECUTABLE=$(which ng || which ng-nailgun)
+NG_SERVER=$(which ng-server || ls /usr/share/java/nailgun-server-*.jar 2>/dev/null | awk '{print "java -jar " $0}')
+nailgun_installed=0
+if [ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER" == "" ]; then
+	nailgun_installed=1
+	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun' or 'apt install nailgun'.)" 1>&2
+fi
+which realpath 2>&1 > /dev/null
+realpath_installed=$?
+which gcc 2>&1 > /dev/null
+gcc_installed=$?
+if [ ! $realpath_installed -eq 0 ] && [ ! $gcc_installed -eq 0 ]; then
+	echo "You need realpath or gcc installed! CBT needs it to locate itself reliably." 1>&2
+	exit 1
+fi
+
+which gpg 2>&1 > /dev/null
+gpg_installed=$?
+if [ ! $gpg_installed -eq 0 ]; then
+	echo "(Note: gpg not found. In order to use publishSigned you'll need it.)" 1>&2
+fi
+
+NAILGUN_PORT=4444
+NG="$NG_EXECUTABLE --nailgun-port $NAILGUN_PORT"
+
+CWD=$(pwd)
+_DIR=$(dirname $(readlink "$0") 2>/dev/null || dirname "$0" 2>/dev/null )
+
+log "Find out real path. Build realpath if needed." $*
+
+export CBT_HOME=$(dirname $($_DIR/realpath/realpath.sh $0))
+
+export NAILGUN=$CBT_HOME/nailgun_launcher/
+export TARGET=target/scala-2.11/classes/
+mkdir -p $NAILGUN$TARGET
+
+nailgun_out=$NAILGUN/target/nailgun.stdout.log
+nailgun_err=$NAILGUN/target/nailgun.strerr.log
+foo(){
+	while test $# -gt 0; do
+		case "$1" in
+			"-Dlog=nailgun")
+				nailgun_out=/dev/stderr
+				nailgun_err=/dev/stderr
+			;;
+			"-Dlog=all")
+				nailgun_out=/dev/stderr
+				nailgun_err=/dev/stderr
+			;;
+		esac
+		shift
+	done
+}
+
+foo $@
+
+if [ "$1" = "kill" ]; then
+	echo "Stopping background process (nailgun)" 1>&2
+	$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
+	exit 1
+fi
+
+which nc 2>&1 > /dev/null
+nc_installed=$?
+
+log "Check for running nailgun with nc." $*
+
+server_up=1
+if [ $nc_installed -eq 0 ]; then
+	nc -z -n -w 1 127.0.0.1 $NAILGUN_PORT > /dev/null 2>&1
+	server_up=$?
+else
+	echo "(Note: nc not found. It will make slightly startup faster.)" 1>&2
+fi
+
+use_nailgun=0
+if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ] || [ "$2" = "publishSigned" ] || [ "$1" = "direct" ] || [ "$2" = "direct" ]; then
+	use_nailgun=1
+fi
+
+if [ $use_nailgun -eq 0 ] && [ ! $server_up -eq 0 ]; then
+	log "Starting background process (nailgun)" $*
+	# try to start nailgun-server, just in case it's not up
+	$NG_SERVER 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
+fi
+
+stage1 () {
+	log "Checking for changes in cbt/nailgun_launcher" $*
+	NAILGUN_INDICATOR=$NAILGUN$TARGET/cbt/NailgunLauncher.class
+	changed=0
+	for file in `ls $NAILGUN/*.java`; do
+		if [ $file -nt $NAILGUN_INDICATOR ]; then changed=1; fi
+	done
+	compiles=0
+	if [ $changed -eq 1 ]; then
+		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
+		echo "Compiling cbt/nailgun_launcher" 1>&2
+		javac -Xlint:deprecation -Xlint:unchecked -d $NAILGUN$TARGET `ls $NAILGUN*.java`
+		compiles=$?
+		if [ $compiles -ne 0 ]; then
+			rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # triggers recompilation next time.
+			break
+		fi
+		if [ $use_nailgun -eq 0 ]; then
+			echo "Stopping background process (nailgun)" 1>&2
+			$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
+			sleep 1
+			echo "Restarting background process (nailgun)" 1>&2
+			ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
+			sleep 1
+		fi
+	fi
+
+	log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." $*
+
+	if [ $use_nailgun -eq 1 ]
+	then
+		log "Running JVM directly" $*
+		# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
+		# JVM options to improve startup time. See https://github.com/cvogt/cbt/pull/262
+		java $JAVA_OPTS -Xmx6072m -Xss10M -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp $NAILGUN$TARGET cbt.NailgunLauncher $(time_taken) "$CWD" $*
+	else
+		log "Running via background process (nailgun)" $*
+		for i in 0 1 2 3 4 5 6 7 8 9; do
+			log "Adding classpath." $*
+			$NG ng-cp $NAILGUN$TARGET >> $nailgun_out 2>> $nailgun_err
+			log "Checking if nailgun is up yet." $*
+			$NG cbt.NailgunLauncher check-alive >> $nailgun_out 2>> $nailgun_err
+			alive=$?
+			if [ $alive -eq 131 ] || [ $alive -eq 33 ]; then
+			# the 33 is not working right now
+			#	echo "Nailgun call failed. Try 'cbt kill' and check the error log cbt/nailgun_launcher/target/nailgun.stderr.log" 1>&2
+			#elif [ $alive -eq 33 ]; then
+				break
+			else
+				log "Nope. Sleeping for 0.5 seconds" $*
+				#if [ "$i" -gt 1 ]; then
+				#	echo "Waiting for nailgun to start... (In case of problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log)" 1>&2
+				#fi
+			fi
+			sleep 0.3
+		done
+		log "Running CBT via Nailgun." $*
+		$NG cbt.NailgunLauncher $(time_taken) "$CWD" $*
+	fi
+	exitCode=$?
+	log "Done running CBT." $*
+}
+
+while true; do
+	stage1 $*
+	if [ ! "$1" = "loop" ]; then
+		break
+	fi
+	echo "======= Restarting CBT =======" 1>&2
+done
+
+if [ $compiles -ne 0 ]; then
+	exitCode=1
+fi
+
+log "Exiting CBT" $*
+exit $exitCode

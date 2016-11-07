@@ -1,0 +1,17 @@
+machine:
+  java:
+    version: oraclejdk7
+
+dependencies:
+  cache_directories:
+    - "cache"
+  override:
+    - ./cbt compile
+    - ./cbt direct
+    - ./cbt -Dlog=all
+
+test:
+  override:
+    - rm ~/.gitconfig # avoid url replacement breaking jgit
+    - ./cbt direct test
+    - ./cbt test

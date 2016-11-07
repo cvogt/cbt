@@ -1,0 +1,34 @@
+TODO:
+ - in progress
+   - improve logging
+ 
+ - immediate features
+   - fix main project main method being run during tests
+   - investigate and solve multiple compilations of the same SourceDependency Build. Maybe introduce global Build map.
+
+ - cleanup
+   - move from java File to nio Path
+ 
+ - near future features
+   - make cbt's own re-build concurrency safe
+   - unify with sbts key names where sensible
+   - allow updating snapshots
+   - cbt cli options inject add dependencies into default build
+   - dependency exclusion, etc.
+   - use cli friendly responses by default everywhere
+   - class path debugging
+     - broken jars detection
+     - invalid files in lib folder
+   - integrate / build out maven search
+   - use zinc nailgun multi platform nailgun wrapper https://github.com/typesafehub/zinc/tree/7af98ba11d27d7667301c2222c1e702c7092bc44/src/universal/bin
+
+
+ - future features
+   - loop compiling with cancelling running runs/compiles
+   - shell tab completion
+     - maybe scripts for bash/zsh/fish
+     - maybe interactive shell
+       - maybe one that exists immediately after execution
+
+ - potential features
+   - running in-project tasks in parallel using Monad
