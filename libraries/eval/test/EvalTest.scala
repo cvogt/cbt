@@ -1,4 +1,4 @@
-package com.twitter.util
+package cbt.eval.test
 
 import java.io.{File, FileWriter}
 import org.scalatest.WordSpec
@@ -10,6 +10,10 @@ import scala.tools.nsc.reporters.{AbstractReporter, Reporter}
 import java.nio.file._
 
 class EvalTest extends WordSpec {
+  class Eval(f: Option[File] = None) extends cbt.eval.Eval(f){
+    override def classLoader = EvalTest.this.getClass.getClassLoader
+  }
+  object Eval extends Eval(None)
   def fromResourcePath(path: String): File = {
     assert(path.endsWith(".scala"))
     val tmpFile = File.createTempFile(path.stripSuffix(".scala"),"scala")

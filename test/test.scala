@@ -255,6 +255,12 @@ object Main{
       assert(res.err.contains("null is disabled"), res.out)
     }
 
+    {
+      val res = runCbt("../libraries/eval", Seq("test"))
+      assert(res.exit0)
+      assert(res.out.contains("All tests passed"), res.out)
+    }
+
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
     if(failures > 0) System.exit(1) else System.exit(0)
