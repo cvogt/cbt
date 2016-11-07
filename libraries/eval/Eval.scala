@@ -16,8 +16,6 @@
 
 package com.twitter.util
 
-import com.twitter.conversions.string._
-import com.twitter.io.StreamIO
 import java.io._
 import java.math.BigInteger
 import java.net.URLClassLoader
@@ -294,9 +292,9 @@ class Eval(target: Option[File]) {
       case -1 => fileName
       case dot => fileName.substring(0, dot)
     }
-    baseName.regexSub(Eval.classCleaner) { m =>
-      "$%02x".format(m.group(0).charAt(0).toInt)
-    }
+    Eval.classCleaner.replaceAllIn( baseName, { m =>
+      Regex.quoteReplacement( "$%02x".format(m.group(0).charAt(0).toInt) )
+    })
   }
 
   /*
@@ -433,7 +431,13 @@ class Eval(target: Option[File]) {
               if (maxDepth == 0) {
                 throw new IllegalStateException("Exceeded maximum recusion depth")
               } else {
-                apply(StreamIO.buffer(r.get(path)).toString, maxDepth - 1)
+                val inputStream = r.get(path)
+                val string = new String(
+                  Iterator.continually(
+                    inputStream.read()
+                  ).takeWhile(_ != -1).map(_.toByte).toArray
+                )
+                apply(string, maxDepth - 1)
               }
             }
             case _ =>

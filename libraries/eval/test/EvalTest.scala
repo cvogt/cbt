@@ -1,18 +1,26 @@
 package com.twitter.util
 
-import com.twitter.io.TempFile
 import java.io.{File, FileWriter}
-import org.junit.runner.RunWith
 import org.scalatest.WordSpec
-import org.scalatest.junit.JUnitRunner
 import scala.io.Source
 import scala.language.reflectiveCalls
 import scala.reflect.internal.util.Position
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.{AbstractReporter, Reporter}
+import java.nio.file._
 
-@RunWith(classOf[JUnitRunner])
 class EvalTest extends WordSpec {
+  def fromResourcePath(path: String): File = {
+    assert(path.endsWith(".scala"))
+    val tmpFile = File.createTempFile(path.stripSuffix(".scala"),"scala")
+    Files.copy(
+      Paths.get( getClass.getResource(path).getFile),
+      tmpFile.toPath,
+      StandardCopyOption.REPLACE_EXISTING
+    )
+    tmpFile.deleteOnExit()
+    tmpFile
+  }
   "Evaluator" should {
 
     "apply('expression')" in {
@@ -20,13 +28,13 @@ class EvalTest extends WordSpec {
     }
 
     "apply(new File(...))" in {
-      assert((new Eval).apply[Int](TempFile.fromResourcePath("/OnePlusOne.scala")) == 2)
+      assert((new Eval).apply[Int](fromResourcePath("/OnePlusOne.scala")) == 2)
     }
 
     "apply(new File(...), new File(...))" in {
       val derived = (new Eval).apply[() => String](
-        TempFile.fromResourcePath("/Base.scala"),
-        TempFile.fromResourcePath("/Derived.scala"))
+        fromResourcePath("/Base.scala"),
+        fromResourcePath("/Derived.scala"))
       assert(derived() == "hello")
     }
 
@@ -35,7 +43,7 @@ class EvalTest extends WordSpec {
       f.delete()
       f.mkdir()
       val e = new Eval(Some(f))
-      val sourceFile = TempFile.fromResourcePath("/file-with-dash.scala")
+      val sourceFile = fromResourcePath("/file-with-dash.scala")
       val res: String = e(sourceFile)
       assert(res == "hello")
       val className = e.fileToClassName(sourceFile)
@@ -52,7 +60,7 @@ class EvalTest extends WordSpec {
       f.delete()
       f.mkdir()
       val e = new Eval(Some(f))
-      val sourceFile = TempFile.fromResourcePath("/OnePlusOne.scala")
+      val sourceFile = fromResourcePath("/OnePlusOne.scala")
       val res: Int = e(sourceFile)
       assert(res == 2)
 
@@ -101,7 +109,7 @@ class EvalTest extends WordSpec {
 
     "uses deprecated" in {
       val deprecated = (new Eval).apply[() => String](
-        TempFile.fromResourcePath("/Deprecated.scala"))
+        fromResourcePath("/Deprecated.scala"))
       assert(deprecated() == "hello")
     }
 
@@ -126,22 +134,22 @@ class EvalTest extends WordSpec {
 
     "#include" in {
       val derived = Eval[() => String](
-        TempFile.fromResourcePath("/Base.scala"),
-        TempFile.fromResourcePath("/DerivedWithInclude.scala"))
+        fromResourcePath("/Base.scala"),
+        fromResourcePath("/DerivedWithInclude.scala"))
       assert(derived() == "hello")
       assert(derived.toString == "hello, joe")
     }
 
     "recursive #include" in {
       val derived = Eval[() => String](
-        TempFile.fromResourcePath("/Base.scala"),
-        TempFile.fromResourcePath("/IncludeInclude.scala"))
+        fromResourcePath("/Base.scala"),
+        fromResourcePath("/IncludeInclude.scala"))
       assert(derived() == "hello")
       assert(derived.toString == "hello, joe; hello, joe")
     }
 
     "toSource returns post-processed code" in {
-      val derived = Eval.toSource(TempFile.fromResourcePath("/DerivedWithInclude.scala"))
+      val derived = Eval.toSource(fromResourcePath("/DerivedWithInclude.scala"))
       assert(derived.contains("hello, joe"))
       assert(derived.contains("new Base"))
     }
@@ -149,7 +157,7 @@ class EvalTest extends WordSpec {
     "throws a compilation error when Ruby is #included" in {
       intercept[Throwable] {
         Eval[() => String](
-          TempFile.fromResourcePath("RubyInclude.scala")
+          fromResourcePath("RubyInclude.scala")
         )
       }
     }
