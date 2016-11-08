@@ -165,7 +165,7 @@ object Stage1{
 
     val stage2Args = Stage2Args(
       new File( args.args(0) ),
-      args.args.drop(1).toVector,
+      args.args.drop(1).dropWhile(_ == "direct").toVector,
       // launcher changes cause entire nailgun restart, so no need for them here
       cbtHasChanged = cbtHasChanged,
       classLoaderCache = classLoaderCache,

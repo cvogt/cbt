@@ -19,10 +19,9 @@ object Stage2 extends Stage2Base{
 
     logger.stage2(s"Stage2 start")
     val loop = args.args.lift(0) == Some("loop")
-    val direct = args.args.lift(0) == Some("direct")
     val cross = args.args.lift(0) == Some("cross")
 
-    val taskIndex = if (loop || direct || cross) {
+    val taskIndex = if (loop || cross) {
       1
     } else {
       0
