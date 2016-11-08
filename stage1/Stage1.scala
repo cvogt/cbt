@@ -105,7 +105,7 @@ object Stage1{
       cbtDependency.dependencyClasspath,
       mavenCache,
       Seq("-deprecation","-feature","-unchecked"), classLoaderCache,
-      zincVersion = "0.3.9", scalaVersion = constants.scalaVersion
+      zincVersion = constants.zincVersion, scalaVersion = constants.scalaVersion
     )
 
     logger.stage1(s"calling CbtDependency.classLoader")

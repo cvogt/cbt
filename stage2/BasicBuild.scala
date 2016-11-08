@@ -33,7 +33,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   // TODO: this should probably provide a nice error message if class has constructor signature
   def copy(context: Context): BuildInterface = lib.copy(this.getClass, context).asInstanceOf[BuildInterface]
-  def zincVersion = "0.3.9"
+  def zincVersion = constants.zincVersion
 
   def dependencies: Seq[Dependency] =
     // FIXME: this should probably be removed
