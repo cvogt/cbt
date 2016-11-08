@@ -19,7 +19,7 @@ class MultiClassLoader(final val parents: Seq[ClassLoader])(implicit val logger:
   // FIXME: is there more than findClass and findResource that needs to be dispatched?
   override def findResource(name: String): URL = {
     parents.foldLeft(null: URL)(
-      (acc, parent) => if( acc == null ) parent.getResource(name) else null
+      (acc, parent) => if( acc == null ) parent.getResource(name) else acc
     )
   }
   override def findResources(name: String): java.util.Enumeration[URL] = {

@@ -4,7 +4,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.io.File
 import java.nio.file._
 import java.net.URL
-
+import scala.concurrent._
+import scala.concurrent.duration._
 // micro framework
 object Main{
   def main(_args: Array[String]): Unit = {
@@ -43,13 +44,17 @@ object Main{
       val pb = new ProcessBuilder( allArgs :_* )
       pb.directory(cbtHome ++ ("/test/" ++ path))
       val p = pb.start
-      val berr = new BufferedReader(new InputStreamReader(p.getErrorStream));
-      val bout = new BufferedReader(new InputStreamReader(p.getInputStream));
-      import collection.JavaConversions._
-      val err = Stream.continually(berr.readLine()).takeWhile(_ != null).mkString("\n")
-      val out = Stream.continually(bout.readLine()).takeWhile(_ != null).mkString("\n")
+      val serr = new InputStreamReader(p.getErrorStream);
+      val sout = new InputStreamReader(p.getInputStream);
+      import scala.concurrent.ExecutionContext.Implicits.global
+      val err = Future(blocking(Iterator.continually(serr.read).takeWhile(_ != -1).map(_.toChar).mkString))
+      val out = Future(blocking(Iterator.continually(sout.read).takeWhile(_ != -1).map(_.toChar).mkString))
       p.waitFor
-      Result(p.exitValue == 0, out, err)
+      Result(
+        p.exitValue == 0,
+        Await.result( out, Duration.Inf ),
+        Await.result( err, Duration.Inf )
+      )
     }
     case class Result(exit0: Boolean, out: String, err: String)
     def assertSuccess(res: Result, msg: => String)(implicit logger: Logger) = {
@@ -213,15 +218,15 @@ object Main{
     
     {
       val res = task("docJar","simple-fixed-cbt")
-      assert( res.out endsWith "simple-fixed-cbt_2.11-0.1-javadoc.jar", res.out )
+      assert( res.out endsWith "simple-fixed-cbt_2.11-0.1-javadoc.jar\n", res.out )
       assert( res.err contains "model contains", res.err )
-      assert( res.err endsWith "documentable templates", res.err )
+      assert( res.err endsWith "documentable templates\n", res.err )
     }
     
     {
       val res = runCbt("simple", Seq("printArgs","1","2","3"))
       assert(res.exit0)
-      assert(res.out == "1 2 3", res.out)
+      assert(res.out == "1 2 3\n", res.out)
     }
 
     {
@@ -253,6 +258,12 @@ object Main{
       assert(!res.exit0)
       assert(res.err.contains("var is disabled"), res.out)
       assert(res.err.contains("null is disabled"), res.out)
+    }
+
+    {
+      val res = runCbt("../libraries/eval", Seq("test"))
+      assert(res.exit0)
+      assert(res.out.contains("All tests passed"), res.out)
     }
 
     System.err.println(" DONE!")
