@@ -88,6 +88,7 @@ object `package`{
       scalaVersion.getOrElse(null),
       permanentKeys,
       permanentClassLoaders,
+      taskCache,
       cache,
       cbtHome,
       cbtRootHome,

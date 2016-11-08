@@ -14,6 +14,7 @@ case class ContextImplementation(
   scalaVersionOrNull: String,
   permanentKeys: ConcurrentHashMap[String,AnyRef],
   permanentClassLoaders: ConcurrentHashMap[AnyRef,ClassLoader],
+  taskCache: ConcurrentHashMap[AnyRef,AnyRef],
   cache: File,
   cbtHome: File,
   cbtRootHome: File,

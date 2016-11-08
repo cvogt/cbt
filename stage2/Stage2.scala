@@ -39,6 +39,7 @@ object Stage2 extends Stage2Base{
       null,
       args.permanentKeys,
       args.permanentClassLoaders,
+      new java.util.concurrent.ConcurrentHashMap,
       args.cache,
       args.cbtHome,
       args.cbtHome,

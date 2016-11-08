@@ -244,4 +244,21 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   // ========== cbt internals ==========
   def finalBuild: BuildInterface = this
   override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
+
+  // TODO: allow people not provide the method name, maybe via macro
+  /**
+  caches given value in context keyed with given key and projectDirectory
+  the context is fresh on every complete run of cbt
+  */
+  def cached[T <: AnyRef](name: String)(task: => T): T = {
+    val cache = context.taskCache
+    val key = (projectDirectory,name)
+    if( cache.containsKey(key) ){
+      cache.get(key).asInstanceOf[T]
+    } else{
+      val value = task
+      cache.put( key, value )
+      value
+    }
+  }
 }

@@ -14,6 +14,7 @@ public abstract class Context{
   public abstract String scalaVersionOrNull(); // needed to propagate scalaVersion to dependendee builds
   public abstract ConcurrentHashMap<String,Object> permanentKeys();
   public abstract ConcurrentHashMap<Object,ClassLoader> permanentClassLoaders();
+  public abstract ConcurrentHashMap<Object,Object> taskCache();
   public abstract File cache();
   public abstract File cbtHome();
   public abstract File cbtRootHome();

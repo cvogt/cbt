@@ -118,6 +118,7 @@ object Main{
         null,
         new ConcurrentHashMap[String,AnyRef],
         new ConcurrentHashMap[AnyRef,ClassLoader],
+        new java.util.concurrent.ConcurrentHashMap[AnyRef,AnyRef],
         cache,
         cbtHome,
         cbtHome,
