@@ -267,6 +267,39 @@ Make sure you deleted your main projects class Main when running your tests.
 
 Congratulations, you successfully created a dependent project and ran your tests.
 
+### Dynamic overrides and eval
+
+By making your Build extend trait `CommandLineOverrides` you get access to the `eval` and `with` commands.
+
+`eval` allows you to evaluate scala expressions in the scope of your build and show the result.
+You can use this to inspect your build.
+
+```
+$ cbt eval '1 + 1'
+2
+
+$ cbt eval scalaVersion
+2.11.8
+
+$ cbt eval 'sources.strings.mkString(":")'
+/a/b/c:/d/e/f
+```
+
+`with` allows you to inject code into your build (or rather a dynamically generated subclass).
+Follow the code with another task name and arguments if needed to run tasks of your modified build.
+You can use this to override build settings dynamically.
+
+```
+$ cbt with 'def hello = "Hello"' hello
+Hello
+
+$ cbt with 'def hello = "Hello"; def world = "World"; def helloWorld = hello ++ " " ++ world' helloWorld
+Hello World
+
+$ cbt with 'def version = super.version ++ "-SNAPSHOT"' package
+/a/b/c/e-SNAPSHOT.jar
+```
+
 ### Multi-projects Builds
 
 A single build only handles a single project in CBT. So there isn't exactly
@@ -302,7 +335,7 @@ will not realize that and keep using the old version).
 ### Using CBT like a boss
 
 Do you own your Build Tool or does your Build Tool own you? CBT makes it easy for YOU
-to be in control. We try to work on solid documentation, but even good 
+to be in control. We try to work on solid documentation, but even good
 documentation never tells the whole truth. Documentation can tell how to use
 something and why things are happening, but only the code can tell all the
 details of what exactly is happening. Reading the code can be intimidating for
@@ -319,10 +352,8 @@ to use it the next time. This means any changes you make are instantly reflected
 This and the simple code make it super easy to fix bugs or add features yourself
 and feed them back into main line CBT.
 
-
 When debugging things, it can help to enable CBT's debug logging by passing
 `-Dlog=all` to CBT (or a logger name instead of `all`).
-
 
 Other design decisions
 --------------------

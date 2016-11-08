@@ -246,6 +246,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
 
   // TODO: allow people not provide the method name, maybe via macro
+  // TODO: pull this out into lib
   /**
   caches given value in context keyed with given key and projectDirectory
   the context is fresh on every complete run of cbt
@@ -261,4 +262,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
       value
     }
   }
+
+  // a method that can be called only to trigger any side-effects
+  final def `void` = ()
 }
