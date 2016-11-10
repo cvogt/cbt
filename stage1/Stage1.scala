@@ -56,17 +56,16 @@ object Stage1{
     a.lastModified > b.lastModified
   }
 
-  def getBuild( _context: java.lang.Object, _cbtChanged: java.lang.Boolean ) = {
+  def getBuild( _context: java.lang.Object, buildStage1: BuildStage1Result ) = {
     val context = _context.asInstanceOf[Context]
     val logger = new Logger( context.enabledLoggers, context.start )
     val (changed, classLoader) = buildStage2(
-      context.compatibilityTarget,
+      buildStage1,
       ClassLoaderCache(
         logger,
         context.permanentKeys,
         context.permanentClassLoaders
       ),
-      _cbtChanged,
       context.cbtHome,
       context.cache
     )
@@ -74,11 +73,11 @@ object Stage1{
     classLoader
       .loadClass("cbt.Stage2")
       .getMethod( "getBuild", classOf[java.lang.Object], classOf[java.lang.Boolean] )
-      .invoke(null, context, (_cbtChanged || changed): java.lang.Boolean)
+      .invoke(null, context, (buildStage1.changed || changed): java.lang.Boolean)
   }
 
   def buildStage2(
-    compatibilityTarget: File, classLoaderCache: ClassLoaderCache, _cbtChanged: Boolean, cbtHome: File, cache: File
+    buildStage1: BuildStage1Result, classLoaderCache: ClassLoaderCache, cbtHome: File, cache: File
   ): (Boolean, ClassLoader) = {
     import classLoaderCache.logger
 
@@ -91,11 +90,11 @@ object Stage1{
       stage2.listFiles ++ (stage2 ++ "/plugins").listFiles
     ).toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
     
-    val cbtHasChanged = _cbtChanged || lib.needsUpdate(stage2sourceFiles, stage2StatusFile)
+    val cbtHasChanged = buildStage1.changed || lib.needsUpdate(stage2sourceFiles, stage2StatusFile)
 
     val cls = this.getClass.getClassLoader.loadClass("cbt.NailgunLauncher")
     
-    val cbtDependency = CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)
+    val cbtDependency = CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, new File(buildStage1.compatibilityClasspath))
 
     logger.stage1("Compiling stage2 if necessary")
     compile(
@@ -111,6 +110,23 @@ object Stage1{
     logger.stage1(s"calling CbtDependency.classLoader")
     if( cbtHasChanged && classLoaderCache.persistent.containsKey( cbtDependency.classpath.string ) ) {
       classLoaderCache.persistent.remove( cbtDependency.classpath.string )
+    } else {
+      assert(
+        buildStage1.compatibilityClasspath === cbtDependency.stage1Dependency.compatibilityDependency.classpath.string,
+        "compatibility classpath different from NailgunLauncher"
+      )
+      assert(
+        buildStage1.stage1Classpath === cbtDependency.stage1Dependency.classpath.string,
+        "stage1 classpath different from NailgunLauncher"
+      )
+      assert(
+        classLoaderCache.persistent.containsKey( cbtDependency.stage1Dependency.compatibilityDependency.classpath.string ),
+        "cbt unchanged, expected compatibility classloader to be cached"
+      )
+      assert(
+        classLoaderCache.persistent.containsKey( cbtDependency.stage1Dependency.classpath.string ),
+        "cbt unchanged, expected stage1/nailgun classloader to be cached"
+      )
     }
 
     val stage2ClassLoader = cbtDependency.classLoader(classLoaderCache)
@@ -144,8 +160,7 @@ object Stage1{
     _args: Array[String],
     cache: File,
     cbtHome: File,
-    _cbtChanged: java.lang.Boolean,
-    compatibilityTarget: File,
+    buildStage1: BuildStage1Result,
     start: java.lang.Long,
     classLoaderCacheKeys: ConcurrentHashMap[String,AnyRef],
     classLoaderCacheValues: ConcurrentHashMap[AnyRef,ClassLoader]
@@ -159,9 +174,9 @@ object Stage1{
       classLoaderCacheKeys,
       classLoaderCacheValues
     )
-    
 
-    val (cbtHasChanged, classLoader) = buildStage2( compatibilityTarget, classLoaderCache, _cbtChanged, cbtHome, cache )
+
+    val (cbtHasChanged, classLoader) = buildStage2( buildStage1, classLoaderCache, cbtHome, cache )
 
     val stage2Args = Stage2Args(
       new File( args.args(0) ),
@@ -171,7 +186,7 @@ object Stage1{
       classLoaderCache = classLoaderCache,
       cache,
       cbtHome,
-      compatibilityTarget
+      new File(buildStage1.compatibilityClasspath)
     )
 
     logger.stage1(s"Run Stage2")

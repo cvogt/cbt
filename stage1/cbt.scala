@@ -5,6 +5,11 @@ import java.net._
 import java.util.concurrent.ConcurrentHashMap
 
 object `package`{
+  implicit class TypeInferenceSafeEquals[T](value: T){
+    /** if you don't manually upcast, this will catch comparing different types */
+    def ===(other: T) = value == other
+  }
+
   val mavenCentral = new URL("https://repo1.maven.org/maven2")
   val jcenter = new URL("https://jcenter.bintray.com")
   def bintray(owner: String) = new URL(s"https://dl.bintray.com/$owner/maven") // FIXME: url encode owner
@@ -30,6 +35,9 @@ object `package`{
   }
   implicit class BuildInterfaceExtensions(build: BuildInterface){
     import build._
+    // TODO: if every build has a method triggers a callback if files change
+    // then we wouldn't need this and could provide this method from a 
+    // plugin rather than hard-coding trigger files stuff in cbt
     def triggerLoopFiles: Seq[File] = triggerLoopFilesArray.to
     def crossScalaVersions: Seq[String] = crossScalaVersionsArray.to
   }
