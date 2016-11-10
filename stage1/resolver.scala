@@ -11,6 +11,13 @@ trait DependencyImplementation extends Dependency{
   implicit protected def logger: Logger
   protected def lib = new Stage1Lib(logger)
 
+  /**
+  CAREFUL: this is never allowed to return true for the same dependency more than 
+  once in a single cbt run. Otherwise we can end up with multiple classloaders
+  for the same classes since classLoaderRecursion recreates the classLoader when it
+  sees this flag and it can be called multiple times. Maybe we can find a safer
+  solution than this current state.
+  */
   def needsUpdate: Boolean
   //def cacheClassLoader: Boolean = false
   private[cbt] def targetClasspath: ClassPath
@@ -137,7 +144,7 @@ case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Lo
 }
 
 case class Stage1Dependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTarget: File, stage1Target: File, compatibilityTarget: File)(implicit val logger: Logger) extends DependencyImplementation{
-  override def needsUpdate = cbtHasChanged
+  override def needsUpdate = false
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(nailgunTarget, stage1Target) )
   val compatibilityDependency = CompatibilityDependency(cbtHasChanged, compatibilityTarget)
@@ -150,13 +157,13 @@ case class Stage1Dependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTar
   )
 }
 case class CompatibilityDependency(cbtHasChanged: Boolean, compatibilityTarget: File)(implicit val logger: Logger) extends DependencyImplementation{
-  override def needsUpdate = cbtHasChanged
+  override def needsUpdate = false
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(compatibilityTarget) )
   override def dependencies = Seq()
 }
 case class CbtDependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit val logger: Logger) extends DependencyImplementation{
-  override def needsUpdate = cbtHasChanged
+  override def needsUpdate = false
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq( stage2Target ) )
   val stage1Dependency = Stage1Dependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, compatibilityTarget)
