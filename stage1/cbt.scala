@@ -35,6 +35,9 @@ object `package`{
   }
   implicit class BuildInterfaceExtensions(build: BuildInterface){
     import build._
+    // TODO: if every build has a method triggers a callback if files change
+    // then we wouldn't need this and could provide this method from a 
+    // plugin rather than hard-coding trigger files stuff in cbt
     def triggerLoopFiles: Seq[File] = triggerLoopFilesArray.to
     def crossScalaVersions: Seq[String] = crossScalaVersionsArray.to
   }
