@@ -40,9 +40,6 @@ trait Publish extends PackageJars{
   def publishLocal: Unit =
     lib.publishLocal( sourceFiles, `package` :+ pom, context.paths.mavenCache, releaseFolder )
 
-  def publishSnapshotLocal: Unit =
-    copy( context.copy(version = Some(version+"-SNAPSHOT")) ).publishLocal
-
   def isSnapshot: Boolean = version.endsWith("-SNAPSHOT")
 
   override def copy(context: Context) = super.copy(context).asInstanceOf[Publish]

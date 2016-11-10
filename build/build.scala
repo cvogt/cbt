@@ -16,7 +16,7 @@ class Build(val context: Context) extends Publish{
 
   def groupId: String = "org.cvogt"
 
-  def defaultVersion: String = "0.1"
+  def version: String = "0.1"
   def name: String = "cbt"
 
   // Members declared in cbt.Publish

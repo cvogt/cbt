@@ -9,6 +9,6 @@ class Build(val context: cbt.Context) extends PackageJars{
     MavenDependency("com.spotify", "missinglink-core", "0.1.1")
   )
   def groupId: String = "cbt.test"
-  def defaultVersion: String = "0.1"
+  def version: String = "0.1"
   def name: String = "simple-fixed-cbt"
 }

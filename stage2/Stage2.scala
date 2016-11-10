@@ -36,7 +36,6 @@ object Stage2 extends Stage2Base{
       logger.start,
       args.cbtHasChanged,
       null,
-      null,
       args.permanentKeys,
       args.permanentClassLoaders,
       new java.util.concurrent.ConcurrentHashMap,

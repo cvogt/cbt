@@ -10,7 +10,6 @@ public abstract class Context{
   public abstract String[] enabledLoggersArray();
   public abstract Long startCompat();
   public abstract Boolean cbtHasChangedCompat();
-  public abstract String versionOrNull();
   public abstract String scalaVersionOrNull(); // needed to propagate scalaVersion to dependendee builds
   public abstract ConcurrentHashMap<String,Object> permanentKeys();
   public abstract ConcurrentHashMap<Object,ClassLoader> permanentClassLoaders();

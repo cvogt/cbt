@@ -115,7 +115,6 @@ object Main{
         start,
         cbtHasChanged,
         null,
-        null,
         new ConcurrentHashMap[String,AnyRef],
         new ConcurrentHashMap[AnyRef,ClassLoader],
         new java.util.concurrent.ConcurrentHashMap[AnyRef,AnyRef],

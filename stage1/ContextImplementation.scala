@@ -10,7 +10,6 @@ case class ContextImplementation(
   enabledLoggersArray: Array[String],
   startCompat: Long,
   cbtHasChangedCompat: Boolean,
-  versionOrNull: String,
   scalaVersionOrNull: String,
   permanentKeys: ConcurrentHashMap[String,AnyRef],
   permanentClassLoaders: ConcurrentHashMap[AnyRef,ClassLoader],

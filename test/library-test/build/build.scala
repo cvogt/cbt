@@ -3,7 +3,7 @@ import cbt._
 // cbt:https://github.com/cvogt/cbt.git#0fcdda6062c4e2720f602d976d85961970f44fa0
 class Build(val context: Context) extends BaseBuild with PackageJars{
   def groupId = "cbt.test"
-  def defaultVersion = "0.1"
+  def version = "0.1"
   def name = "library-test"
 
   override def dependencies =
