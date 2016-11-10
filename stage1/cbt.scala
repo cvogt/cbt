@@ -44,7 +44,6 @@ object `package`{
     // then we wouldn't need this and could provide this method from a 
     // plugin rather than hard-coding trigger files stuff in cbt
     def triggerLoopFiles: Seq[File] = triggerLoopFilesArray.to
-    def crossScalaVersions: Seq[String] = crossScalaVersionsArray.to
   }
   implicit class ArtifactInfoExtensions(subject: ArtifactInfo){
     import subject._

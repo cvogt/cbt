@@ -181,6 +181,20 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
                 case code if code.getClass.getSimpleName == "ExitCode" =>
                   // FIXME: ExitCode needs to be part of the compatibility interfaces
                   ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])
+                case Seq(b:BaseBuild) =>
+                  val context = b.context.copy(args=b.context.args.drop(1))
+                  val task = b.context.args.lift(0)
+                  new ReflectBuild( b.copy(context=context) ).callNullary( task )
+                case Seq(b: BaseBuild, bs @ _*) if bs.forall(_.isInstanceOf[BaseBuild]) =>
+                  (b +: bs)
+                    .map( _.asInstanceOf[BaseBuild] )
+                    .map{ b =>
+                      val task = b.context.args.lift(0)
+                      new ReflectBuild(
+                        b.copy( context = b.context.copy(args=b.context.args.drop(1)) )
+                      ).callNullary( task )
+                    }
+                    .head
                 case other =>
                   println( other.toString ) // no method .toConsole, using to String
                   ExitCode.Success
