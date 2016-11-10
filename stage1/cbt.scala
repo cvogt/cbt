@@ -5,6 +5,11 @@ import java.net._
 import java.util.concurrent.ConcurrentHashMap
 
 object `package`{
+  implicit class TypeInferenceSafeEquals[T](value: T){
+    /** if you don't manually upcast, this will catch comparing different types */
+    def ===(other: T) = value == other
+  }
+
   val mavenCentral = new URL("https://repo1.maven.org/maven2")
   val jcenter = new URL("https://jcenter.bintray.com")
   def bintray(owner: String) = new URL(s"https://dl.bintray.com/$owner/maven") // FIXME: url encode owner
