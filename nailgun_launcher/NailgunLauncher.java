@@ -44,8 +44,8 @@ public class NailgunLauncher{
       res
         .classLoader
         .loadClass("cbt.Stage1")
-        .getMethod( "getBuild", Object.class, Boolean.class )
-        .invoke(null, context, res.changed);
+        .getMethod( "getBuild", Object.class, BuildStage1Result.class )
+        .invoke(null, context, res);
   }
 
   public static void main( String[] args ) throws Throwable {
@@ -92,13 +92,13 @@ public class NailgunLauncher{
           .loadClass("cbt.Stage1")
           .getMethod(
             "run",
-            String[].class, File.class, File.class, Boolean.class,
-            File.class, Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
+            String[].class, File.class, File.class, BuildStage1Result.class,
+            Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
           )
           .invoke(
             null,
-            (Object) args, new File(cache), new File(CBT_HOME), res.changed,
-            new File(compatibilityTarget), start, classLoaderCache.keys, classLoaderCache.values
+            (Object) args, new File(cache), new File(CBT_HOME), res,
+            start, classLoaderCache.keys, classLoaderCache.values
           )
       );
     } catch (java.lang.reflect.InvocationTargetException e) {
@@ -186,15 +186,10 @@ public class NailgunLauncher{
 
     return new BuildStage1Result(
       changed,
-      stage1classLoader
+      stage1classLoader,
+      stage1Classpath,
+      nailgunClasspath,
+      compatibilityTarget
     );
-  }
-}
-class BuildStage1Result{
-  Boolean changed;
-  ClassLoader classLoader;
-  BuildStage1Result( Boolean changed, ClassLoader classLoader ){
-    this.changed = changed;
-    this.classLoader = classLoader;
   }
 }
