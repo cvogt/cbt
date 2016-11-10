@@ -62,7 +62,6 @@ object `package`{
     def args: Seq[String] = argsArray.to
     def enabledLoggers: Set[String] = enabledLoggersArray.to
     def scalaVersion = Option(scalaVersionOrNull)
-    def version = Option(versionOrNull)
     def parentBuild = Option(parentBuildOrNull)
     def start: scala.Long = startCompat
     def cbtHasChanged: scala.Boolean = cbtHasChangedCompat
@@ -72,7 +71,6 @@ object `package`{
       args: Seq[String] = args,
       enabledLoggers: Set[String] = enabledLoggers,
       cbtHasChanged: Boolean = cbtHasChanged,
-      version: Option[String] = version,
       scalaVersion: Option[String] = scalaVersion,
       cache: File = cache,
       cbtHome: File = cbtHome,
@@ -84,10 +82,10 @@ object `package`{
       enabledLoggers.to,
       startCompat,
       cbtHasChangedCompat,
-      version.getOrElse(null),
       scalaVersion.getOrElse(null),
       permanentKeys,
       permanentClassLoaders,
+      taskCache,
       cache,
       cbtHome,
       cbtRootHome,

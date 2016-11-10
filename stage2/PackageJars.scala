@@ -5,8 +5,7 @@ import java.io.File
 trait PackageJars extends BaseBuild with ArtifactInfo{
   def name: String
   def artifactId = name
-  def defaultVersion: String
-  final def version = context.version getOrElse defaultVersion
+  def version: String
   def `package`: Seq[File] = lib.concurrently( enableConcurrency )(
     Seq(() => jar, () => docJar, () => srcJar)
   )( _() ).flatten

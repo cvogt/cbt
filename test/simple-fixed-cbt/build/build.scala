@@ -1,6 +1,6 @@
 import cbt._
 
-// cbt:https://github.com/cvogt/cbt.git#bf4ea112fe668fb7e2e95a2baca4989b16384783
+// cbt:https://github.com/cvogt/cbt.git#fe04889a6c3fe73ccdb4b19b44ac62e2b1a96f7d
 class Build(val context: cbt.Context) extends PackageJars{
   override def dependencies = super.dependencies ++ Seq(
     DirectoryDependency( context.cbtHome ++ "/test/library-test" )
@@ -9,6 +9,6 @@ class Build(val context: cbt.Context) extends PackageJars{
     MavenDependency("com.spotify", "missinglink-core", "0.1.1")
   )
   def groupId: String = "cbt.test"
-  def defaultVersion: String = "0.1"
+  def version: String = "0.1"
   def name: String = "simple-fixed-cbt"
 }

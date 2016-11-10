@@ -33,7 +33,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   // TODO: this should probably provide a nice error message if class has constructor signature
   def copy(context: Context): BuildInterface = lib.copy(this.getClass, context).asInstanceOf[BuildInterface]
-  def zincVersion = "0.3.9"
+  def zincVersion = constants.zincVersion
 
   def dependencies: Seq[Dependency] =
     // FIXME: this should probably be removed
@@ -244,4 +244,25 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   // ========== cbt internals ==========
   def finalBuild: BuildInterface = this
   override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
+
+  // TODO: allow people not provide the method name, maybe via macro
+  // TODO: pull this out into lib
+  /**
+  caches given value in context keyed with given key and projectDirectory
+  the context is fresh on every complete run of cbt
+  */
+  def cached[T <: AnyRef](name: String)(task: => T): T = {
+    val cache = context.taskCache
+    val key = (projectDirectory,name)
+    if( cache.containsKey(key) ){
+      cache.get(key).asInstanceOf[T]
+    } else{
+      val value = task
+      cache.put( key, value )
+      value
+    }
+  }
+
+  // a method that can be called only to trigger any side-effects
+  final def `void` = ()
 }

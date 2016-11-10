@@ -1,21 +1,27 @@
 package cbt
 import java.nio.file._
 
-trait BuildBuild extends BaseBuild{
-  private final val managedContext = context.copy(
+trait BuildBuild extends BuildBuildWithoutEssentials{
+  override def dependencies =
+    super.dependencies :+ plugins.essentials
+}
+trait BuildBuildWithoutEssentials extends BaseBuild{
+  protected final val managedContext = context.copy(
     projectDirectory = managedBuildDirectory,
     parentBuild=Some(this)
   )
 
   object plugins{
-    final lazy val scalaTest = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalatest" )
-    final lazy val sbtLayout = DirectoryDependency( managedContext.cbtHome ++ "/plugins/sbt_layout" )
-    final lazy val scalaJs   = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalajs" )
-    final lazy val scalariform = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalariform" )
-    final lazy val scalafmt = DirectoryDependency( managedContext.cbtHome ++ "/plugins/scalafmt" )
-    final lazy val wartremover = DirectoryDependency( managedContext.cbtHome ++ "/plugins/wartremover" )
-    final lazy val uberJar = DirectoryDependency( managedContext.cbtHome ++ "/plugins/uber-jar" )
-    final lazy val sonatypeRelease = DirectoryDependency( managedContext.cbtHome ++ "/plugins/sonatype-release" )
+    // TODO: move this out of the OO
+    final lazy val scalaTest = DirectoryDependency( context.cbtHome ++ "/plugins/scalatest" )
+    final lazy val sbtLayout = DirectoryDependency( context.cbtHome ++ "/plugins/sbt_layout" )
+    final lazy val scalaJs   = DirectoryDependency( context.cbtHome ++ "/plugins/scalajs" )
+    final lazy val scalariform = DirectoryDependency( context.cbtHome ++ "/plugins/scalariform" )
+    final lazy val scalafmt = DirectoryDependency( context.cbtHome ++ "/plugins/scalafmt" )
+    final lazy val wartremover = DirectoryDependency( context.cbtHome ++ "/plugins/wartremover" )
+    final lazy val uberJar = DirectoryDependency( context.cbtHome ++ "/plugins/uber-jar" )
+    final lazy val sonatypeRelease = DirectoryDependency( context.cbtHome ++ "/plugins/sonatype-release" )
+    final lazy val essentials = DirectoryDependency( context.cbtHome ++ "/plugins/essentials" )
   }
 
   override def dependencies =
@@ -63,6 +69,12 @@ trait BuildBuild extends BaseBuild{
         throw new Exception(
           "No file build.scala (lower case) found in " ++ projectDirectory.getPath
         )
+      /*
+      // is this not needed?
+      } else if( projectDirectory.getParentFile.getName == "build" && projectDirectory.getParentFile.getParentFile.getName == "build" ){
+        // can't use essentiasy, when building essentials themselves
+        new BasicBuild( managedContext ) with BuildBuildWithoutEssentials
+      */
       } else if( projectDirectory.getParentFile.getName == "build" ){
         new BasicBuild( managedContext ) with BuildBuild
       } else {

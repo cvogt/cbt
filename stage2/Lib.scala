@@ -48,7 +48,19 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     val rootBuildClassName = if( useBasicBuildBuild ) buildBuildClassName else buildClassName
     try{
-      if(useBasicBuildBuild) default( context ) else new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuild
+      if(useBasicBuildBuild)
+        default( context )
+      else if(
+        // essentials depends on eval, which has a build that depends on scalatest
+        // this means in these we can't depend on essentials
+        // hopefully we find a better way that this pretty hacky exclusion rule
+        context.projectDirectory == (context.cbtHome ++ "/plugins/essentials")
+        || context.projectDirectory == (context.cbtHome ++ "/libraries/eval")
+        || context.projectDirectory == (context.cbtHome ++ "/plugins/scalatest")
+      )
+        new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuildWithoutEssentials
+      else
+        new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuild
     } catch {
       case e:ClassNotFoundException if e.getMessage == rootBuildClassName =>
         throw new Exception(s"no class $rootBuildClassName found in " ++ start.string)
