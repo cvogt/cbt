@@ -263,72 +263,62 @@ object Main{
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("with","""def dummy = "1.2.3" """, "dummy"))
       assert(res.exit0)
-      assert(res.out == "1.2.3\n", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out == "1.2.3\n", res.out ++ res.err)
     }
 
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("with","""def dummy = "1.2.3" """, "dummy"))
       assert(res.exit0)
-      assert(res.out == "1.2.3\n", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out == "1.2.3\n", res.out ++ res.err)
     }
 
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("eval",""" scalaVersion; 1 + 1 """))
       assert(res.exit0)
-      assert(res.out == "2\n", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out == "2\n", res.out ++ res.err)
     }
 
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("foo"))
       assert(res.exit0)
-      assert(res.out == "Build\n", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out == "Build\n", res.out ++ res.err)
     }
 
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("bar"))
       assert(res.exit0)
       assert(res.out startsWith "Bar: DynamicBuild", res.out)
-      assert(res.out startsWith "", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out startsWith "", res.out ++ res.err)
     }
 
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("baz"))
       assert(res.exit0)
-      assert(res.out startsWith "Bar: DynamicBuild", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out startsWith "Bar: DynamicBuild", res.out ++ res.err)
     }
 
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("bam"))
       assert(res.exit0)
-      assert(res.out startsWith "Baz: DynamicBuild", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out startsWith "Baz: DynamicBuild", res.out ++ res.err)
     }
 
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("foo2"))
       assert(res.exit0)
-      assert(res.out == "Build\n", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out == "Build\n", res.out ++ res.err)
     }
 
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("bar2"))
       assert(res.exit0)
-      assert(res.out startsWith "Bar2: Some(DynamicBuild", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out startsWith "Bar2: Some(DynamicBuild", res.out ++ res.err)
     }
 
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("baz2"))
       assert(res.exit0)
-      assert(res.out startsWith "Bar2: Some(DynamicBuild", res.out)
-      assert(res.err.isEmpty)
+      assert(res.out startsWith "Bar2: Some(DynamicBuild", res.out ++ res.err)
     }
 
     {
