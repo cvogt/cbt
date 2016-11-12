@@ -21,11 +21,6 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   val buildClassName = "Build"
   val buildBuildClassName = "BuildBuild"
 
-  def copy(cls: Class[_], context: Context) = 
-    cls
-    .getConstructor(classOf[Context])
-    .newInstance(context)
-
   /** Loads Build for given Context */
   def loadDynamic(context: Context, default: Context => BuildInterface = new BasicBuild(_)): BuildInterface = {
     context.logger.composition( context.logger.showInvocation("Build.loadDynamic",context) )

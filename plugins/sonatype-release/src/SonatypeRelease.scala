@@ -46,6 +46,4 @@ trait SonatypeRelease extends Publish {
 
   private def sonatypeLib =
     new SonatypeLib(sonatypeServiceURI, sonatypeSnapshotsURI, sonatypeCredentials, profileName)(lib)
-
-  override def copy(context: Context) = super.copy(context).asInstanceOf[SonatypeRelease]
 }
