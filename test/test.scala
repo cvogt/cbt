@@ -204,7 +204,7 @@ object Main{
     compile("../examples/scalatest-example")
     compile("../examples/scalajs-react-example/js")
     compile("../examples/scalajs-react-example/jvm")
-    compile("../examples/multi-project-example")
+    compile("../examples/multi-standalone-example")
     if(sys.props("java.version").startsWith("1.7")){
       System.err.println("\nskipping dotty tests on Java 7")
     } else {
