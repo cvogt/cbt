@@ -18,8 +18,17 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def enableConcurrency = false
   final def projectDirectory: File = lib.realpath(context.projectDirectory)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
+  assert(
+    projectDirectory.getName =!= "build" ||
+    {
+      def transitiveInterfaces(cls: Class[_]): Vector[Class[_]] = cls.getInterfaces.toVector.flatMap(i => i +: transitiveInterfaces(i))
+      transitiveInterfaces(this.getClass).contains(classOf[BuildBuildWithoutEssentials])
+    },
+    "You need to extend BuildBuild in: " + projectDirectory + "/build"
+  )
+
   final def usage: String = lib.usage(this.getClass, show)
-  
+
   final def taskNames: String = lib.taskNames(this.getClass).sorted.mkString("\n")
 
   // ========== meta data ==========
