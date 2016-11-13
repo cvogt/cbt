@@ -486,3 +486,13 @@ It preserves same structure as in SBT (https://www.scala-js.org/doc/project/cros
  * No support for jsDependencies:
    It means that all 3rd party dependencies should added manually, see scalajs build example
  * No support for test
+
+
+CBT productivity hacks
+----------------------
+
+only show first 20 lines of type errors to catch the root ones
+```
+cbt c 2>&1 | head -n 20
+``
+
