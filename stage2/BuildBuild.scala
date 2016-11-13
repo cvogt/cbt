@@ -35,7 +35,7 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
   private object managedBuildCache extends Cache[BuildInterface]
   def managedBuild = managedBuildCache{
     val managedBuildFile = projectDirectory++"/build.scala"
-    logger.composition("Loading build at "++managedContext.projectDirectory.toString)
+    logger.composition("Loading build at " ++ managedBuildDirectory.toString)
     val build = (
       if(managedBuildFile.exists){
         val contents = new String(Files.readAllBytes(managedBuildFile.toPath))
@@ -66,8 +66,8 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
                 .getConstructors.head
                 .newInstance(managedContext)
               } catch {
-                case e: ClassNotFoundException if e.getMessage == lib.buildClassName => 
-                  throw new Exception("You need to define a class Build in build.scala in: "+context.projectDirectory)
+                case e: ClassNotFoundException if e.getMessage == lib.buildClassName =>
+                  throw new Exception("You need to define a class Build in build.scala in: "+projectDirectory)
               }
           }
       } else if( projectDirectory.listFiles.exists( _.getName.endsWith(".scala") ) ){
@@ -90,9 +90,9 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
       build.asInstanceOf[BuildInterface]
     } catch {
       case e: ClassCastException if e.getMessage.contains("Build cannot be cast to cbt.BuildInterface") =>
-        throw new Exception("Your Build class needs to extend BaseBuild in: "+context.projectDirectory, e)
+        throw new Exception("Your Build class needs to extend BaseBuild in: "+projectDirectory, e)
     }
   }
   override def triggerLoopFiles = super.triggerLoopFiles ++ managedBuild.triggerLoopFiles
-  override def finalBuild: BuildInterface = if( context.projectDirectory == context.cwd ) this else managedBuild.finalBuild
+  override def finalBuild: BuildInterface = if( projectDirectory == context.cwd ) this else managedBuild.finalBuild
 }

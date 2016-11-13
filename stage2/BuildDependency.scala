@@ -29,7 +29,7 @@ final case class DirectoryDependency(context: Context) extends TriggerLoop{
 }
 /*
 case class DependencyOr(first: DirectoryDependency, second: JavaDependency) extends ProjectProxy with DirectoryDependencyBase{
-  val isFirst = new File(first.context.projectDirectory).exists
+  val isFirst = new File(first.projectDirectory).exists
   def triggerLoopFiles = if(isFirst) first.triggerLoopFiles else Seq()
   protected val delegate = if(isFirst) first else second
 }

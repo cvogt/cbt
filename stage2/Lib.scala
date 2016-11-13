@@ -31,13 +31,16 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   This can either the Build itself, of if exists a BuildBuild or a BuildBuild for a BuildBuild and so on.
   */
   def loadRoot(context: Context, default: Context => BuildInterface = new BasicBuild(_)): BuildInterface = {
-    context.logger.composition( context.logger.showInvocation("Build.loadRoot",context.projectDirectory) )
     def findStartDir(projectDirectory: File): File = {
       val buildDir = realpath( projectDirectory ++ "/build" )
       if(buildDir.exists) findStartDir(buildDir) else projectDirectory
     }
 
-    val start = findStartDir(context.projectDirectory)
+    val directory = context.projectDirectory
+
+    context.logger.composition( context.logger.showInvocation("Build.loadRoot",directory) )
+
+    val start = findStartDir(directory)
 
     val useBasicBuildBuild = context.projectDirectory == start
 
@@ -49,9 +52,9 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         // essentials depends on eval, which has a build that depends on scalatest
         // this means in these we can't depend on essentials
         // hopefully we find a better way that this pretty hacky exclusion rule
-        context.projectDirectory == (context.cbtHome ++ "/plugins/essentials")
-        || context.projectDirectory == (context.cbtHome ++ "/libraries/eval")
-        || context.projectDirectory == (context.cbtHome ++ "/plugins/scalatest")
+        directory == (context.cbtHome ++ "/plugins/essentials")
+        || directory == (context.cbtHome ++ "/libraries/eval")
+        || directory == (context.cbtHome ++ "/plugins/scalatest")
       )
         new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuildWithoutEssentials
       else
