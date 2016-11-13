@@ -1,5 +1,5 @@
 import cbt._
-class Build(val context: Context) extends DynamicOverrides with CommandLineOverrides{
+class Build(val context: Context) extends CommandLineOverrides{
   def foo2 = "Build"
   def bar2: String =
     newBuild[Build]{"""

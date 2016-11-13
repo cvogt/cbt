@@ -11,9 +11,9 @@ trait DynamicOverrides extends BaseBuild{
   protected [cbt] def overrides: String = ""
 
   // TODO: add support for Build inner classes
-  def newBuild[T <: DynamicOverrides:scala.reflect.ClassTag]: DynamicOverrides with T = newBuild[T](context)("")
-  def newBuild[T <: DynamicOverrides:scala.reflect.ClassTag](body: String): DynamicOverrides with T = newBuild[T](context)(body)
-  def newBuild[T <: DynamicOverrides:scala.reflect.ClassTag](context: Context)(body: String): DynamicOverrides with T = {
+  def newBuild[T <: DynamicOverrides:scala.reflect.ClassTag]: T = newBuild[T](context)("")
+  def newBuild[T <: DynamicOverrides:scala.reflect.ClassTag](body: String): T = newBuild[T](context)(body)
+  def newBuild[T <: DynamicOverrides:scala.reflect.ClassTag](context: Context)(body: String): T = {
     val mixinClass = scala.reflect.classTag[T].runtimeClass
     assert(mixinClass.getTypeParameters.size == 0)
     val mixin = if(
@@ -30,37 +30,45 @@ trait DynamicOverrides extends BaseBuild{
       throw new Exception( "You cannot have more than one newBuild call on the Stack right now." )
     )
     val overrides = "" // currently disables, but can be used to force overrides everywhere
-    val name = if(mixin == "" && overrides == "" && body == ""){
-      "Build"
-    } else if(overrides == ""){
-      val name = "DynamicBuild" + System.currentTimeMillis
-      val code = s"""
-        class $name(context: _root_.cbt.Context)
-          extends $parent(context)$mixin{
-            $body
-        }
-      """
-      logger.dynamic("Dynamically generated code:\n" ++ code)
-      twitterEval.compile(code)
-      name
+    if(mixin == "" && overrides == "" && body == ""){
+      // TODO: is it possible for the contructor to have the wrong signature and
+      // thereby produce a pretty hard to understand error message here?
+      this.getClass
+        .getConstructor(classOf[Context])
+        .newInstance(context)
+        .asInstanceOf[T]
     } else {
-      val name = "DynamicBuild" + System.currentTimeMillis
-      val code = s"""
-        class $name(context: _root_.cbt.Context)
-          extends $parent(context)$mixin{
-            $body
-        }
-        class ${name}Overrides(context: _root_.cbt.Context)
-          extends $name(context){
-            $overrides
-        }
-      """
+      val baseName = "DynamicBuild" + System.currentTimeMillis
+      val overrideName = baseName+"Overrides"
+      val (finalName, code) = if(overrides == ""){
+        (
+          baseName,
+          s"""
+          class $baseName(context: _root_.cbt.Context)
+            extends $parent(context)$mixin{
+              $body
+          }
+          """
+        )
+    } else {
+        (
+          overrideName,
+          s"""
+          class $baseName(context: _root_.cbt.Context)
+            extends $parent(context)$mixin{
+              $body
+          }
+          class $overrideName(context: _root_.cbt.Context)
+            extends $baseName(context){
+              $overrides
+          }
+          """
+        )
+      }
       logger.dynamic("Dynamically generated code:\n" ++ code)
       twitterEval.compile(code)
-      name+"Overrides"
+      val createBuild = twitterEval.apply[Context => T](s"new $finalName(_: _root_.cbt.Context)",false)
+      createBuild( context ).asInstanceOf[T]
     }
-
-    val createBuild = twitterEval.apply[Context => T](s"new $name(_: _root_.cbt.Context)",false)
-    createBuild( context ).asInstanceOf[DynamicOverrides with T]
   }
 }
