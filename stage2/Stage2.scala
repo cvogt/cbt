@@ -71,7 +71,7 @@ object Stage2 extends Stage2Base{
             scala.util.control.Breaks.break
 
           case file if triggerFiles.exists(file.toString startsWith _.toString) =>
-            val build = lib.loadDynamic(context)
+            val build = lib.loadRoot(context).finalBuild
             logger.loop(s"Re-running $task for " ++ build.show)
             call(build)
         }
