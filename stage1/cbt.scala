@@ -8,6 +8,7 @@ object `package`{
   implicit class TypeInferenceSafeEquals[T](value: T){
     /** if you don't manually upcast, this will catch comparing different types */
     def ===(other: T) = value == other
+    def =!=(other: T) = value != other // =!= instead of !==, because it has better precedence
   }
 
   val mavenCentral = new URL("https://repo1.maven.org/maven2")

@@ -6,6 +6,11 @@ trait BuildBuild extends BuildBuildWithoutEssentials{
     super.dependencies :+ plugins.essentials
 }
 trait BuildBuildWithoutEssentials extends BaseBuild{
+  assert(
+    projectDirectory.getName === "build",
+    "You can't extend BuildBuild in: " + projectDirectory + "/build"
+  )
+
   protected final val managedContext = context.copy(
     projectDirectory = managedBuildDirectory,
     parentBuild=Some(this)
