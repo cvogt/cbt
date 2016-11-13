@@ -5,8 +5,8 @@ import java.util.concurrent.ConcurrentHashMap;
 // TODO: try to reduce the number of members
 public abstract class Context{
   public abstract File projectDirectory();
-  public abstract File cwd();
-  public abstract String[] argsArray();
+  public abstract File cwd(); // REPLACE by something that allows to run cbt on some other directly
+  public abstract String[] argsArray(); // replace this by https://github.com/cvogt/cbt/issues/172 ?
   public abstract String[] enabledLoggersArray();
   public abstract Long startCompat();
   public abstract Boolean cbtHasChangedCompat();
@@ -16,7 +16,7 @@ public abstract class Context{
   public abstract ConcurrentHashMap<Object,Object> taskCache();
   public abstract File cache();
   public abstract File cbtHome();
-  public abstract File cbtRootHome();
-  public abstract File compatibilityTarget();
+  public abstract File cbtRootHome(); // REMOVE
+  public abstract File compatibilityTarget(); // maybe replace this with search in the classloader for it?
   public abstract BuildInterface parentBuildOrNull();
 }

@@ -3,10 +3,13 @@ package cbt
 import java.io._
 import java.net._
 
-class BasicBuild(val context: Context) extends BaseBuild
+class BasicBuild(final val context: Context) extends BaseBuild
 trait BaseBuild extends BuildInterface with DependencyImplementation with TriggerLoop with SbtDependencyDsl{
+  //* DO NOT OVERRIDE CONTEXT in non-idempotent ways, because .copy and new Build
+  // will create new instances given the context, which means operations in the
+  // overrides will happen multiple times and if they are not idempotent stuff likely breaks
   def context: Context
-  
+
   // library available to builds
   implicit protected final val logger: Logger = context.logger
   implicit protected final val classLoaderCache: ClassLoaderCache = context.classLoaderCache
