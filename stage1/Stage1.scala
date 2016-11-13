@@ -72,8 +72,13 @@ object Stage1{
 
     classLoader
       .loadClass("cbt.Stage2")
-      .getMethod( "getBuild", classOf[java.lang.Object], classOf[java.lang.Boolean] )
-      .invoke(null, context, (buildStage1.changed || changed): java.lang.Boolean)
+      .getMethod( "getBuild", classOf[Context] )
+      .invoke(
+        null,
+        context.copy(
+          cbtHasChanged = context.cbtHasChanged || buildStage1.changed || changed // might be redundant
+        )
+      )
   }
 
   def buildStage2(

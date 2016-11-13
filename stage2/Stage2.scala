@@ -2,13 +2,8 @@ package cbt
 import java.io._
 
 object Stage2 extends Stage2Base{
-  def getBuild(__context: java.lang.Object, _cbtChanged: java.lang.Boolean) = {
-    val _context = __context.asInstanceOf[Context]
-    val context = _context.copy(
-      cbtHasChanged = _context.cbtHasChanged || _cbtChanged
-    )
-    val first = new Lib(context.logger).loadRoot( context )
-    first.finalBuild
+  def getBuild(context: Context) = {
+    new Lib( context.logger ).loadRoot( context ).finalBuild
   }
 
   def run( args: Stage2Args ): Unit = {
