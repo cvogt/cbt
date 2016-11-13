@@ -26,7 +26,7 @@ public class NailgunLauncher{
   public static String TARGET = System.getenv("TARGET");
   private static String NAILGUN = "nailgun_launcher/";
   private static String STAGE1 = "stage1/";
-  
+
   @SuppressWarnings("unchecked")
   public static Object getBuild( Object context ) throws Throwable{
     BuildStage1Result res = buildStage1(
