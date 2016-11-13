@@ -78,10 +78,9 @@ object `package`{
     def copy(
       projectDirectory: File = projectDirectory,
       args: Seq[String] = args,
-      enabledLoggers: Set[String] = enabledLoggers,
+      //enabledLoggers: Set[String] = enabledLoggers,
       cbtHasChanged: Boolean = cbtHasChanged,
       scalaVersion: Option[String] = scalaVersion,
-      cache: File = cache,
       cbtHome: File = cbtHome,
       parentBuild: Option[BuildInterface] = None
     ): Context = ContextImplementation(
