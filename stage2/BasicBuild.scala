@@ -40,8 +40,16 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   final def crossScalaVersionsArray: Array[String] = crossScalaVersions.to
   def projectName = "default"
 
-  // TODO: this should probably provide a nice error message if class has constructor signature
-  def copy(context: Context): BuildInterface = lib.copy(this.getClass, context).asInstanceOf[BuildInterface]
+  // TODO: get rid of this in favor of newBuild.
+  // currently blocked on DynamicOverride being not parts
+  // of core but being part of plugin essentials while
+  // callNullary in lib needing .copy .
+  def copy(context: Context): BuildInterface =
+    this.getClass
+      .getConstructor(classOf[Context])
+      .newInstance(context)
+      .asInstanceOf[BuildInterface]
+
   def zincVersion = constants.zincVersion
 
   def dependencies: Seq[Dependency] =
