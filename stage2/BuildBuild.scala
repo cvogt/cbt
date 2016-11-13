@@ -37,7 +37,11 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
     val managedBuildFile = projectDirectory++"/build.scala"
     logger.composition("Loading build at " ++ managedBuildDirectory.toString)
     val build = (
-      if(managedBuildFile.exists){
+      if( !managedBuildFile.exists ){
+        throw new Exception(
+          "No file build.scala (lower case) found in " ++ projectDirectory.getPath
+        )
+      } else {
         val contents = new String(Files.readAllBytes(managedBuildFile.toPath))
         val cbtUrl = ("cbt:"++GitDependency.GitUrl.regex++"#[a-z0-9A-Z]+").r
         cbtUrl
@@ -70,20 +74,6 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
                   throw new Exception("You need to define a class Build in build.scala in: "+projectDirectory)
               }
           }
-      } else if( projectDirectory.listFiles.exists( _.getName.endsWith(".scala") ) ){
-        throw new Exception(
-          "No file build.scala (lower case) found in " ++ projectDirectory.getPath
-        )
-      /*
-      // is this not needed?
-      } else if( projectDirectory.getParentFile.getName == "build" && projectDirectory.getParentFile.getParentFile.getName == "build" ){
-        // can't use essentiasy, when building essentials themselves
-        new BasicBuild( managedContext ) with BuildBuildWithoutEssentials
-      */
-      } else if( projectDirectory.getParentFile.getName == "build" ){
-        new BasicBuild( managedContext ) with BuildBuild
-      } else {
-        new BasicBuild( managedContext )
       }
     )
     try{
