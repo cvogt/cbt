@@ -19,13 +19,15 @@ trait DependencyImplementation extends Dependency{
   protected lazy val taskCache = new PerClassCache(transientCache, moduleKey)
 
   private[cbt] def targetClasspath: ClassPath
-  def dependencyClasspathArray: Array[File] = dependencyClasspath.files.toArray
   def exportedClasspathArray: Array[File] = exportedClasspath.files.toArray
   def exportedClasspath: ClassPath
   def dependenciesArray: Array[Dependency] = dependencies.to
 
-  @deprecated("this method is replaced by lastModifiedCompat","")
+  @deprecated("this method was replaced by lastModifiedCompat","")
   def needsUpdateCompat = true
+  @deprecated("this method was replaced by dependenciesArray","")
+  def dependencyClasspathArray = dependencyClasspath.files.toArray
+
 
   /*
   //private type BuildCache = KeyLockedLazyCache[Dependency, Future[ClassPath]]

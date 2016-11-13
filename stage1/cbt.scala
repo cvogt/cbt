@@ -52,9 +52,10 @@ object `package`{
   }
   implicit class DependencyExtensions(subject: Dependency){
     import subject._
-    def dependencyClasspath: ClassPath = ClassPath(dependencyClasspathArray.to)
+    def dependencyClasspath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]): ClassPath
+      = Dependencies(dependenciesArray.to).classpath
     def exportedClasspath: ClassPath = ClassPath(exportedClasspathArray.to)
-    def classpath = exportedClasspath ++ dependencyClasspath
+    def classpath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) = exportedClasspath ++ dependencyClasspath
     def dependencies: Seq[Dependency] = dependenciesArray.to
   }
   implicit class ContextExtensions(subject: Context){

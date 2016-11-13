@@ -13,11 +13,12 @@ public interface Dependency{
   // methods that exist for longer which every CBT version in use should have by now, no default values needed
   public abstract String show();
   public abstract Dependency[] dependenciesArray();
-  public abstract File[] dependencyClasspathArray();
   public abstract File[] exportedClasspathArray();
 
   // deprecated methods
   @java.lang.Deprecated
   public abstract boolean needsUpdateCompat();
+  @java.lang.Deprecated
+  public abstract File[] dependencyClasspathArray();
 }
 
