@@ -10,33 +10,57 @@
 </head>
 <body>
 <div id="popup">
-  <div onclick="hidePopup()">×</div>
+  <div class="stroke" onclick="Popup.hide()">×</div>
   <table id="popup-table"></table>
 </div>
 <div class="container">
 
   <h1>CBT bootstrap</h1>
 
-  <div id="cwd" class="entry"><span>current dir:</span> </div>
-  <div class="entry"><input type="text" id="name" placeholder="project name"></div>
-  <div class="entry"><input type="text" id="package" placeholder="default package"></div>
+  <button class="small-btn" onclick="setFlowCreate()" id="flow-create-btn">create from scratch</button>
+  or
+  <button class="small-btn" onclick="setFlowCopy()" id="flow-copy-btn">copy an example</button>
   <hr>
 
-  <div class="entry"><input type="text" id="query" placeholder="add maven dependency" onkeyup="handleSearchInput(event)"></div>
-  <button class="small-btn" onclick="search()">search</button>
-  <div id="dependencies"></div>
-  <hr>
+  <div id="cwd" class="entry"><span>project location:</span> </div>
 
-  <input type="checkbox" id="readme-flag"><label for="readme-flag">readme.md</label>
-  <input type="checkbox" id="dotty-flag"><label for="dotty-flag">dotty</label>
-  <input type="checkbox" id="uberJar-flag"><label for="uberJar-flag">uber jar</label>
-  <input type="checkbox" id="wartremover-flag"><label for="wartremover-flag">wartremover</label>
-  <hr>
+  <div id="flow-create">
+    <div class="entry"><input type="text" id="name" placeholder="project name"></div>
+    <div class="entry"><input type="text" id="package" placeholder="default package"></div>
+    <hr>
 
-  <button id="create-project" onclick="createProject()">create project</button>
+    <div class="entry"><input type="text" id="query" placeholder="add maven dependency"></div>
+    <button class="small-btn" onclick="Dependencies.search()" id="search-btn">search</button>
+    <div id="dependencies"></div>
+    <hr>
+
+    <input type="checkbox" id="readme-flag"><label for="readme-flag">readme.md</label>
+    <input type="checkbox" id="dotty-flag"><label for="dotty-flag">dotty</label>
+    <input type="checkbox" id="uberJar-flag"><label for="uberJar-flag">uber jar</label>
+    <input type="checkbox" id="wartremover-flag"><label for="wartremover-flag">wartremover</label>
+    <hr>
+
+    <button id="create-project-btn" onclick="createProject()">create project</button>
+  </div>
+
+  <div id="flow-copy">
+    <span class="entry">
+      <span id="examples-title">select an example:</span>
+      <span class="removable" id="selected-example" onclick="Examples.unselectExample()"></span>
+    </span>
+    <hr>
+    <div id="examples"></div>
+    <div id="example-browser">
+      <div id="file-browser"></div>
+      <pre id="code-browser"><code></code></pre>
+    </div>
+    <hr>
+    <button id="copy-project-btn" onclick="copyProject()">copy example</button>
+  </div>
 
 </div>
 <script src="jquery-3.1.1.min.js"></script>
+<script src="definitions.js"></script>
 <script src="main.js"></script>
 </body>
 </html>
