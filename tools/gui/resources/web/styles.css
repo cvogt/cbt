@@ -31,7 +31,10 @@ hr {
 }
 
 pre {
-  margin: 0 0 1em 0;
+  margin: 0;
+  font-size: 1rem;
+  background: #000;
+  padding: 0.2em;
 }
 
 button, .small-btn {
@@ -218,6 +221,7 @@ button, .entry {
 #example-browser {
   width: 100%;
   float: left;
+  margin-bottom: 1em;
 }
 
 #file-browser {
@@ -245,15 +249,19 @@ button, .entry {
 }
 
 .browser-node > div {
-  margin-left: 2em;
+  margin-left: 1em;
 }
 
 .file-node {
   cursor: pointer;
 }
 
-.file-node:hover, .selected-node {
+.file-node:hover {
   color: #dc322f;
+}
+
+.selected-node {
+  color: #27b3d9;
 }
 
 .even-node {

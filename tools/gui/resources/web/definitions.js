@@ -215,9 +215,11 @@ let Examples = {
         ajax("/example/file", {path: node.path}).done(data => {
           var codeBrowser = $("#code-browser");
           codeBrowser.show();
-          codeBrowser.html(data);
+          codeBrowser.html(node.name.endsWith(".md") ? data : ("<pre><code>" + data + "</code></pre>"));
         });
       });
     }
+    if (node.name.toLowerCase() == "readme.md")
+      div.click();
   }
 };

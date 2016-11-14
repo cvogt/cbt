@@ -3,6 +3,9 @@ import java.net.MalformedURLException
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{FileVisitResult, Files, Path, SimpleFileVisitor}
 
+import org.commonmark.parser.Parser
+import org.commonmark.renderer.html.HtmlRenderer
+
 import scala.io.Source
 import scala.util.{Failure, Success, Try}
 import scalaj.http.Http
@@ -73,7 +76,13 @@ object Main {
           val path = param("path")
           handleIoException {
             val file = new File(path)
-            Success(Source.fromFile(file).mkString)
+            Success {
+              val content = Source.fromFile(file).mkString
+              if (file.getName.endsWith(".md"))
+                parseMd(content)
+              else
+                content
+            }
           }
         case _ =>
           Failure(new MalformedURLException(s"Incorrect path: $path"))
@@ -123,6 +132,13 @@ object Main {
     else
       ""
     s"""{"name":"${file.getName}","path":"${file.getAbsolutePath}"$data}"""
+  }
+
+  private def parseMd(s: String) = {
+    val parser = Parser.builder().build()
+    val document = parser.parse(s)
+    val renderer = HtmlRenderer.builder().build()
+    renderer.render(document)
   }
 
   private class FileCopier(source: File, target: File) extends SimpleFileVisitor[Path] {
