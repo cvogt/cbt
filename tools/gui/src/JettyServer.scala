@@ -27,7 +27,7 @@ abstract class JettyServer(port: Int, staticFilesUrl: String) {
         response.setContentType("application/json")
         response.setCharacterEncoding("UTF-8")
 
-        route(request.getMethod, target, request.getParameter) match {
+        route(request.getMethod, target, request.getParameter, response.setContentType) match {
           case Success(result) =>
             response.getWriter.write(result)
           case Failure(e: MalformedURLException) =>
@@ -63,5 +63,5 @@ abstract class JettyServer(port: Int, staticFilesUrl: String) {
     println("UI server stopped.")
   }
 
-  def route(method: String, path: String, param: String => String): Try[String]
+  def route(method: String, path: String, param: String => String, setContentType: String => Unit): Try[String]
 }
