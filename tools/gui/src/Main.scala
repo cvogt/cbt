@@ -1,7 +1,6 @@
 import java.io.{File, IOException}
 import java.net.MalformedURLException
-import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.{FileVisitResult, Files, Path, SimpleFileVisitor}
+import java.nio.file.Files
 
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
@@ -46,7 +45,7 @@ object Main {
           val source = new File(cbt_home / "examples" / name)
           val target = new File(projectDirectory.getAbsolutePath / name)
           handleIoException {
-            new FileCopier(source, target).copy()
+            copyTree(source, target)
             Success("[]")
           }
         case ("GET", "/dependency") =>
@@ -141,20 +140,17 @@ object Main {
     renderer.render(document)
   }
 
-  private class FileCopier(source: File, target: File) extends SimpleFileVisitor[Path] {
-
-    def copy() = Files.walkFileTree(source.toPath, this)
-
-    override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes) = {
-      Files.createDirectories(target.toPath.resolve(source.toPath.relativize(dir)))
-      FileVisitResult.CONTINUE
+  private def copyTree(sourceRoot: File, targetRoot: File) =
+    listFilesRecursive(sourceRoot).sorted.foreach { source =>
+      val path = source.getAbsolutePath.replace(sourceRoot.getAbsolutePath, targetRoot.getAbsolutePath)
+      val file = new File(path)
+      if (source.isDirectory)
+        file.mkdirs()
+      else
+        Files.copy(source.toPath, file.toPath)
     }
 
-    override def visitFile(file: Path, attrs: BasicFileAttributes) = {
-      Files.copy(file, target.toPath.resolve(source.toPath.relativize(file)))
-      FileVisitResult.CONTINUE
-    }
-
-  }
+  private def listFilesRecursive(f: File): Seq[File] =
+    f +: (if (f.isDirectory) f.listFiles.flatMap(listFilesRecursive).toVector else Vector[File]())
 
 }
