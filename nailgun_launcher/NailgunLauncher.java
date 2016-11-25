@@ -15,9 +15,8 @@ import static java.io.File.pathSeparator;
  */
 public class NailgunLauncher{
   /** Persistent cache for caching classloaders for the JVM life time. */
-  private final static ClassLoaderCache2<ClassLoader> classLoaderCache = new ClassLoaderCache2<ClassLoader>(
-    new ConcurrentHashMap<String,Object>(),
-    new ConcurrentHashMap<Object,ClassLoader>()
+  private final static JavaCache<ClassLoader> classLoaderCache = new JavaCache<ClassLoader>(
+    new ConcurrentHashMap<Object,Object>()
   );
 
   public final static SecurityManager initialSecurityManager
@@ -35,9 +34,8 @@ public class NailgunLauncher{
       ((File) get(context, "cache")).toString() + "/",
       ((File) get(context, "cbtHome")).toString(),
       ((File) get(context, "compatibilityTarget")).toString() + "/",
-      new ClassLoaderCache2<ClassLoader>(
-        (ConcurrentHashMap<String,Object>) get(context, "permanentKeys"),
-        (ConcurrentHashMap<Object,ClassLoader>) get(context, "permanentClassLoaders")
+      new JavaCache<ClassLoader>(
+        (ConcurrentHashMap) get(context, "persistentCache")
       )
     );
     return
@@ -93,12 +91,12 @@ public class NailgunLauncher{
           .getMethod(
             "run",
             String[].class, File.class, File.class, BuildStage1Result.class,
-            Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
+            Long.class, ConcurrentHashMap.class
           )
           .invoke(
             null,
             (Object) args, new File(cache), new File(CBT_HOME), res,
-            start, classLoaderCache.keys, classLoaderCache.values
+            start, classLoaderCache.hashMap
           )
       );
     } catch (java.lang.reflect.InvocationTargetException e) {
@@ -115,7 +113,7 @@ public class NailgunLauncher{
   }
 
   public static BuildStage1Result buildStage1(
-    Boolean changed, long start, String cache, String cbtHome, String compatibilityTarget, ClassLoaderCache2<ClassLoader> classLoaderCache
+    Boolean changed, long start, String cache, String cbtHome, String compatibilityTarget, JavaCache<ClassLoader> classLoaderCache
   ) throws Throwable {
     _assert(TARGET != null, "environment variable TARGET not defined");
     String nailgunTarget = cbtHome + "/" + NAILGUN + TARGET;

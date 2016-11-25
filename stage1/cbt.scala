@@ -59,11 +59,8 @@ object `package`{
     import subject._
     val paths = CbtPaths(cbtHome, cache)
     implicit def logger: Logger = new Logger(enabledLoggers, start)
-    def classLoaderCache: ClassLoaderCache = new ClassLoaderCache(
-      logger,
-      permanentKeys,
-      permanentClassLoaders
-    )
+
+    def classLoaderCache: ClassLoaderCache = new ClassLoaderCache( logger, persistentCache )
     def cbtDependency = {
       import paths._
       CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)
@@ -91,9 +88,8 @@ object `package`{
       startCompat,
       cbtHasChangedCompat,
       scalaVersion.getOrElse(null),
-      permanentKeys,
-      permanentClassLoaders,
-      taskCache,
+      persistentCache,
+      transientCache,
       cache,
       cbtHome,
       cbtRootHome,

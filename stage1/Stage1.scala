@@ -45,11 +45,7 @@ case class Stage2Args(
   cbtHome: File,
   compatibilityTarget: File
 ){
-  val ClassLoaderCache(
-    logger,
-    permanentKeys,
-    permanentClassLoaders
-  ) = classLoaderCache  
+  val ClassLoaderCache( logger, persistentCache ) = classLoaderCache
 }
 object Stage1{
   protected def newerThan( a: File, b: File ) ={
@@ -61,11 +57,7 @@ object Stage1{
     val logger = new Logger( context.enabledLoggers, context.start )
     val (changed, classLoader) = buildStage2(
       buildStage1,
-      ClassLoaderCache(
-        logger,
-        context.permanentKeys,
-        context.permanentClassLoaders
-      ),
+      ClassLoaderCache( logger, context.persistentCache ),
       context.cbtHome,
       context.cache
     )
@@ -113,8 +105,8 @@ object Stage1{
     )
 
     logger.stage1(s"calling CbtDependency.classLoader")
-    if( cbtHasChanged && classLoaderCache.persistent.containsKey( cbtDependency.classpath.string ) ) {
-      classLoaderCache.persistent.remove( cbtDependency.classpath.string )
+    if( cbtHasChanged && classLoaderCache.cache.containsKey( cbtDependency.classpath.string ) ) {
+      classLoaderCache.cache.remove( cbtDependency.classpath.string )
     } else {
       assert(
         buildStage1.compatibilityClasspath === cbtDependency.stage1Dependency.compatibilityDependency.classpath.string,
@@ -125,11 +117,11 @@ object Stage1{
         "stage1 classpath different from NailgunLauncher"
       )
       assert(
-        classLoaderCache.persistent.containsKey( cbtDependency.stage1Dependency.compatibilityDependency.classpath.string ),
+        classLoaderCache.cache.containsKey( cbtDependency.stage1Dependency.compatibilityDependency.classpath.string ),
         "cbt unchanged, expected compatibility classloader to be cached"
       )
       assert(
-        classLoaderCache.persistent.containsKey( cbtDependency.stage1Dependency.classpath.string ),
+        classLoaderCache.cache.containsKey( cbtDependency.stage1Dependency.classpath.string ),
         "cbt unchanged, expected stage1/nailgun classloader to be cached"
       )
     }
@@ -167,18 +159,13 @@ object Stage1{
     cbtHome: File,
     buildStage1: BuildStage1Result,
     start: java.lang.Long,
-    classLoaderCacheKeys: ConcurrentHashMap[String,AnyRef],
-    classLoaderCacheValues: ConcurrentHashMap[AnyRef,ClassLoader]
+    persistentCache: ConcurrentHashMap[AnyRef,AnyRef]
   ): Int = {
     val args = Stage1ArgsParser(_args.toVector)
     val logger = new Logger(args.enabledLoggers, start)
     logger.stage1(s"Stage1 start")
 
-    val classLoaderCache = ClassLoaderCache(
-      logger,
-      classLoaderCacheKeys,
-      classLoaderCacheValues
-    )
+    val classLoaderCache = ClassLoaderCache( logger, persistentCache )
 
 
     val (cbtHasChanged, classLoader) = buildStage2( buildStage1, classLoaderCache, cbtHome, cache )

@@ -272,7 +272,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   the context is fresh on every complete run of cbt
   */
   def cached[T <: AnyRef](name: String)(task: => T): T = {
-    val cache = context.taskCache
+    val cache = context.transientCache
     val key = (projectDirectory,name)
     if( cache.containsKey(key) ){
       cache.get(key).asInstanceOf[T]

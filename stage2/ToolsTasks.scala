@@ -129,7 +129,7 @@ class EarlyDependencies{
 ${files.map(d => s"""  String ${valName(d)}File;""").mkString("\n")}
 
   public EarlyDependencies(
-    String mavenCache, String mavenUrl, ClassLoaderCache2<ClassLoader> classLoaderCache, ClassLoader rootClassLoader
+    String mavenCache, String mavenUrl, JavaCache<ClassLoader> classLoaderCache, ClassLoader rootClassLoader
   ) throws Throwable {
 ${files.map(d => s"""    ${valName(d)}File = mavenCache + "${d.basePath(true)}.jar";""").mkString("\n")}
 

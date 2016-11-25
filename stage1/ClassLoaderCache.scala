@@ -2,22 +2,22 @@ package cbt
 
 import java.net._
 import java.util.concurrent.ConcurrentHashMap
-import collection.JavaConversions._
+import collection.JavaConverters._
 
 case class ClassLoaderCache(
   logger: Logger,
-  private[cbt] permanentKeys: ConcurrentHashMap[String,AnyRef],
-  private[cbt] permanentClassLoaders: ConcurrentHashMap[AnyRef,ClassLoader]
+  private[cbt] hashMap: ConcurrentHashMap[AnyRef,AnyRef]
 ){
-  val persistent = new KeyLockedLazyCache(
-    permanentKeys,
-    permanentClassLoaders,
-    Some(logger)
-  )
+  val cache = new KeyLockedLazyCache[ClassLoader]( hashMap, Some(logger) )
   override def toString = (
     s"ClassLoaderCache("
     ++
-    persistent.keys.keySet.toVector.map(_.toString.split(":").mkString("\n")).sorted.mkString("\n\n","\n\n","\n\n")
+    hashMap.asScala.collect{
+      case (key, value) if key.isInstanceOf[String] =>
+        key.toString.split(":").mkString("\n") -> value
+    }.toVector.sortBy(_._1).map{
+      case (key, value) => key + " -> " + hashMap.get(value)
+    }.mkString("\n\n","\n\n","\n\n")
     ++
     ")"
   )

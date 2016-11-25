@@ -28,7 +28,7 @@ class EarlyDependencies{
   String scalaLibrary_2_10_6_File;
 
   public EarlyDependencies(
-    String mavenCache, String mavenUrl, ClassLoaderCache2<ClassLoader> classLoaderCache, ClassLoader rootClassLoader
+    String mavenCache, String mavenUrl, JavaCache<ClassLoader> classLoaderCache, ClassLoader rootClassLoader
   ) throws Throwable {
     scalaReflect_2_11_8_File = mavenCache + "/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar";
     scalaCompiler_2_11_8_File = mavenCache + "/org/scala-lang/scala-compiler/2.11.8/scala-compiler-2.11.8.jar";

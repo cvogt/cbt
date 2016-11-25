@@ -255,7 +255,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
           )
         val singleArgs = scalacOptions.map( "-S" ++ _ )
 
-        val code = 
+        val code =
           redirectOutToErr{
             System.err.println("Compiling to " ++ compileTarget.toString)
             try{
@@ -285,6 +285,8 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   ${files.sorted.mkString(" \\\n")}
   """
               )
+
+              redirectOutToErr( e.printStackTrace )
               ExitCode.Failure
             }
           }
@@ -416,6 +418,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   }
 
   def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+    // FIXME: shouldn't we be using KeyLockedLazyCache instead of hashmap directly here?
     val d = dependency
     val dependencies = dependency.dependencies
     def dependencyClassLoader( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
@@ -426,14 +429,14 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         classLoaderRecursion( dependencies.head, latest, cache )
       } else{
         val cp = d.dependencyClasspath.string
-        if( dependencies.exists(_.needsUpdate) && cache.persistent.containsKey(cp) ){
-          cache.persistent.remove(cp)
+        if( dependencies.exists(_.needsUpdate) && cache.cache.containsKey(cp) ){
+          cache.cache.remove(cp)
         }
         def cl = new MultiClassLoader( dependencies.map( classLoaderRecursion(_, latest, cache) ) )
         if(d.isInstanceOf[BuildInterface])
           cl // Don't cache builds right now. We need to fix invalidation first.
         else
-          cache.persistent.get( cp, cl )
+          cache.cache.get( cp, cl )
       }
     }
 
@@ -442,6 +445,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     if(d.isInstanceOf[BuildInterface])
       cl
     else
-      cache.persistent.get( a.classpath.string, cl )
+      cache.cache.get( a.classpath.string, cl ).asInstanceOf[ClassLoader]
   }
 }

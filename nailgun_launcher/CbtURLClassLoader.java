@@ -15,10 +15,7 @@ public class CbtURLClassLoader extends java.net.URLClassLoader{
       + "\n)"
     );
   }
-  ClassLoaderCache2<Class> cache = new ClassLoaderCache2<Class>(
-    new ConcurrentHashMap<String, Object>(),
-    new ConcurrentHashMap<Object, Class>()
-  );
+  JavaCache<Class> cache = new JavaCache<Class>( new ConcurrentHashMap<Object,Object>() );
   public Class loadClass(String name) throws ClassNotFoundException{
     Class _class = super.loadClass(name);
     if(_class == null) throw new ClassNotFoundException(name);
