@@ -226,7 +226,7 @@ case class BoundMavenDependency(
   override def needsUpdate = false
 
   private val groupPath = groupId.split("\\.").mkString("/")
-  protected[cbt] def basePath = s"/$groupPath/$artifactId/$version/$artifactId-$version" ++ classifier.name.map("-"++_).getOrElse("")
+  protected[cbt] def basePath(useClassifier: Boolean) = s"/$groupPath/$artifactId/$version/$artifactId-$version" ++ (if (useClassifier) classifier.name.map("-"++_).getOrElse("") else "")
   
   //private def coursierJarFile = userHome++"/.coursier/cache/v1/https/repo1.maven.org/maven2"++basePath++".jar"
 
@@ -235,10 +235,10 @@ case class BoundMavenDependency(
   override def targetClasspath = exportedClasspath
   import scala.collection.JavaConversions._
 
-  private def resolve(suffix: String, hash: Option[String]): File = {
+  private def resolve(suffix: String, hash: Option[String], useClassifier: Boolean): File = {
     logger.resolver("Resolving "+this)
-    val file = mavenCache ++ basePath ++ "." ++ suffix
-    val urls = repositories.map(_ ++ basePath ++ "." ++ suffix)
+    val file = mavenCache ++ basePath(useClassifier) ++ "." ++ suffix
+    val urls = repositories.map(_ ++ basePath(useClassifier) ++ "." ++ suffix)
     urls.find(
       lib.download(_, file, hash)
     ).getOrElse(
@@ -247,24 +247,23 @@ case class BoundMavenDependency(
     file
   }
 
-  private def resolveHash(suffix: String) = {
+  private def resolveHash(suffix: String, useClassifier: Boolean) = {
     Files.readAllLines(
-      resolve( suffix ++ ".sha1", None ).toPath,
+      resolve( suffix ++ ".sha1", None, useClassifier ).toPath,
       StandardCharsets.UTF_8
     ).mkString("\n").split(" ").head.trim
   }
   
   private object jarSha1Cache extends Cache[String]
-  def jarSha1: String = jarSha1Cache{ resolveHash("jar") }
+  def jarSha1: String = jarSha1Cache{ resolveHash("jar", true) }
 
   private object pomSha1Cache extends Cache[String]
-  def pomSha1: String = pomSha1Cache{ resolveHash("pom") }
-
+  def pomSha1: String = pomSha1Cache{ resolveHash("pom", false) }
   private object jarCache extends Cache[File]
-  def jar: File = jarCache{ resolve("jar", Some(jarSha1)) }
+  def jar: File = jarCache{ resolve("jar", Some(jarSha1), true) }
 
   private object pomCache extends Cache[File]
-  def pom: File = pomCache{ resolve("pom", Some(pomSha1)) }
+  def pom: File = pomCache{ resolve("pom", Some(pomSha1), false) }
 
   private def pomXml = XML.loadFile(pom.string)
   // ========== pom traversal ==========
@@ -311,7 +310,7 @@ case class BoundMavenDependency(
     if(classifier == Classifier.sources) Seq()
     else {
       lib.cacheOnDisk(
-        cbtHasChanged, mavenCache ++ basePath ++ ".pom.dependencies"
+        cbtHasChanged, mavenCache ++ basePath(true) ++ ".pom.dependencies"
       )( MavenDependency.deserialize )( _.serialize ){
         (pomXml \ "dependencies" \ "dependency").collect{
           case xml if ( (xml \ "scope").text == "" || (xml \ "scope").text == "compile" ) && (xml \ "optional").text != "true" =>
