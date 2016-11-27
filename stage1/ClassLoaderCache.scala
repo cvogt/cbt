@@ -1,12 +1,12 @@
 package cbt
 
 import java.net._
-import java.util.concurrent.ConcurrentHashMap
+import java.util._
 import collection.JavaConverters._
 
 case class ClassLoaderCache(
   logger: Logger,
-  private[cbt] hashMap: ConcurrentHashMap[AnyRef,AnyRef]
+  private[cbt] hashMap: java.util.Map[AnyRef,AnyRef]
 ){
   val cache = new KeyLockedLazyCache[ClassLoader]( hashMap, Some(logger) )
   override def toString = (

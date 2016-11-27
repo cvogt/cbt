@@ -2,7 +2,6 @@ package cbt
 import java.io._
 import java.nio.file._
 import java.net._
-import java.util.concurrent.ConcurrentHashMap
 
 object `package`{
   implicit class TypeInferenceSafeEquals[T](value: T){

@@ -1,6 +1,6 @@
 package cbt;
 import java.io.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
 // TODO: try to reduce the number of members
 public abstract class Context{
@@ -11,8 +11,8 @@ public abstract class Context{
   public abstract Long startCompat();
   public abstract Boolean cbtHasChangedCompat();
   public abstract String scalaVersionOrNull(); // needed to propagate scalaVersion to dependendee builds
-  public abstract ConcurrentHashMap<Object,Object> persistentCache();
-  public abstract ConcurrentHashMap<Object,Object> transientCache();
+  public abstract Map<Object,Object> persistentCache();
+  public abstract Map<Object,Object> transientCache();
   public abstract File cache();
   public abstract File cbtHome();
   public abstract File cbtRootHome(); // REMOVE

@@ -1,5 +1,6 @@
 package cbt
 import java.io._
+import java.util._
 
 object Stage2 extends Stage2Base{
   def getBuild(context: Context) = {
@@ -22,7 +23,7 @@ object Stage2 extends Stage2Base{
       0
     }
     val task = args.args.lift( taskIndex )
-    
+
     val context: Context = ContextImplementation(
       args.cwd,
       args.cwd,
@@ -32,7 +33,7 @@ object Stage2 extends Stage2Base{
       args.cbtHasChanged,
       null,
       args.persistentCache,
-      new java.util.concurrent.ConcurrentHashMap,
+      new HashMap,
       args.cache,
       args.cbtHome,
       args.cbtHome,

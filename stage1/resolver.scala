@@ -4,8 +4,6 @@ import java.nio.charset.StandardCharsets
 import java.net._
 import java.io._
 import scala.xml._
-import scala.concurrent._
-import scala.concurrent.duration._
 
 trait DependencyImplementation extends Dependency{
   implicit protected def logger: Logger

@@ -9,7 +9,6 @@ import java.nio.file.attribute.FileTime
 import javax.tools._
 import java.security._
 import java.util.{Set=>_,Map=>_,List=>_,_}
-import java.util.concurrent.ConcurrentHashMap
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
 // CLI interop

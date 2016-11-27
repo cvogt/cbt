@@ -1,7 +1,5 @@
 package cbt
 
-import java.util.concurrent.ConcurrentHashMap
-
 private[cbt] class LockableKey
 /**
 A hashMap that lazily computes values if needed during lookup.
@@ -9,7 +7,7 @@ Locking occurs on the key, so separate keys can be looked up
 simultaneously without a deadlock.
 */
 final private[cbt] class KeyLockedLazyCache[T <: AnyRef](
-  val hashMap: ConcurrentHashMap[AnyRef,AnyRef],
+  val hashMap: java.util.Map[AnyRef,AnyRef],
   logger: Option[Logger]
 ){
   def get( key: AnyRef, value: => T ): T = {

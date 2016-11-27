@@ -1,6 +1,5 @@
 package cbt
 import java.io._
-import java.util.concurrent.ConcurrentHashMap
 import java.lang._
 
 case class ContextImplementation(
@@ -11,8 +10,8 @@ case class ContextImplementation(
   startCompat: Long,
   cbtHasChangedCompat: Boolean,
   scalaVersionOrNull: String,
-  persistentCache: ConcurrentHashMap[AnyRef,AnyRef],
-  transientCache: ConcurrentHashMap[AnyRef,AnyRef],
+  persistentCache: java.util.Map[AnyRef,AnyRef],
+  transientCache: java.util.Map[AnyRef,AnyRef],
   cache: File,
   cbtHome: File,
   cbtRootHome: File,

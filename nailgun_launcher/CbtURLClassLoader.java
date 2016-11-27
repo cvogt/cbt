@@ -23,19 +23,21 @@ public class CbtURLClassLoader extends java.net.URLClassLoader{
   }
   public Class loadClass(String name, Boolean resolve) throws ClassNotFoundException{
     //System.out.println("loadClass("+name+") on \n"+this);
-    if(!cache.contains(name))
-      try{
-        cache.put(super.loadClass(name, resolve), name);
-      } catch (ClassNotFoundException e){
-        cache.put(Object.class, name);
+    synchronized( cache ){
+      if(!cache.contains(name))
+        try{
+          cache.put(super.loadClass(name, resolve), name);
+        } catch (ClassNotFoundException e){
+          cache.put(Object.class, name);
+        }
+      Class _class = cache.get(name);
+      if(_class == Object.class){
+        if( name == "java.lang.Object" )
+          return Object.class;
+        else return null;
+      } else {
+        return _class;
       }
-    Class _class = cache.get(name);
-    if(_class == Object.class){
-      if( name == "java.lang.Object" )
-        return Object.class;
-      else return null;
-    } else {
-      return _class;
     }
   }
   void assertExist(URL[] urls){

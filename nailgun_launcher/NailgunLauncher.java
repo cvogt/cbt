@@ -4,7 +4,6 @@ import java.lang.reflect.*;
 import java.net.*;
 import java.security.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import static cbt.Stage0Lib.*;
 import static java.io.File.pathSeparator;
 
@@ -15,9 +14,7 @@ import static java.io.File.pathSeparator;
  */
 public class NailgunLauncher{
   /** Persistent cache for caching classloaders for the JVM life time. */
-  private final static JavaCache<ClassLoader> classLoaderCache = new JavaCache<ClassLoader>(
-    new ConcurrentHashMap<Object,Object>()
-  );
+  private static Map<Object,Object> classLoaderCacheHashMap = new HashMap<Object,Object>();
 
   public final static SecurityManager initialSecurityManager
     = System.getSecurityManager();
@@ -35,7 +32,7 @@ public class NailgunLauncher{
       ((File) get(context, "cbtHome")).toString(),
       ((File) get(context, "compatibilityTarget")).toString() + "/",
       new JavaCache<ClassLoader>(
-        (ConcurrentHashMap) get(context, "persistentCache")
+        (HashMap) get(context, "persistentCache")
       )
     );
     return
@@ -79,28 +76,33 @@ public class NailgunLauncher{
     String CBT_HOME = System.getenv("CBT_HOME");
     String cache = CBT_HOME + "/cache/";
     String compatibilityTarget = CBT_HOME + "/compatibility/" + TARGET;
+    // copy cache, so that this thread has a consistent view
+    // replace before returning, see below
+    JavaCache<ClassLoader> classLoaderCache = new JavaCache<ClassLoader>(
+      new HashMap<Object,Object>(classLoaderCacheHashMap)
+    );
     BuildStage1Result res = buildStage1(
       false, start, cache, CBT_HOME, compatibilityTarget, classLoaderCache
     );
 
     try{
-      System.exit(
-        (Integer) res
-          .classLoader
-          .loadClass("cbt.Stage1")
-          .getMethod(
-            "run",
-            String[].class, File.class, File.class, BuildStage1Result.class,
-            Long.class, ConcurrentHashMap.class
-          )
-          .invoke(
-            null,
-            (Object) args, new File(cache), new File(CBT_HOME), res,
-            start, classLoaderCache.hashMap
-          )
-      );
+      Integer exitCode = (Integer) res
+        .classLoader
+        .loadClass("cbt.Stage1")
+        .getMethod(
+          "run", String[].class, File.class, File.class, BuildStage1Result.class, Long.class, Map.class
+        ).invoke(
+          null, (Object) args, new File(cache), new File(CBT_HOME), res, start, classLoaderCache.hashMap
+        );
+
+      System.exit( exitCode );
     } catch (java.lang.reflect.InvocationTargetException e) {
       throw unwrapInvocationTargetException(e);
+    } finally {
+      // This replaces the cache and should be thread-safe.
+      // For competing threads the last one wins with a consistent cache.
+      // So worst case, we loose some of the cache that's replaced.
+      classLoaderCacheHashMap = classLoaderCache.hashMap;
     }
   }
 

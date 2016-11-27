@@ -1,7 +1,7 @@
 package cbt
 
 import java.io._
-import java.util.concurrent.ConcurrentHashMap
+import java.util._
 
 import scala.collection.JavaConverters._
 
@@ -159,7 +159,7 @@ object Stage1{
     cbtHome: File,
     buildStage1: BuildStage1Result,
     start: java.lang.Long,
-    persistentCache: ConcurrentHashMap[AnyRef,AnyRef]
+    persistentCache: java.util.Map[AnyRef,AnyRef]
   ): Int = {
     val args = Stage1ArgsParser(_args.toVector)
     val logger = new Logger(args.enabledLoggers, start)

@@ -1,9 +1,9 @@
 package cbt
 package test
-import java.util.concurrent.ConcurrentHashMap
 import java.io.File
 import java.nio.file._
 import java.net.URL
+import java.util.{Iterator=>_,_}
 import scala.concurrent._
 import scala.concurrent.duration._
 // micro framework
@@ -115,8 +115,8 @@ object Main{
         start,
         cbtHasChanged,
         null,
-        new ConcurrentHashMap[AnyRef,AnyRef],
-        new java.util.concurrent.ConcurrentHashMap[AnyRef,AnyRef],
+        new HashMap[AnyRef,AnyRef],
+        new HashMap[AnyRef,AnyRef],
         cache,
         cbtHome,
         cbtHome,

@@ -1,15 +1,14 @@
 package cbt;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import static java.io.File.pathSeparator;
 import static cbt.Stage0Lib.*;
 
 final class JavaCache<T>{
-  ConcurrentHashMap<Object,Object> hashMap;
+  Map<Object,Object> hashMap;
 
   public JavaCache(
-    ConcurrentHashMap<Object,Object> hashMap
+    Map<Object,Object> hashMap
   ){
     this.hashMap = hashMap;
   }
