@@ -130,7 +130,7 @@ ${files.map(d => s"""  String ${valName(d)}File;""").mkString("\n")}
 
   public EarlyDependencies(
     String mavenCache, String mavenUrl, ClassLoaderCache2<ClassLoader> classLoaderCache, ClassLoader rootClassLoader
-  ) throws Exception {
+  ) throws Throwable {
 ${files.map(d => s"""    ${valName(d)}File = mavenCache + "${d.basePath(true)}.jar";""").mkString("\n")}
 
 ${scalaDeps.map(d => s"""    download(new URL(mavenUrl + "${d.basePath(true)}.jar"), Paths.get(${valName(d)}File), "${d.jarSha1}");""").mkString("\n")}
