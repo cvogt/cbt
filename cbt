@@ -179,11 +179,11 @@ stage1 () {
 		compiles=$?
 		if [ $compiles -eq 0 ]; then
 			touch -t $COMPILE_TIME $NAILGUN_INDICATOR
-		fi
-		if [ $use_nailgun -eq 0 ]; then
-			echo "Restarting background process (nailgun)" 1>&2
-			ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
-			sleep 1
+			if [ $use_nailgun -eq 0 ]; then
+				echo "Starting background process (nailgun)" 1>&2
+				ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
+				sleep 1
+			fi
 		fi
 	fi
 
