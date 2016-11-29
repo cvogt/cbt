@@ -190,38 +190,40 @@ stage1 () {
 
 	log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." "$@"
 
-	if [ $use_nailgun -eq 1 ]
-	then
-		log "Running JVM directly" "$@"
-		# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
-		# JVM options to improve startup time. See https://github.com/cvogt/cbt/pull/262
-		java $JAVA_OPTS -Xmx6072m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp $NAILGUN$TARGET cbt.NailgunLauncher $(time_taken) "$CWD" "$@"
-	else
-		log "Running via background process (nailgun)" "$@"
-		for i in 0 1 2 3 4 5 6 7 8 9; do
-			log "Adding classpath." "$@"
-			$NG ng-cp $NAILGUN$TARGET >> $nailgun_out 2>> $nailgun_err
-			log "Checking if nailgun is up yet." "$@"
-			$NG cbt.NailgunLauncher check-alive >> $nailgun_out 2>> $nailgun_err
-			alive=$?
-			if [ $alive -eq 131 ] || [ $alive -eq 33 ]; then
-			# the 33 is not working right now
-			#	echo "Nailgun call failed. Try 'cbt kill' and check the error log cbt/nailgun_launcher/target/nailgun.stderr.log" 1>&2
-			#elif [ $alive -eq 33 ]; then
-				break
-			else
-				log "Nope. Sleeping for 0.5 seconds" "$@"
-				#if [ "$i" -gt 1 ]; then
-				#	echo "Waiting for nailgun to start... (In case of problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log)" 1>&2
-				#fi
-			fi
-			sleep 0.3
-		done
-		log "Running CBT via Nailgun." "$@"
-		$NG cbt.NailgunLauncher $(time_taken) "$CWD" "$@"
+	if [ $compiles -eq 0 ]; then
+		if [ $use_nailgun -eq 1 ]
+		then
+			log "Running JVM directly" "$@"
+			# -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=localhost:5005
+			# JVM options to improve startup time. See https://github.com/cvogt/cbt/pull/262
+			java $JAVA_OPTS -Xmx6072m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp $NAILGUN$TARGET cbt.NailgunLauncher $(time_taken) "$CWD" "$@"
+		else
+			log "Running via background process (nailgun)" "$@"
+			for i in 0 1 2 3 4 5 6 7 8 9; do
+				log "Adding classpath." "$@"
+				$NG ng-cp $NAILGUN$TARGET >> $nailgun_out 2>> $nailgun_err
+				log "Checking if nailgun is up yet." "$@"
+				$NG cbt.NailgunLauncher check-alive >> $nailgun_out 2>> $nailgun_err
+				alive=$?
+				if [ $alive -eq 131 ] || [ $alive -eq 33 ]; then
+				# the 33 is not working right now
+				#	echo "Nailgun call failed. Try 'cbt kill' and check the error log cbt/nailgun_launcher/target/nailgun.stderr.log" 1>&2
+				#elif [ $alive -eq 33 ]; then
+					break
+				else
+					log "Nope. Sleeping for 0.5 seconds" "$@"
+					#if [ "$i" -gt 1 ]; then
+					#	echo "Waiting for nailgun to start... (In case of problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log)" 1>&2
+					#fi
+				fi
+				sleep 0.3
+			done
+			log "Running CBT via Nailgun." "$@"
+			$NG cbt.NailgunLauncher $(time_taken) "$CWD" "$@"
+		fi
+		exitCode=$?
+		log "Done running CBT." "$@"
 	fi
-	exitCode=$?
-	log "Done running CBT." "$@"
 }
 
 while true; do
