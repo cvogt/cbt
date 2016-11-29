@@ -170,6 +170,8 @@ stage1 () {
 	done
 	compiles=0
 	if [ $changed -eq 1 ]; then
+		echo "Stopping background process (nailgun) if running" 1>&2
+		$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
 		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
 		COMPILE_TIME=$(date -j +%YY%mm%dd%HH%MM.%SS|sed "s/[YmdHMS]//g")
@@ -179,9 +181,6 @@ stage1 () {
 			touch -t $COMPILE_TIME $NAILGUN_INDICATOR
 		fi
 		if [ $use_nailgun -eq 0 ]; then
-			echo "Stopping background process (nailgun)" 1>&2
-			$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
-			sleep 1
 			echo "Restarting background process (nailgun)" 1>&2
 			ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
 			sleep 1
