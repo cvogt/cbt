@@ -9,9 +9,13 @@ trait Dotty extends BaseBuild{
   def dottyOptions: Seq[String] = Seq()
   override def scalaTarget: File = target ++ s"/dotty-$dottyVersion"
 
+  def dottyDependency: DependencyImplementation = Resolver(mavenCentral).bindOne(
+    MavenDependency("ch.epfl.lamp","dotty_2.11",dottyVersion)
+  )
+
   private lazy val dottyLib = new DottyLib(
     logger, context.cbtLastModified, context.paths.mavenCache,
-    context.classLoaderCache, dottyVersion = dottyVersion
+    context.classLoaderCache, dottyDependency
   )
 
   override def compile: Option[Long] = taskCache[Dotty]("compile").memoize{
@@ -27,7 +31,7 @@ trait Dotty extends BaseBuild{
 
   override def repl = dottyLib.repl(context.args, classpath)
 
-  override def dependencies = Resolver(mavenCentral).bind(
+  override def dependencies: Seq[Dependency] = Resolver(mavenCentral).bind(
     ScalaDependency( "org.scala-lang.modules", "scala-java8-compat", "0.8.0-RC7" )
   )
 }
@@ -37,15 +41,12 @@ class DottyLib(
   cbtLastModified: Long,
   mavenCache: File,
   classLoaderCache: ClassLoaderCache,
-  dottyVersion: String
+  dottyDependency: DependencyImplementation
 )(implicit transientCache: java.util.Map[AnyRef,AnyRef]){
   val lib = new Lib(logger)
   import lib._
 
   private def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
-  private lazy val dottyDependency = Resolver(mavenCentral).bindOne(
-    MavenDependency("ch.epfl.lamp","dotty_2.11",dottyVersion)
-  )
 
   def repl(args: Seq[String], classpath: ClassPath) = {
     consoleOrFail("Use `cbt direct repl` instead")
