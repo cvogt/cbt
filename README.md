@@ -36,25 +36,25 @@ How is CBT different from other build tools?
 Not all build tools allow you to write builds in a full programming language.
 CBT is based on the assumption that builds are complex enough problems to
 warrant this and abstraction and re-use is better handled through libraries
-rather than some restricted, declarative DSL. CBT shares this philosophy with SBT.
+rather than some restricted, declarative DSL. CBT shares this philosophy with sbt.
 (This also means that integration with external tools such as an IDE better happens
 programmatically through an api rather than a static data representation such as xml.)
 
-Like SBT, CBT chooses Scala as its language of choice, trying to appeal to
+Like sbt, CBT chooses Scala as its language of choice, trying to appeal to
 Scala programmers allowing them to re-use their knowledge and the safety of the language.
 
-Unlike SBT 0.11 and later, CBT maps task execution to JVM method invocations.
-SBT implements its own self-contained task graph model and interpreter.
-This allows SBT to have its model exactly fit the requirements.
+Unlike sbt 0.11 and later, CBT maps task execution to JVM method invocations.
+sbt implements its own self-contained task graph model and interpreter.
+This allows sbt to have its model exactly fit the requirements.
 CBT instead uses existing JVM concepts for the solution and adds
 custom concepts only when necessary. CBT assumes this to lead to better
 ease of use due to familarity and better integration with existing tools
 such as interactive debuggers or stack traces because CBT's task call stack
 IS the JVM call stack.
 
-SBT 0.7 shared this design decision as many may have forgotten.
-However, CBT is still quite a bit simpler than even SBT 0.7 as
-CBT gets away with fewer concepts. SBT 0.7 had notions of
+sbt 0.7 shared this design decision as many may have forgotten.
+However, CBT is still quite a bit simpler than even sbt 0.7 as
+CBT gets away with fewer concepts. sbt 0.7 had notions of
 main vs test sources, multi-project builds, task-dependencies
 which weren't invocations and other concepts. CBT maps all of
 these to def invocations and build composition instead.
@@ -153,7 +153,7 @@ $ cbt tools createBuild
 
 Now there should be a file `build/build.scala` with a sample `Build` class.
 
-Btw., a build file can have its own build and so on recursively like in SBT.
+Btw., a build file can have its own build and so on recursively like in sbt.
 When you create a file `build/build/build.scala` and change `Build` class in there
 to extend `BuildBuild`, it will be used to build your `build/build.scala`. You can
 add built-time dependencies like plugins this way.
@@ -163,7 +163,7 @@ add built-time dependencies like plugins this way.
 In the generated `build/build.scala` there are
 several examples for dependencies. We recommend using the constructor syntax
 `ScalaDependency` (for automatically adding the scala version to the artifact id)
-or `MavenDependency` (for leaving the artifact id as is). The SBT-Style `%`-DSL
+or `MavenDependency` (for leaving the artifact id as is). The sbt-style `%`-DSL
 syntax is also supported for copy-and-paste convenience, but discouraged.
 
 Alright, let's enable the `override def dependencies`. Make sure to include
@@ -468,7 +468,7 @@ Scala.js support
 ----------------
 
 CBT supports cross-project Scala.js builds.
-It preserves same structure as in SBT (https://www.scala-js.org/doc/project/cross-build.html)
+It preserves same structure as in sbt (https://www.scala-js.org/doc/project/cross-build.html)
 
  1. Example for user scalajs project is in: `$CBT_HOME/cbt/examples/build-scalajs`
  2. `$CBT_HOME/cbt compile`
@@ -494,5 +494,4 @@ CBT productivity hacks
 only show first 20 lines of type errors to catch the root ones
 ```
 cbt c 2>&1 | head -n 20
-``
-
+```
