@@ -82,10 +82,13 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def compileStatusFile: File = compileTarget ++ ".last-success"
 
   /** Source directories and files. Defaults to .scala and .java files in src/ and top-level. */
-  def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(lib.sourceFileFilter)
+  def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
+
+  /** Which file endings to consider being source files. */
+  def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
 
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
-  final def sourceFiles: Seq[File] = lib.sourceFiles(sources)
+  final def sourceFiles: Seq[File] = lib.sourceFiles(sources, sourceFileFilter)
 
   protected def logEmptySourceDirectories(): Unit = {
     val nonExisting =
