@@ -128,8 +128,8 @@ case class ScalaDependencies(cbtHasChanged: Boolean, mavenCache: File, version: 
   )
 }
 
-case class BinaryDependency( path: File, dependencies: Seq[Dependency] )(implicit val logger: Logger) extends DependencyImplementation{
-  def exportedClasspath = ClassPath(Seq(path))
+case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(implicit val logger: Logger) extends DependencyImplementation{
+  def exportedClasspath = ClassPath(paths)
   override def needsUpdate = false
   def targetClasspath = exportedClasspath
 }

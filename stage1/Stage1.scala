@@ -98,7 +98,7 @@ object Stage1{
       cbtHasChanged,
       cbtHasChanged,
       stage2sourceFiles, stage2Target, stage2StatusFile,
-      cbtDependency.dependencyClasspath,
+      cbtDependency.dependencies,
       mavenCache,
       Seq("-deprecation","-feature","-unchecked"), classLoaderCache,
       zincVersion = constants.zincVersion, scalaVersion = constants.scalaVersion

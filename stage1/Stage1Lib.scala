@@ -194,7 +194,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     files: Seq[File],
     compileTarget: File,
     statusFile: File,
-    classpath: ClassPath,
+    dependencies: Seq[Dependency],
     mavenCache: File,
     scalacOptions: Seq[String] = Seq(),
     classLoaderCache: ClassLoaderCache,
@@ -202,6 +202,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     scalaVersion: String
   ): Option[File] = {
 
+    val classpath = Dependencies(dependencies).classpath
     val cp = classpath.string
     if(classpath.files.isEmpty)
       throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)

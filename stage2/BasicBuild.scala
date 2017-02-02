@@ -59,7 +59,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     // FIXME: this should probably be removed
     Resolver( mavenCentral ).bind(
       "org.scala-lang" % "scala-library" % scalaVersion
-    )
+    ) :+ BinaryDependency(localJars, Nil)
 
   // ========== paths ==========
   final private val defaultSourceDirectory = projectDirectory ++ "/src"
@@ -115,11 +115,10 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
       .flatMap(_.listFiles)
       .filter(_.toString.endsWith(".jar"))
 
-  override def dependencyClasspath : ClassPath = ClassPath(localJars) ++ super.dependencyClasspath
+  override def dependencyClasspath : ClassPath = super.dependencyClasspath
 
-  protected def compileDependencies: Seq[Dependency] = Nil
-  final def compileClasspath : ClassPath =
-    dependencyClasspath ++ ClassPath( compileDependencies.flatMap(_.exportedClasspath.files).distinct )
+  protected def compileDependencies: Seq[Dependency] = dependencies
+  final def compileClasspath : ClassPath = Dependencies(compileDependencies).classpath
 
   def resourceClasspath: ClassPath = {
     val resourcesDirectory = projectDirectory ++ "/resources"
@@ -148,7 +147,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     lib.compile(
       context.cbtHasChanged,
       needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
-      sourceFiles, compileTarget, compileStatusFile, compileClasspath,
+      sourceFiles, compileTarget, compileStatusFile, compileDependencies,
       context.paths.mavenCache, scalacOptions, context.classLoaderCache,
       zincVersion = zincVersion, scalaVersion = scalaVersion
     )
