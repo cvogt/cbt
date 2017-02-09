@@ -2,19 +2,19 @@ package cbt
 import java.io._
 import java.lang._
 
-case class ContextImplementation(
-  projectDirectory: File,
-  cwd: File,
-  argsArray: Array[String],
-  enabledLoggersArray: Array[String],
-  startCompat: Long,
-  cbtHasChangedCompat: Boolean,
-  scalaVersionOrNull: String,
-  persistentCache: java.util.Map[AnyRef,AnyRef],
-  transientCache: java.util.Map[AnyRef,AnyRef],
-  cache: File,
-  cbtHome: File,
-  cbtRootHome: File,
-  compatibilityTarget: File,
-  parentBuildOrNull: BuildInterface
+class ContextImplementation(
+  val projectDirectory: File,
+  val cwd: File,
+  val argsArray: Array[String],
+  val enabledLoggersArray: Array[String],
+  val startCompat: Long,
+  val cbtHasChangedCompat: Boolean,
+  val scalaVersionOrNull: String,
+  val persistentCache: java.util.Map[AnyRef,AnyRef],
+  val transientCache: java.util.Map[AnyRef,AnyRef],
+  val cache: File,
+  val cbtHome: File,
+  val cbtRootHome: File,
+  val compatibilityTarget: File,
+  val parentBuildOrNull: BuildInterface
 ) extends Context

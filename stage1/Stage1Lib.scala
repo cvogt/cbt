@@ -200,8 +200,9 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     classLoaderCache: ClassLoaderCache,
     zincVersion: String,
     scalaVersion: String
+  )(
+    implicit transientCache: java.util.Map[AnyRef, AnyRef]
   ): Option[File] = {
-
     val classpath = Dependencies(dependencies).classpath
     val cp = classpath.string
     if(classpath.files.isEmpty)
@@ -446,5 +447,27 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
       cl
     else
       cache.cache.get( a.classpath.string, cl ).asInstanceOf[ClassLoader]
+  }
+
+}
+
+import scala.reflect._
+import scala.language.existentials
+case class PerClassCache(cache: java.util.Map[AnyRef,AnyRef], moduleKey: String)(implicit logger: Logger){
+  def apply[D <: Dependency: ClassTag](key: AnyRef): MethodCache[D] = new MethodCache[D](key)
+  case class MethodCache[D <: Dependency: ClassTag](key: AnyRef){
+    def memoize[T <: AnyRef](task: => T): T = {
+      val fullKey = (classTag[D].runtimeClass, moduleKey, key)
+      logger.transientCache("fetching key"+fullKey)
+      if( cache.containsKey(fullKey) ){
+        logger.transientCache("found    key"+fullKey)
+        cache.get(fullKey).asInstanceOf[T]
+      } else{
+        val value = task
+        logger.transientCache("put      key"+fullKey)
+        cache.put( fullKey, value )
+        value
+      }
+    }
   }
 }

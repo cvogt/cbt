@@ -15,6 +15,7 @@ class ToolsTasks(
   import paths._
   private def Resolver( urls: URL* ) = MavenResolver(cbtHasChanged,mavenCache,urls: _*)
   implicit val logger: Logger = lib.logger
+  implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
   def createMain: Unit = lib.createMain( cwd )
   def createBuild: Unit = lib.createBuild( cwd )
   def gui = NailgunLauncher.main(Array(

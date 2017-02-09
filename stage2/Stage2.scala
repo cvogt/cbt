@@ -24,7 +24,7 @@ object Stage2 extends Stage2Base{
     }
     val task = args.args.lift( taskIndex )
 
-    val context: Context = ContextImplementation(
+    val context: Context = new ContextImplementation(
       args.cwd,
       args.cwd,
       args.args.drop( taskIndex +1 ).toArray,
@@ -33,7 +33,7 @@ object Stage2 extends Stage2Base{
       args.cbtHasChanged,
       null,
       args.persistentCache,
-      new HashMap,
+      args.transientCache,
       args.cache,
       args.cbtHome,
       args.cbtHome,

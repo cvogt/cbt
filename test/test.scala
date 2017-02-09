@@ -104,10 +104,11 @@ object Main{
     val cache = cbtHome ++ "/cache"
     val mavenCache = cache ++ "/maven"
     val cbtHasChanged = true
-    def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
+    implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
+    def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
 
     {
-      val noContext = ContextImplementation(
+      val noContext = new ContextImplementation(
         cbtHome ++ "/test/nothing",
         cbtHome,
         Array(),

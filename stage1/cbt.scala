@@ -62,7 +62,7 @@ object `package`{
     def classLoaderCache: ClassLoaderCache = new ClassLoaderCache( logger, persistentCache )
     def cbtDependency = {
       import paths._
-      CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)
+      new CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)(logger, transientCache)
     }
     def args: Seq[String] = argsArray.to
     def enabledLoggers: Set[String] = enabledLoggersArray.to
@@ -79,7 +79,7 @@ object `package`{
       scalaVersion: Option[String] = scalaVersion,
       cbtHome: File = cbtHome,
       parentBuild: Option[BuildInterface] = None
-    ): Context = ContextImplementation(
+    ): Context = new ContextImplementation(
       projectDirectory,
       cwd,
       args.to,

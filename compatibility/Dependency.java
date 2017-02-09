@@ -3,6 +3,7 @@ import java.io.*;
 
 public interface Dependency{
   public abstract String show();
+  public abstract String moduleKey();
   public abstract Boolean needsUpdateCompat();
   public abstract Dependency[] dependenciesArray();
   public abstract File[] dependencyClasspathArray();

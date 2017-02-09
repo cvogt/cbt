@@ -15,14 +15,13 @@ case class GitDependency(
 )(implicit val logger: Logger, classLoaderCache: ClassLoaderCache, context: Context ) extends DependencyImplementation{
   import GitDependency._
   override def lib = new Lib(logger)
-
+  def moduleKey = this.getClass.getName ++ "(" ++ url ++ subDirectory.map("/" ++ _).getOrElse("") ++ "#" ++ ref ++ ")"
+  def transientCache = context.transientCache
   // TODO: add support for authentication via ssh and/or https
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
   private val GitUrl( _, domain, path ) = url  
 
   private val credentialsFile = context.projectDirectory ++ "/git.login"
-
-  private object checkoutCache extends Cache[File]
 
   private def authenticate(_git: CloneCommand) =
     if(!credentialsFile.exists){
@@ -36,7 +35,7 @@ case class GitDependency(
       _git.setCredentialsProvider( new UsernamePasswordCredentialsProvider(user, password) )
     }
 
-  def checkout: File = checkoutCache{
+  def checkout: File = taskCache[GitDependency]("checkout").memoize{
     val checkoutDirectory = context.cache ++ s"/git/$domain/$path/$ref"
     val _git = if(checkoutDirectory.exists){
       logger.git(s"Found existing checkout of $url#$ref in $checkoutDirectory")
@@ -65,8 +64,7 @@ case class GitDependency(
     assert( actualRef == ref, s"actual ref '$actualRef' does not match expected ref '$ref'")
     checkoutDirectory
   }
-  private object dependencyCache extends Cache[DependencyImplementation]
-  def dependency = dependencyCache{
+  def dependency = taskCache[GitDependency]("dependency").memoize{
     DirectoryDependency(
       context.copy(
         projectDirectory = checkout ++ subDirectory.map("/" ++ _).getOrElse("")

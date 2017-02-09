@@ -86,7 +86,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
     compileArgs: Seq[String],
     classLoaderCache: ClassLoaderCache,
     mavenCache: File
-  ): Option[File] = {
+  )(implicit transientCache: java.util.Map[AnyRef,AnyRef]): Option[File] = {
     if(sourceFiles.isEmpty){
       None
     } else {
@@ -101,7 +101,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         runMain(
           "scala.tools.nsc.ScalaDoc",
           args,
-          ScalaDependencies(cbtHasChanged,mavenCache,scalaVersion)(logger).classLoader(classLoaderCache)
+          new ScalaDependencies(cbtHasChanged,mavenCache,scalaVersion).classLoader(classLoaderCache)
         )
       }
       lib.jarFile(

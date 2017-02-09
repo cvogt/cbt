@@ -44,6 +44,8 @@ case class Stage2Args(
   cache: File,
   cbtHome: File,
   compatibilityTarget: File
+)(
+  implicit val transientCache: java.util.Map[AnyRef,AnyRef]
 ){
   val ClassLoaderCache( logger, persistentCache ) = classLoaderCache
 }
@@ -60,7 +62,7 @@ object Stage1{
       ClassLoaderCache( logger, context.persistentCache ),
       context.cbtHome,
       context.cache
-    )
+    )( context.transientCache )
 
     classLoader
       .loadClass("cbt.Stage2")
@@ -75,7 +77,7 @@ object Stage1{
 
   def buildStage2(
     buildStage1: BuildStage1Result, classLoaderCache: ClassLoaderCache, cbtHome: File, cache: File
-  ): (Boolean, ClassLoader) = {
+  )(implicit transientCache: java.util.Map[AnyRef,AnyRef]): (Boolean, ClassLoader) = {
     import classLoaderCache.logger
 
     val lib = new Stage1Lib(logger)
@@ -86,12 +88,12 @@ object Stage1{
     val stage2sourceFiles = (
       stage2.listFiles ++ (stage2 ++ "/plugins").listFiles
     ).toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
-    
+
     val cbtHasChanged = buildStage1.changed || lib.needsUpdate(stage2sourceFiles, stage2StatusFile)
 
     val cls = this.getClass.getClassLoader.loadClass("cbt.NailgunLauncher")
-    
-    val cbtDependency = CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, new File(buildStage1.compatibilityClasspath))
+
+    val cbtDependency = new CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, new File(buildStage1.compatibilityClasspath))
 
     logger.stage1("Compiling stage2 if necessary")
     compile(
@@ -102,7 +104,7 @@ object Stage1{
       mavenCache,
       Seq("-deprecation","-feature","-unchecked"), classLoaderCache,
       zincVersion = constants.zincVersion, scalaVersion = constants.scalaVersion
-    )
+    )(transientCache)
 
     logger.stage1(s"calling CbtDependency.classLoader")
     if( cbtHasChanged && classLoaderCache.cache.containsKey( cbtDependency.classpath.string ) ) {
@@ -163,6 +165,7 @@ object Stage1{
   ): Int = {
     val args = Stage1ArgsParser(_args.toVector)
     val logger = new Logger(args.enabledLoggers, start)
+    implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
     logger.stage1(s"Stage1 start")
 
     val classLoaderCache = ClassLoaderCache( logger, persistentCache )

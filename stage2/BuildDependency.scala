@@ -16,9 +16,12 @@ trait TriggerLoop extends DependencyImplementation{
 }
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
 final case class DirectoryDependency(context: Context) extends TriggerLoop{
+  override def toString = show
   override def show = this.getClass.getSimpleName ++ "(" ++ context.projectDirectory.string ++ ")"
+  def moduleKey = this.getClass.getName ++ "("+context.projectDirectory.string+")"
   lazy val logger = context.logger
   override lazy val lib: Lib = new Lib(logger)
+  def transientCache = context.transientCache
   private lazy val root = lib.loadRoot( context.copy(args=Seq()) )
   lazy val build = root.finalBuild
   def exportedClasspath = ClassPath()

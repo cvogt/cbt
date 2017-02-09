@@ -32,8 +32,7 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
   override def dependencies =
     super.dependencies :+ context.cbtDependency
   def managedBuildDirectory: java.io.File = lib.realpath( projectDirectory.parent )
-  private object managedBuildCache extends Cache[BuildInterface]
-  def managedBuild = managedBuildCache{
+  def managedBuild = taskCache[BuildBuildWithoutEssentials]("managedBuild").memoize{
     val managedBuildFile = projectDirectory++"/build.scala"
     logger.composition("Loading build at " ++ managedBuildDirectory.toString)
     val build = (

@@ -1,10 +1,12 @@
 package cbt
 import cbt.eval.Eval
 trait DynamicOverrides extends BaseBuild{
-  private val twitterEval = cached("eval"){
-    new Eval{
-      override lazy val impliedClassPath: List[String] = context.parentBuild.get.classpath.strings.toList//new ScalaCompilerDependency( context.cbtHasChanged, context.paths.mavenCache, scalaVersion ).classpath.strings.toList
-      override def classLoader = DynamicOverrides.this.getClass.getClassLoader
+  private val twitterEval = {
+    taskCache[DynamicOverrides]( "eval" ).memoize{
+      new Eval{
+        override lazy val impliedClassPath: List[String] = context.parentBuild.get.classpath.strings.toList//new ScalaCompilerDependency( context.cbtLastModified, context.paths.mavenCache, scalaVersion ).classpath.strings.toList
+        override def classLoader = DynamicOverrides.this.getClass.getClassLoader
+      }
     }
   }
 

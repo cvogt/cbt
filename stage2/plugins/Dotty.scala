@@ -14,8 +14,7 @@ trait Dotty extends BaseBuild{
     context.classLoaderCache, dottyVersion = dottyVersion
   )
 
-  private object compileCache extends Cache[Option[File]]
-  override def compile: Option[File] = compileCache{
+  override def compile: Option[File] = taskCache[Dotty]("compile").memoize{
     dottyLib.compile(
       needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
       sourceFiles, compileTarget, compileStatusFile, compileClasspath,
@@ -41,7 +40,7 @@ class DottyLib(
   mavenCache: File,
   classLoaderCache: ClassLoaderCache,
   dottyVersion: String
-){
+)(implicit transientCache: java.util.Map[AnyRef,AnyRef]){
   val lib = new Lib(logger)
   import lib._
 

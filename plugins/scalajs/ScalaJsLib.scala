@@ -4,7 +4,7 @@ import java.io.File
 case class ScalaJsLib(
   scalaJsVersion: String, scalaVersion: String,
   cbtHasChanged: Boolean, classLoaderCache: ClassLoaderCache, mavenCache: File
-)(implicit logger: Logger){
+)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]){
   sealed trait ScalaJsOutputMode {
     def option: String
     def fileSuffix: String
