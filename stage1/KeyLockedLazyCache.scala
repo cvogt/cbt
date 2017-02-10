@@ -10,7 +10,11 @@ final private[cbt] class KeyLockedLazyCache[T <: AnyRef](
   val hashMap: java.util.Map[AnyRef,AnyRef],
   logger: Option[Logger]
 ){
+  final val seen = new ThreadLocal[collection.mutable.Set[AnyRef]](){
+    override protected def initialValue = collection.mutable.Set[AnyRef]();
+  }
   def get( key: AnyRef, value: => T ): T = {
+    seen.get.add( key );
     val lockableKey = hashMap.synchronized{
       if( ! (hashMap containsKey key) ){
         val lockableKey = new LockableKey
@@ -35,6 +39,10 @@ final private[cbt] class KeyLockedLazyCache[T <: AnyRef](
     }
   }
   def update( key: AnyRef, value: T ): T = {
+    assert(
+      !seen.get.contains( key ),
+      "Thread tries to update cache key after observing it: " + key
+    )
     val lockableKey = hashMap get key
     lockableKey.synchronized{
       hashMap.put( lockableKey, value )

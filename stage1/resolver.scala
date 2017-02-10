@@ -140,6 +140,7 @@ case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Lo
   def moduleKey = this.getClass.getName ++ "(" ++ dependencies.map(_.moduleKey).mkString(", ") ++ ")"
   def targetClasspath = ClassPath() 
   def exportedClasspath = ClassPath() 
+  override def show: String = this.getClass.getSimpleName + "( " + dependencies.map(_.show).mkString(", ") + " )"
 }
 
 case class PostBuildDependency(target: File, _dependencies: Seq[DependencyImplementation])(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]) extends DependencyImplementation{
@@ -223,13 +224,13 @@ case class BoundMavenDependency(
     version != "" && version != null && !version.startsWith(" ") && !version.endsWith(" "),
     s"not a valid version: '$version'"
   )
-    override def show: String = this.getClass.getSimpleName ++ "(" ++ mavenDependency.serialize ++ ")"
+  override def show: String = this.getClass.getSimpleName ++ "(" ++ mavenDependency.serialize ++ ")"
 
   override final lazy val lastModified = classpath.strings.map(new File(_).lastModified).max
 
   private val groupPath = groupId.split("\\.").mkString("/")
   protected[cbt] def basePath(useClassifier: Boolean) = s"/$groupPath/$artifactId/$version/$artifactId-$version" ++ (if (useClassifier) classifier.name.map("-"++_).getOrElse("") else "")
-  
+
   //private def coursierJarFile = userHome++"/.coursier/cache/v1/https/repo1.maven.org/maven2"++basePath++".jar"
 
   def exportedJars = Seq( jar )

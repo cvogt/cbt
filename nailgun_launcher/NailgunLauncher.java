@@ -45,6 +45,12 @@ public class NailgunLauncher{
 
   public static long nailgunLauncherLastModified = -1; // this initial value should be overwritten, never read
 
+  // wrap for caching
+  public static ClassLoader jdkClassLoader = new CbtURLClassLoader(
+    new URL[]{},
+    ClassLoader.getSystemClassLoader().getParent()
+  );
+
   public static void main( String[] args ) throws Throwable {
     long _start = System.currentTimeMillis();
     if(args[0].equals("check-alive")){
@@ -144,7 +150,7 @@ public class NailgunLauncher{
     } else {
       List<File> compatibilitySourceFiles = new ArrayList<File>();
       for( File f: compatibilitySources.listFiles() ){
-        if( f.isFile() && (f.toString().endsWith(".scala") || f.toString().endsWith(".java")) ){
+        if( f.isFile() && f.toString().endsWith(".java") ){
           compatibilitySourceFiles.add(f);
         }
       }

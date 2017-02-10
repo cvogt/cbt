@@ -100,7 +100,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     trapExitCode{
       val c = classLoader.loadClass(cls)
       val m = c.getMethod( "main", classOf[Array[String]] )
-      val instance = 
+      val instance =
         if(!fakeInstance) null else c.newInstance
       assert(
         fakeInstance || (m.getModifiers & java.lang.reflect.Modifier.STATIC) > 0,
@@ -421,8 +421,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     val dependencies = dependency.dependencies
     val dependencyClassLoader: ClassLoader = {
       if( dependency.dependencies.isEmpty ){
-        // wrap for caching
-        new cbt.URLClassLoader( ClassPath(), ClassLoader.getSystemClassLoader().getParent() )
+        NailgunLauncher.jdkClassLoader
       } else if( dependencies.size == 1 ){
         classLoaderRecursion( dependencies.head, latest, cache )
       } else{
