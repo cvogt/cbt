@@ -323,7 +323,7 @@ When you specify a particular version, CBT will use that one instead of the inst
 You can specify one by adding one line right before `class Build`. It looks like this:
 
 ```
-// cbt:https://github.com/cvogt/cbt.git#fe04889a6c3fe73ccdb4b19b44ac62e2b1a96f7d
+// cbt:https://github.com/cvogt/cbt.git#e8673866b79f7473391dcee26243eee80d5d3cb6
 class Build...
 ```
 

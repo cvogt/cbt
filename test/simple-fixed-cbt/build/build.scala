@@ -1,6 +1,6 @@
 import cbt._
 
-// cbt:https://github.com/cvogt/cbt.git#fe04889a6c3fe73ccdb4b19b44ac62e2b1a96f7d
+// cbt:https://github.com/cvogt/cbt.git#e8673866b79f7473391dcee26243eee80d5d3cb6
 class Build(val context: cbt.Context) extends PackageJars{
   override def dependencies = super.dependencies ++ Seq(
     DirectoryDependency( context.cbtHome ++ "/test/library-test" )
