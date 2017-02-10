@@ -20,11 +20,11 @@ class EarlyDependencies{
   String scalaCompiler_2_11_8_File;
   String scalaXml_1_0_5_File;
   String scalaLibrary_2_11_8_File;
-  String zinc_0_3_12_File;
-  String incrementalCompiler_0_13_12_File;
-  String compilerInterface_0_13_12_File;
+  String zinc_0_3_13_File;
+  String incrementalCompiler_0_13_13_File;
+  String compilerInterface_0_13_13_File;
   String scalaCompiler_2_10_6_File;
-  String sbtInterface_0_13_12_File;
+  String sbtInterface_0_13_13_File;
   String scalaReflect_2_10_6_File;
   String scalaLibrary_2_10_6_File;
 
@@ -35,11 +35,11 @@ class EarlyDependencies{
     scalaCompiler_2_11_8_File = mavenCache + "/org/scala-lang/scala-compiler/2.11.8/scala-compiler-2.11.8.jar";
     scalaXml_1_0_5_File = mavenCache + "/org/scala-lang/modules/scala-xml_2.11/1.0.5/scala-xml_2.11-1.0.5.jar";
     scalaLibrary_2_11_8_File = mavenCache + "/org/scala-lang/scala-library/2.11.8/scala-library-2.11.8.jar";
-    zinc_0_3_12_File = mavenCache + "/com/typesafe/zinc/zinc/0.3.12/zinc-0.3.12.jar";
-    incrementalCompiler_0_13_12_File = mavenCache + "/com/typesafe/sbt/incremental-compiler/0.13.12/incremental-compiler-0.13.12.jar";
-    compilerInterface_0_13_12_File = mavenCache + "/com/typesafe/sbt/compiler-interface/0.13.12/compiler-interface-0.13.12-sources.jar";
+    zinc_0_3_13_File = mavenCache + "/com/typesafe/zinc/zinc/0.3.13/zinc-0.3.13.jar";
+    incrementalCompiler_0_13_13_File = mavenCache + "/com/typesafe/sbt/incremental-compiler/0.13.13/incremental-compiler-0.13.13.jar";
+    compilerInterface_0_13_13_File = mavenCache + "/com/typesafe/sbt/compiler-interface/0.13.13/compiler-interface-0.13.13-sources.jar";
     scalaCompiler_2_10_6_File = mavenCache + "/org/scala-lang/scala-compiler/2.10.6/scala-compiler-2.10.6.jar";
-    sbtInterface_0_13_12_File = mavenCache + "/com/typesafe/sbt/sbt-interface/0.13.12/sbt-interface-0.13.12.jar";
+    sbtInterface_0_13_13_File = mavenCache + "/com/typesafe/sbt/sbt-interface/0.13.13/sbt-interface-0.13.13.jar";
     scalaReflect_2_10_6_File = mavenCache + "/org/scala-lang/scala-reflect/2.10.6/scala-reflect-2.10.6.jar";
     scalaLibrary_2_10_6_File = mavenCache + "/org/scala-lang/scala-library/2.10.6/scala-library-2.10.6.jar";
 
@@ -68,59 +68,59 @@ class EarlyDependencies{
       scalaReflect_2_10_6_ClasspathArray
     );
 
-    // com.typesafe.sbt:sbt-interface:0.13.12
-    String[] sbtInterface_0_13_12_ClasspathArray = new String[]{sbtInterface_0_13_12_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
-    ClassLoader sbtInterface_0_13_12_ = loadDependency(
-      mavenUrl + "/com/typesafe/sbt/sbt-interface/0.13.12/sbt-interface-0.13.12.jar",
-      sbtInterface_0_13_12_File,
-      "fcc7875c02f0d4641fac0518121bd71475d3909b",
+    // com.typesafe.sbt:sbt-interface:0.13.13
+    String[] sbtInterface_0_13_13_ClasspathArray = new String[]{sbtInterface_0_13_13_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
+    ClassLoader sbtInterface_0_13_13_ = loadDependency(
+      mavenUrl + "/com/typesafe/sbt/sbt-interface/0.13.13/sbt-interface-0.13.13.jar",
+      sbtInterface_0_13_13_File,
+      "9367c5c7a835f9505774fc3b7c3a8146a1396f85",
       classLoaderCache,
       scalaReflect_2_10_6_,
-      sbtInterface_0_13_12_ClasspathArray
+      sbtInterface_0_13_13_ClasspathArray
     );
 
     // org.scala-lang:scala-compiler:2.10.6
-    String[] scalaCompiler_2_10_6_ClasspathArray = new String[]{sbtInterface_0_13_12_File, scalaCompiler_2_10_6_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
+    String[] scalaCompiler_2_10_6_ClasspathArray = new String[]{sbtInterface_0_13_13_File, scalaCompiler_2_10_6_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
     ClassLoader scalaCompiler_2_10_6_ = loadDependency(
       mavenUrl + "/org/scala-lang/scala-compiler/2.10.6/scala-compiler-2.10.6.jar",
       scalaCompiler_2_10_6_File,
       "9b15174852f5b6bb1edbf303d5722286a0a54011",
       classLoaderCache,
-      sbtInterface_0_13_12_,
+      sbtInterface_0_13_13_,
       scalaCompiler_2_10_6_ClasspathArray
     );
 
-    // com.typesafe.sbt:compiler-interface:0.13.12
-    String[] compilerInterface_0_13_12_ClasspathArray = new String[]{compilerInterface_0_13_12_File, sbtInterface_0_13_12_File, scalaCompiler_2_10_6_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
-    ClassLoader compilerInterface_0_13_12_ = loadDependency(
-      mavenUrl + "/com/typesafe/sbt/compiler-interface/0.13.12/compiler-interface-0.13.12-sources.jar",
-      compilerInterface_0_13_12_File,
-      "d9c3270576e162bf017b146af262364c2db87a32",
+    // com.typesafe.sbt:compiler-interface:0.13.13
+    String[] compilerInterface_0_13_13_ClasspathArray = new String[]{compilerInterface_0_13_13_File, sbtInterface_0_13_13_File, scalaCompiler_2_10_6_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
+    ClassLoader compilerInterface_0_13_13_ = loadDependency(
+      mavenUrl + "/com/typesafe/sbt/compiler-interface/0.13.13/compiler-interface-0.13.13-sources.jar",
+      compilerInterface_0_13_13_File,
+      "691bf88813bb34771c0ca4418d579bb652e1526f",
       classLoaderCache,
       scalaCompiler_2_10_6_,
-      compilerInterface_0_13_12_ClasspathArray
+      compilerInterface_0_13_13_ClasspathArray
     );
 
-    // com.typesafe.sbt:incremental-compiler:0.13.12
-    String[] incrementalCompiler_0_13_12_ClasspathArray = new String[]{compilerInterface_0_13_12_File, incrementalCompiler_0_13_12_File, sbtInterface_0_13_12_File, scalaCompiler_2_10_6_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
-    ClassLoader incrementalCompiler_0_13_12_ = loadDependency(
-      mavenUrl + "/com/typesafe/sbt/incremental-compiler/0.13.12/incremental-compiler-0.13.12.jar",
-      incrementalCompiler_0_13_12_File,
-      "259f6d24a5a3791bb233787d6a8e639c4ab86fe5",
+    // com.typesafe.sbt:incremental-compiler:0.13.13
+    String[] incrementalCompiler_0_13_13_ClasspathArray = new String[]{compilerInterface_0_13_13_File, incrementalCompiler_0_13_13_File, sbtInterface_0_13_13_File, scalaCompiler_2_10_6_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
+    ClassLoader incrementalCompiler_0_13_13_ = loadDependency(
+      mavenUrl + "/com/typesafe/sbt/incremental-compiler/0.13.13/incremental-compiler-0.13.13.jar",
+      incrementalCompiler_0_13_13_File,
+      "65008fb90b965ea44d0959b8a2e214df206cda6e",
       classLoaderCache,
-      compilerInterface_0_13_12_,
-      incrementalCompiler_0_13_12_ClasspathArray
+      compilerInterface_0_13_13_,
+      incrementalCompiler_0_13_13_ClasspathArray
     );
 
-    // com.typesafe.zinc:zinc:0.3.12
-    String[] zinc_0_3_12_ClasspathArray = new String[]{compilerInterface_0_13_12_File, incrementalCompiler_0_13_12_File, sbtInterface_0_13_12_File, zinc_0_3_12_File, scalaCompiler_2_10_6_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
-    ClassLoader zinc_0_3_12_ = loadDependency(
-      mavenUrl + "/com/typesafe/zinc/zinc/0.3.12/zinc-0.3.12.jar",
-      zinc_0_3_12_File,
-      "c4339e93f5b7273f49ad026248f4fdb1d4d6c7c4",
+    // com.typesafe.zinc:zinc:0.3.13
+    String[] zinc_0_3_13_ClasspathArray = new String[]{compilerInterface_0_13_13_File, incrementalCompiler_0_13_13_File, sbtInterface_0_13_13_File, zinc_0_3_13_File, scalaCompiler_2_10_6_File, scalaLibrary_2_10_6_File, scalaReflect_2_10_6_File};
+    ClassLoader zinc_0_3_13_ = loadDependency(
+      mavenUrl + "/com/typesafe/zinc/zinc/0.3.13/zinc-0.3.13.jar",
+      zinc_0_3_13_File,
+      "4a842dae12f554976ebbdfb24ac6e741f8780f10",
       classLoaderCache,
-      incrementalCompiler_0_13_12_,
-      zinc_0_3_12_ClasspathArray
+      incrementalCompiler_0_13_13_,
+      zinc_0_3_13_ClasspathArray
     );
 
     // org.scala-lang:scala-library:2.11.8
@@ -148,6 +148,6 @@ class EarlyDependencies{
     classLoader = scalaXml_1_0_5_;
     classpathArray = scalaXml_1_0_5_ClasspathArray;
 
-    zinc = zinc_0_3_12_;
+    zinc = zinc_0_3_13_;
   }
 }
