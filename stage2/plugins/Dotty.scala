@@ -5,13 +5,15 @@ import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
 trait Dotty extends BaseBuild{
-  def dottyVersion: String = "0.1-20160926-ec28ea1-NIGHTLY"
+  def dottyVersion: String = Dotty.version
   def dottyOptions: Seq[String] = Seq()
   override def scalaTarget: File = target ++ s"/dotty-$dottyVersion"
 
-  def dottyDependency: DependencyImplementation = Resolver(mavenCentral).bindOne(
-    MavenDependency("ch.epfl.lamp","dotty_2.11",dottyVersion)
-  )
+  def dottyDependency: DependencyImplementation =
+    Resolver(mavenCentral).bindOne(
+      MavenDependency(Dotty.groupId,Dotty.artifactId,Dotty.version)
+    )
+
 
   private lazy val dottyLib = new DottyLib(
     logger, context.cbtLastModified, context.paths.mavenCache,
@@ -31,9 +33,14 @@ trait Dotty extends BaseBuild{
 
   override def repl = dottyLib.repl(context.args, classpath)
 
-  override def dependencies: Seq[Dependency] = Resolver(mavenCentral).bind(
-    ScalaDependency( "org.scala-lang.modules", "scala-java8-compat", "0.8.0-RC7" )
-  )
+  // this seems needed for cbt run of dotty produced artifacts
+  override def dependencies: Seq[Dependency] = Seq( dottyDependency )
+}
+
+object Dotty{
+  val version: String = "0.1.1-20170203-da7d723-NIGHTLY"
+  val groupId = "ch.epfl.lamp"
+  val artifactId = "dotty_2.11"
 }
 
 class DottyLib(
@@ -41,12 +48,10 @@ class DottyLib(
   cbtLastModified: Long,
   mavenCache: File,
   classLoaderCache: ClassLoaderCache,
-  dottyDependency: DependencyImplementation
+  dependency: DependencyImplementation
 )(implicit transientCache: java.util.Map[AnyRef,AnyRef]){
   val lib = new Lib(logger)
   import lib._
-
-  private def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
 
   def repl(args: Seq[String], classpath: ClassPath) = {
     consoleOrFail("Use `cbt direct repl` instead")
@@ -54,11 +59,11 @@ class DottyLib(
       "dotty.tools.dotc.repl.Main",
       Seq(
         "-bootclasspath",
-        dottyDependency.classpath.string,
+        dependency.classpath.string,
         "-classpath",
         classpath.string
       ) ++ args,
-      dottyDependency.classLoader(classLoaderCache)
+      dependency.classLoader(classLoaderCache)
     )
   }
 
@@ -74,16 +79,16 @@ class DottyLib(
       docTarget.mkdirs
       val args = Seq(
         // FIXME: can we use compiler dependency here?
-        "-bootclasspath", dottyDependency.classpath.string, // FIXME: does this break for builds that don't have scalac dependencies?
+        "-bootclasspath", dependency.classpath.string, // FIXME: does this break for builds that don't have scalac dependencies?
         "-classpath", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
         "-d",  docTarget.toString
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
       val exitCode = redirectOutToErr{
         runMain(
-          "dotty.tools.dottydoc.api.java.Dottydoc",
+          "dotty.tools.dottydoc.DocDriver",
           args,
-          dottyDependency.classLoader(classLoaderCache),
+          dependency.classLoader(classLoaderCache),
           fakeInstance = true // this is a hack as Dottydoc's main method is not static
         )
       }
@@ -127,10 +132,10 @@ class DottyLib(
               lib.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ Seq(
-                  "-bootclasspath", dottyDependency.classpath.string, // let's put cp last. It so long
+                  "-bootclasspath", dependency.classpath.string, // let's put cp last. It so long
                   "-classpath", classpath.string // let's put cp last. It so long
                 ) ++ sourceFiles.map(_.toString),
-                dottyDependency.classLoader(classLoaderCache)
+                dependency.classLoader(classLoaderCache)
               )
             }
           } catch {
@@ -138,7 +143,7 @@ class DottyLib(
             System.err.println(red("Dotty crashed. See https://github.com/lampepfl/dotty/issues. To reproduce run:"))
             System.out.println(s"""
 java -cp \\
-${dottyDependency.classpath.strings.mkString(":\\\n")} \\
+${dependency.classpath.strings.mkString(":\\\n")} \\
 \\
 ${_class} \\
 \\
@@ -147,7 +152,7 @@ ${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
 ${singleArgs.mkString(" \\\n")} \\
 \\
 -bootclasspath \\
-${dottyDependency.classpath.strings.mkString(":\\\n")} \\
+${dependency.classpath.strings.mkString(":\\\n")} \\
 -classpath \\
 ${classpath.strings.mkString(":\\\n")} \\
 \\
