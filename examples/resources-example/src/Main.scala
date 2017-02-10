@@ -1,3 +1,4 @@
+package cbt.example.resources
 import java.nio.file.{Files, Paths}
 object Main extends App {
   // Be aware that CBT currently isolates classloaders of dependencies
@@ -23,5 +24,11 @@ object Main extends App {
         )
       )
     ).mkString
+  )
+  println(
+    "via parent foo.text in resources is: " ++ scala.runtime.ScalaRunTime.stringOf( parent.getChildResource )
+  )
+  println(
+    "via parent foo.text in resources and my-resources is: " ++ parent.getChildResources.mkString
   )
 }
