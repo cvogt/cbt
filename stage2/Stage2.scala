@@ -7,7 +7,7 @@ object Stage2 extends Stage2Base{
     new Lib( context.logger ).loadRoot( context ).finalBuild
   }
 
-  def run( args: Stage2Args ): Unit = {
+  def run( args: Stage2Args ): ExitCode = {
     import args.logger
     val paths = CbtPaths(args.cbtHome,args.cache)
     import paths._
@@ -75,10 +75,13 @@ object Stage2 extends Stage2Base{
             logger.loop(s"Re-running $task for " ++ build.show)
             call(build)
         }
+        ExitCode.Success
       } else {
         val code = call(build)
         logger.stage2(s"Stage2 end")
-        System.exit(code.integer)
+        code
       }
+
+    res
   }
 }

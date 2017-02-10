@@ -33,7 +33,7 @@ final case class Stage1ArgsParser(__args: Seq[String]) {
 
 
 abstract class Stage2Base{
-  def run( context: Stage2Args ): Unit
+  def run( context: Stage2Args ): ExitCode
 }
 
 case class Stage2Args(
