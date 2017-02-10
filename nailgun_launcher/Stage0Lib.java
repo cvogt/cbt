@@ -14,14 +14,14 @@ import java.nio.file.attribute.FileTime;
 import static java.lang.Math.min;
 
 public class Stage0Lib{
-  public static void _assert(Boolean condition, Object msg){
+  public static void _assert(boolean condition, Object msg){
     if(!condition){
       throw new AssertionError("Assertion failed: "+msg);
     }
   }
 
   public static int runMain(String cls, String[] args, ClassLoader cl) throws Throwable{
-    Boolean trapExitCodeBefore = TrapSecurityManager.trapExitCode().get();
+    boolean trapExitCodeBefore = TrapSecurityManager.trapExitCode().get();
     try{
       TrapSecurityManager.trapExitCode().set(true);
       cl.loadClass(cls)
@@ -152,7 +152,7 @@ public class Stage0Lib{
 
   private static String getVarFromEnv(String envKey) {
     String value = System.getenv(envKey);
-    if(value==null || value.isEmpty()) {
+    if(value == null || value.isEmpty()) {
       value = System.getenv(envKey.toUpperCase());
     }
     return value;
@@ -161,7 +161,7 @@ public class Stage0Lib{
   private static void setProxyfromPropOrEnv(String envKey, String propKeyH, String propKeyP) {
     String proxyHost = System.getProperty(propKeyH);
     String proxyPort = System.getProperty(propKeyP);
-    if((proxyHost==null || proxyHost.isEmpty()) && (proxyPort==null || proxyPort.isEmpty())) {
+    if((proxyHost == null || proxyHost.isEmpty()) && (proxyPort == null || proxyPort.isEmpty())) {
       String envVar = getVarFromEnv(envKey);
       if(envVar != null && !envVar.isEmpty()) {
         String[] proxy = envVar.replaceFirst("^https?://", "").split(":", 2);
@@ -175,7 +175,7 @@ public class Stage0Lib{
     setProxyfromPropOrEnv("http_proxy", "http.proxyHost", "http.proxyPort");
     setProxyfromPropOrEnv("https_proxy", "https.proxyHost", "https.proxyPort");
     String nonHosts = System.getProperty("http.nonProxyHosts");
-    if(nonHosts==null || nonHosts.isEmpty()) {
+    if(nonHosts == null || nonHosts.isEmpty()) {
       String envVar = getVarFromEnv("no_proxy");
       if(envVar != null && !envVar.isEmpty()) {
         System.setProperty("http.nonProxyHosts", envVar.replaceAll(",","|"));

@@ -21,7 +21,7 @@ public class CbtURLClassLoader extends java.net.URLClassLoader{
     if(_class == null) throw new ClassNotFoundException(name);
     else return _class;
   }
-  public Class loadClass(String name, Boolean resolve) throws ClassNotFoundException{
+  public Class loadClass(String name, boolean resolve) throws ClassNotFoundException{
     //System.out.println("loadClass("+name+") on \n"+this);
     synchronized( cache ){
       if(!cache.containsKey(name))
@@ -32,7 +32,7 @@ public class CbtURLClassLoader extends java.net.URLClassLoader{
         }
       Class _class = cache.get(name);
       if(_class == Object.class){
-        if( name == "java.lang.Object" )
+        if( name.equals("java.lang.Object") )
           return Object.class;
         else return null;
       } else {

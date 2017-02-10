@@ -46,7 +46,7 @@ public class NailgunLauncher{
   public static long nailgunLauncherLastModified = -1; // this initial value should be overwritten, never read
 
   public static void main( String[] args ) throws Throwable {
-    Long _start = System.currentTimeMillis();
+    long _start = System.currentTimeMillis();
     if(args[0].equals("check-alive")){
       System.exit(33);
       return;
@@ -62,13 +62,13 @@ public class NailgunLauncher{
     // scala.Console, which captured them at startup
     try{
       System.out.getClass().getDeclaredField("streams"); // nailgun ThreadLocalPrintStream
-      assert(System.out.getClass().getName() == "com.martiansoftware.nailgun.ThreadLocalPrintStream");
+      assert(System.out.getClass().getName().equals("com.martiansoftware.nailgun.ThreadLocalPrintStream"));
     } catch( NoSuchFieldException e ){
       System.setOut( new PrintStream(new ThreadLocalOutputStream(System.out), true) );
     }
     try{
       System.err.getClass().getDeclaredField("streams"); // nailgun ThreadLocalPrintStream
-      assert(System.err.getClass().getName() == "com.martiansoftware.nailgun.ThreadLocalPrintStream");
+      assert(System.err.getClass().getName().equals("com.martiansoftware.nailgun.ThreadLocalPrintStream"));
     } catch( NoSuchFieldException e ){
       System.setErr( new PrintStream(new ThreadLocalOutputStream(System.err), true) );
     }
@@ -93,7 +93,7 @@ public class NailgunLauncher{
     );
 
     try{
-      Integer exitCode = (Integer) res
+      int exitCode = (int) res
         .classLoader
         .loadClass("cbt.Stage1")
         .getMethod(

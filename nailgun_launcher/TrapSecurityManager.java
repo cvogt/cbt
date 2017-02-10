@@ -39,7 +39,7 @@ public class TrapSecurityManager extends ProxySecurityManager{
   public TrapSecurityManager(){
     super(NailgunLauncher.initialSecurityManager);
   }
-  
+
   public void checkPermission( Permission permission ){
     /*
     NOTE: is it actually ok, to just make these empty?
