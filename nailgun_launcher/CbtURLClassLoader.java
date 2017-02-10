@@ -15,30 +15,29 @@ public class CbtURLClassLoader extends java.net.URLClassLoader{
       + "\n)"
     );
   }
-  ClassLoaderCache2<Class> cache = new ClassLoaderCache2<Class>(
-    new ConcurrentHashMap<String, Object>(),
-    new ConcurrentHashMap<Object, Class>()
-  );
+  ConcurrentHashMap<String,Class> cache = new ConcurrentHashMap<String,Class>();
   public Class loadClass(String name) throws ClassNotFoundException{
     Class _class = super.loadClass(name);
     if(_class == null) throw new ClassNotFoundException(name);
     else return _class;
   }
-  public Class loadClass(String name, Boolean resolve) throws ClassNotFoundException{
+  public Class loadClass(String name, boolean resolve) throws ClassNotFoundException{
     //System.out.println("loadClass("+name+") on \n"+this);
-    if(!cache.contains(name))
-      try{
-        cache.put(super.loadClass(name, resolve), name);
-      } catch (ClassNotFoundException e){
-        cache.put(Object.class, name);
+    synchronized( cache ){
+      if(!cache.containsKey(name))
+        try{
+          cache.put(name, super.loadClass(name, resolve));
+        } catch (ClassNotFoundException e){
+          cache.put(name, Object.class);
+        }
+      Class _class = cache.get(name);
+      if(_class == Object.class){
+        if( name.equals("java.lang.Object") )
+          return Object.class;
+        else return null;
+      } else {
+        return _class;
       }
-    Class _class = cache.get(name);
-    if(_class == Object.class){
-      if( name == "java.lang.Object" )
-        return Object.class;
-      else return null;
-    } else {
-      return _class;
     }
   }
   void assertExist(URL[] urls){

@@ -1,62 +1,67 @@
 package cbt
 
-import java.util.concurrent.ConcurrentHashMap
-
 private[cbt] class LockableKey
 /**
-A cache that lazily computes values if needed during lookup.
+A hashMap that lazily computes values if needed during lookup.
 Locking occurs on the key, so separate keys can be looked up
 simultaneously without a deadlock.
 */
-final private[cbt] class KeyLockedLazyCache[Key <: AnyRef,Value <: AnyRef](
-  val keys: ConcurrentHashMap[Key,AnyRef],
-  val values: ConcurrentHashMap[AnyRef,Value],
+final private[cbt] class KeyLockedLazyCache[T <: AnyRef](
+  val hashMap: java.util.Map[AnyRef,AnyRef],
   logger: Option[Logger]
 ){
-  def get( key: Key, value: => Value ): Value = {
-    val lockableKey = keys.synchronized{
-      if( ! (keys containsKey key) ){
+  final val seen = new ThreadLocal[collection.mutable.Set[AnyRef]](){
+    override protected def initialValue = collection.mutable.Set[AnyRef]();
+  }
+  def get( key: AnyRef, value: => T ): T = {
+    seen.get.add( key );
+    val lockableKey = hashMap.synchronized{
+      if( ! (hashMap containsKey key) ){
         val lockableKey = new LockableKey
         //logger.foreach(_.resolver("CACHE MISS: " ++ key.toString))
-        keys.put( key, lockableKey )
+        hashMap.put( key, lockableKey )
         lockableKey
       } else {
-        val lockableKey = keys get key
+        val lockableKey = hashMap get key
         //logger.foreach(_.resolver("CACHE HIT: " ++ lockableKey.toString ++ " -> " ++ key.toString))
         lockableKey
       }
     }
     import collection.JavaConversions._
-    //logger.resolver("CACHE: \n" ++ keys.mkString("\n"))
+    //logger.resolver("CACHE: \n" ++ hashMap.mkString("\n"))
     // synchronizing on key only, so asking for a particular key does
-    // not block the whole cache, but just that cache entry
+    // not block the whole hashMap, but just that hashMap entry
     lockableKey.synchronized{
-      if( ! (values containsKey lockableKey) ){
-        values.put( lockableKey, value )
+      if( ! (hashMap containsKey lockableKey) ){
+        hashMap.put( lockableKey, value )
       }
-      values get lockableKey      
+      (hashMap get lockableKey).asInstanceOf[T]
     }
   }
-  def update( key: Key, value: Value ): Value = {
-    val lockableKey = keys get key
+  def update( key: AnyRef, value: T ): T = {
+    assert(
+      !seen.get.contains( key ),
+      "Thread tries to update cache key after observing it: " + key
+    )
+    val lockableKey = hashMap get key
     lockableKey.synchronized{
-      values.put( lockableKey, value )
+      hashMap.put( lockableKey, value )
       value
     }
   }
-  def remove( key: Key ) = keys.synchronized{    
-    assert(keys containsKey key)
-    val lockableKey = keys get key
+  def remove( key: AnyRef ) = hashMap.synchronized{
+    assert(hashMap containsKey key)
+    val lockableKey = hashMap get key
     lockableKey.synchronized{
-      if(values containsKey lockableKey){
-        // this is so values in the process of being replaced (which mean they have a key but no value)
+      if(hashMap containsKey lockableKey){
+        // this is so hashMap in the process of being replaced (which mean they have a key but no value)
         // are not being removed
-        keys.remove( key )
-        values.remove( lockableKey )  
+        hashMap.remove( key )
+        hashMap.remove( lockableKey )
       }
     }
   }
-  def containsKey( key: Key ) = keys.synchronized{
-    keys containsKey key
+  def containsKey( key: AnyRef ) = hashMap.synchronized{
+    hashMap containsKey key
   }
 }

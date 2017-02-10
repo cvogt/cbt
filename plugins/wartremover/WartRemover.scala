@@ -10,7 +10,7 @@ trait WartRemover extends BaseBuild {
 
   private[this] def wartremoverCompilerDependency: String =
     MavenResolver(
-      context.cbtHasChanged,
+      context.cbtLastModified,
       context.paths.mavenCache,
       mavenCentral).bindOne(
       ScalaDependency("org.wartremover", "wartremover", "1.1.1")

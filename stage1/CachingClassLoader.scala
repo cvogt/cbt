@@ -5,7 +5,7 @@ import scala.util.Try
 
 trait CachingClassLoader extends ClassLoader{
   def logger: Logger
-  val cache = new KeyLockedLazyCache[String,Option[Class[_]]]( new ConcurrentHashMap, new ConcurrentHashMap, Some(logger) )
+  val cache = new KeyLockedLazyCache[Option[Class[_]]]( new ConcurrentHashMap[AnyRef,AnyRef], Some(logger) )
   override def loadClass(name: String, resolve: Boolean) = {
     cache.get( name, Try(super.loadClass(name, resolve)).toOption ).getOrElse(null)
   }

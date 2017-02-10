@@ -1,12 +1,13 @@
 package cbt
 import java.io._
+import java.util._
 
 object Stage2 extends Stage2Base{
   def getBuild(context: Context) = {
     new Lib( context.logger ).loadRoot( context ).finalBuild
   }
 
-  def run( args: Stage2Args ): Unit = {
+  def run( args: Stage2Args ): ExitCode = {
     import args.logger
     val paths = CbtPaths(args.cbtHome,args.cache)
     import paths._
@@ -22,18 +23,17 @@ object Stage2 extends Stage2Base{
       0
     }
     val task = args.args.lift( taskIndex )
-    
-    val context: Context = ContextImplementation(
+
+    val context: Context = new ContextImplementation(
       args.cwd,
       args.cwd,
       args.args.drop( taskIndex +1 ).toArray,
       logger.enabledLoggers.toArray,
       logger.start,
-      args.cbtHasChanged,
+      args.stage2LastModified,
       null,
-      args.permanentKeys,
-      args.permanentClassLoaders,
-      new java.util.concurrent.ConcurrentHashMap,
+      args.classLoaderCache.hashMap,
+      args.transientCache,
       args.cache,
       args.cbtHome,
       args.cbtHome,
@@ -75,10 +75,13 @@ object Stage2 extends Stage2Base{
             logger.loop(s"Re-running $task for " ++ build.show)
             call(build)
         }
+        ExitCode.Success
       } else {
         val code = call(build)
         logger.stage2(s"Stage2 end")
-        System.exit(code.integer)
+        code
       }
+
+    res
   }
 }

@@ -41,6 +41,7 @@ case class Logger(enabledLoggers: Set[String], start: Long) {
   final def git(msg: => String) = log(names.git, msg)
   final def pom(msg: => String) = log(names.pom, msg)
   final def dynamic(msg: => String) = log(names.dynamic, msg)
+  final def transientCache(msg: => String) = log(names.transientCache, msg)
 
   private object names{
     val stage1 = "stage1"
@@ -54,6 +55,7 @@ case class Logger(enabledLoggers: Set[String], start: Long) {
     val pom = "pom"
     val git = "git"
     val dynamic = "dynamic"
+    val transientCache = "transientCache"
   }
 
   private def logUnguarded(name: String, msg: => String) = {

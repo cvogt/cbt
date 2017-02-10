@@ -1,9 +1,13 @@
 package cbt
 import java.io._
 import java.net._
-case class MavenResolver( cbtHasChanged: Boolean, mavenCache: File, urls: URL* ){
-  def bind( dependencies: MavenDependency* )(implicit logger: Logger): Seq[BoundMavenDependency]
-    = dependencies.map( BoundMavenDependency(cbtHasChanged,mavenCache,_,urls.to) ).to
-  def bindOne( dependency: MavenDependency )(implicit logger: Logger): BoundMavenDependency
-    = BoundMavenDependency( cbtHasChanged, mavenCache, dependency, urls.to )
+case class MavenResolver(
+  cbtLastModified: Long, mavenCache: File, urls: URL*
+)(
+  implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]
+){
+  def bind( dependencies: MavenDependency* ): Seq[BoundMavenDependency]
+    = dependencies.map( BoundMavenDependency(cbtLastModified,mavenCache,_,urls.to) ).to
+  def bindOne( dependency: MavenDependency ): BoundMavenDependency
+    = BoundMavenDependency( cbtLastModified, mavenCache, dependency, urls.to )
 }

@@ -6,7 +6,7 @@ trait ScalaJsBuild extends BaseBuild {
   final protected val scalaJsLib = ScalaJsLib(
     scalaJsVersion,
     scalaVersion,
-    context.cbtHasChanged,
+    context.cbtLastModified,
     context.classLoaderCache,
     context.paths.mavenCache
   )

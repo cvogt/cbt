@@ -1,10 +1,10 @@
 /*
 // temporary debugging tool
 package cbt
-import java.util.concurrent.ConcurrentHashMap
+import java.util._
 import collection.JavaConversions._
 object PoorMansProfiler{
-  val entries = new ConcurrentHashMap[String, Long]
+  val entries = new HashMap[String, Long]
   def profile[T](name: String)(code: => T): T = {
     val before = System.currentTimeMillis
     if(!(entries containsKey name)){

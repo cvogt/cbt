@@ -8,18 +8,15 @@ trait Dotty extends BaseBuild{
   def dottyVersion: String = "0.1-20160926-ec28ea1-NIGHTLY"
   def dottyOptions: Seq[String] = Seq()
   override def scalaTarget: File = target ++ s"/dotty-$dottyVersion"
-  
+
   private lazy val dottyLib = new DottyLib(
-    logger, context.cbtHasChanged, context.paths.mavenCache,
+    logger, context.cbtLastModified, context.paths.mavenCache,
     context.classLoaderCache, dottyVersion = dottyVersion
   )
 
-  private object compileCache extends Cache[Option[File]]
-  override def compile: Option[File] = compileCache{
+  override def compile: Option[Long] = taskCache[Dotty]("compile").memoize{
     dottyLib.compile(
-      needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
-      sourceFiles, compileTarget, compileStatusFile, compileClasspath,
-      dottyOptions
+      sourceFiles, compileTarget, compileStatusFile, compileDependencies, dottyOptions
     )
   }
 
@@ -37,15 +34,15 @@ trait Dotty extends BaseBuild{
 
 class DottyLib(
   logger: Logger,
-  cbtHasChanged: Boolean,
+  cbtLastModified: Long,
   mavenCache: File,
   classLoaderCache: ClassLoaderCache,
   dottyVersion: String
-){
+)(implicit transientCache: java.util.Map[AnyRef,AnyRef]){
   val lib = new Lib(logger)
   import lib._
 
-  private def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
+  private def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
   private lazy val dottyDependency = Resolver(mavenCentral).bindOne(
     MavenDependency("ch.epfl.lamp","dotty_2.11",dottyVersion)
   )
@@ -95,22 +92,24 @@ class DottyLib(
   }
 
   def compile(
-    needsRecompile: Boolean,
-    files: Seq[File],
+    sourceFiles: Seq[File],
     compileTarget: File,
     statusFile: File,
-    classpath: ClassPath,
+    dependencies: Seq[Dependency],
     dottyOptions: Seq[String]
-  ): Option[File] = {
-
+  ): Option[Long] = {
+    val d = Dependencies(dependencies)
+    val classpath = d.classpath
+    val cp = classpath.string
     if(classpath.files.isEmpty)
-      throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
+      throw new Exception("Trying to compile with empty classpath. Source files: " ++ sourceFiles.toString)
 
-    if( files.isEmpty ){
+    if( sourceFiles.isEmpty ){
       None
     }else{
-      if( needsRecompile ){
-        val start = System.currentTimeMillis
+      val start = System.currentTimeMillis
+      val lastCompiled = statusFile.lastModified
+      if( d.lastModified > lastCompiled || sourceFiles.exists(_.lastModified > lastCompiled) ){
 
         val _class = "dotty.tools.dotc.Main"
         val dualArgs =
@@ -119,7 +118,7 @@ class DottyLib(
           )
         val singleArgs = dottyOptions.map( "-S" ++ _ )
 
-        val code = 
+        val code =
           try{
             System.err.println("Compiling with Dotty to " ++ compileTarget.toString)
             compileTarget.mkdirs
@@ -129,7 +128,7 @@ class DottyLib(
                 dualArgs ++ singleArgs ++ Seq(
                   "-bootclasspath", dottyDependency.classpath.string, // let's put cp last. It so long
                   "-classpath", classpath.string // let's put cp last. It so long
-                ) ++ files.map(_.toString),
+                ) ++ sourceFiles.map(_.toString),
                 dottyDependency.classLoader(classLoaderCache)
               )
             }
@@ -151,7 +150,7 @@ ${dottyDependency.classpath.strings.mkString(":\\\n")} \\
 -classpath \\
 ${classpath.strings.mkString(":\\\n")} \\
 \\
-${files.sorted.mkString(" \\\n")}
+${sourceFiles.sorted.mkString(" \\\n")}
 """
             )
             ExitCode.Failure
@@ -165,8 +164,10 @@ ${files.sorted.mkString(" \\\n")}
         } else {
           System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
         }
+        Some( start )
+      } else {
+        Some( lastCompiled )
       }
-      Some( compileTarget )
     }
   }
 }

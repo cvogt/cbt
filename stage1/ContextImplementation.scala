@@ -1,22 +1,28 @@
 package cbt
 import java.io._
-import java.util.concurrent.ConcurrentHashMap
-import java.lang._
 
-case class ContextImplementation(
-  projectDirectory: File,
-  cwd: File,
-  argsArray: Array[String],
-  enabledLoggersArray: Array[String],
-  startCompat: Long,
-  cbtHasChangedCompat: Boolean,
-  scalaVersionOrNull: String,
-  permanentKeys: ConcurrentHashMap[String,AnyRef],
-  permanentClassLoaders: ConcurrentHashMap[AnyRef,ClassLoader],
-  taskCache: ConcurrentHashMap[AnyRef,AnyRef],
-  cache: File,
-  cbtHome: File,
-  cbtRootHome: File,
-  compatibilityTarget: File,
-  parentBuildOrNull: BuildInterface
-) extends Context
+class ContextImplementation(
+  override val projectDirectory: File,
+  override val cwd: File,
+  override val argsArray: Array[String],
+  override val enabledLoggersArray: Array[String],
+  override val start: Long,
+  override val cbtLastModified: Long,
+  override val scalaVersionOrNull: String,
+  override val persistentCache: java.util.Map[AnyRef,AnyRef],
+  override val transientCache: java.util.Map[AnyRef,AnyRef],
+  override val cache: File,
+  override val cbtHome: File,
+  override val cbtRootHome: File,
+  override val compatibilityTarget: File,
+  override val parentBuildOrNull: BuildInterface
+) extends Context{
+  @deprecated("this method is replaced by cbtLastModified","")
+  def cbtHasChangedCompat = true
+  @deprecated("this method is replaced by start","")
+  def startCompat = start
+  @deprecated("this methods is replaced by persistentCache","")
+  def permanentKeys = throw new IncompatibleCbtVersionException("You need to upgrade your CBT version in this module. The Context field permanentClassLoaders is no longer supported.");
+  @deprecated("this methods is replaced by persistentCache","")
+  def permanentClassLoaders = throw new IncompatibleCbtVersionException("You need to upgrade your CBT version in this module. The Context field permanentClassLoaders is no longer supported.");
+}

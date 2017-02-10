@@ -1,9 +1,9 @@
 package cbt
 package test
-import java.util.concurrent.ConcurrentHashMap
 import java.io.File
 import java.nio.file._
 import java.net.URL
+import java.util.{Iterator=>_,_}
 import scala.concurrent._
 import scala.concurrent.duration._
 // micro framework
@@ -103,21 +103,21 @@ object Main{
 
     val cache = cbtHome ++ "/cache"
     val mavenCache = cache ++ "/maven"
-    val cbtHasChanged = true
-    def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
+    val cbtLastModified = System.currentTimeMillis
+    implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
+    def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
 
     {
-      val noContext = ContextImplementation(
+      val noContext = new ContextImplementation(
         cbtHome ++ "/test/nothing",
         cbtHome,
         Array(),
         Array(),
         start,
-        cbtHasChanged,
+        cbtLastModified,
         null,
-        new ConcurrentHashMap[String,AnyRef],
-        new ConcurrentHashMap[AnyRef,ClassLoader],
-        new java.util.concurrent.ConcurrentHashMap[AnyRef,AnyRef],
+        new HashMap[AnyRef,AnyRef],
+        new HashMap[AnyRef,AnyRef],
         cache,
         cbtHome,
         cbtHome,

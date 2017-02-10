@@ -3,8 +3,8 @@ import java.io.File
 
 case class ScalaJsLib(
   scalaJsVersion: String, scalaVersion: String,
-  cbtHasChanged: Boolean, classLoaderCache: ClassLoaderCache, mavenCache: File
-)(implicit logger: Logger){
+  cbtLastModified: Long, classLoaderCache: ClassLoaderCache, mavenCache: File
+)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]){
   sealed trait ScalaJsOutputMode {
     def option: String
     def fileSuffix: String
@@ -19,7 +19,7 @@ case class ScalaJsLib(
   }
 
   val lib = new Lib(logger)
-  def dep(artifactId: String) = MavenResolver( cbtHasChanged, mavenCache, mavenCentral ).bindOne(
+  def dep(artifactId: String) = MavenResolver( cbtLastModified, mavenCache, mavenCentral ).bindOne(
     MavenDependency("org.scala-js", artifactId, scalaJsVersion)
   )
 

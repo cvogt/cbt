@@ -9,12 +9,13 @@ class ToolsTasks(
   classLoaderCache: ClassLoaderCache,
   cache: File,
   cbtHome: File,
-  cbtHasChanged: Boolean
+  cbtLastModified: Long
 ){
   private val paths = CbtPaths(cbtHome, cache)
   import paths._
-  private def Resolver( urls: URL* ) = MavenResolver(cbtHasChanged,mavenCache,urls: _*)
+  private def Resolver( urls: URL* ) = MavenResolver(cbtLastModified,mavenCache,urls: _*)
   implicit val logger: Logger = lib.logger
+  implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
   def createMain: Unit = lib.createMain( cwd )
   def createBuild: Unit = lib.createBuild( cwd )
   def gui = NailgunLauncher.main(Array(
@@ -55,7 +56,7 @@ class ToolsTasks(
   }
   def scala = {
     val version = args.lift(1).getOrElse(constants.scalaVersion)
-    val scalac = new ScalaCompilerDependency( cbtHasChanged, mavenCache, version )
+    val scalac = new ScalaCompilerDependency( cbtLastModified, mavenCache, version )
     val _args = Seq("-cp", scalac.classpath.string) ++ args.drop(2)
     lib.runMain(
       "scala.tools.nsc.MainGenericRunner", _args, scalac.classLoader(classLoaderCache)
@@ -96,14 +97,15 @@ class ToolsTasks(
           val n = valName(d)
           s"""
     // ${d.groupId}:${d.artifactId}:${d.version}
-    download(new URL(mavenUrl + "${d.basePath(true)}.jar"), Paths.get(${n}File), "${d.jarSha1}");
-
     String[] ${n}ClasspathArray = new String[]{${deps.sortBy(_.jar).map(valName(_)+"File").mkString(", ")}};
-    String ${n}Classpath = classpath( ${n}ClasspathArray );
-    ClassLoader $n =
-      classLoaderCache.contains( ${n}Classpath )
-      ? classLoaderCache.get( ${n}Classpath )
-      : classLoaderCache.put( classLoader( ${n}File, $parentString ), ${n}Classpath );"""
+    ClassLoader $n = loadDependency(
+      mavenUrl + "${d.basePath(true)}.jar",
+      ${n}File,
+      "${d.jarSha1}",
+      classLoaderCache,
+      $parentString,
+      ${n}ClasspathArray
+    );"""
       }
     }
     val assignments = codeEach(zinc) ++ codeEach(scalaXml)
@@ -115,6 +117,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.net.*;
 import java.security.*;
+import java.util.*;
 import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
 
@@ -129,13 +132,13 @@ class EarlyDependencies{
 ${files.map(d => s"""  String ${valName(d)}File;""").mkString("\n")}
 
   public EarlyDependencies(
-    String mavenCache, String mavenUrl, ClassLoaderCache2<ClassLoader> classLoaderCache, ClassLoader rootClassLoader
-  ) throws Exception {
+    String mavenCache, String mavenUrl, ClassLoaderCache classLoaderCache, ClassLoader rootClassLoader
+  ) throws Throwable {
 ${files.map(d => s"""    ${valName(d)}File = mavenCache + "${d.basePath(true)}.jar";""").mkString("\n")}
 
 ${scalaDeps.map(d => s"""    download(new URL(mavenUrl + "${d.basePath(true)}.jar"), Paths.get(${valName(d)}File), "${d.jarSha1}");""").mkString("\n")}
 ${assignments.mkString("\n")}
-  
+
     classLoader = scalaXml_${scalaXmlVersion.replace(".","_")}_;
     classpathArray = scalaXml_${scalaXmlVersion.replace(".","_")}_ClasspathArray;
 

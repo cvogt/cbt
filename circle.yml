@@ -1,6 +1,6 @@
 machine:
   java:
-    version: oraclejdk7
+    version: oraclejdk8
 
 dependencies:
   cache_directories:
@@ -13,5 +13,7 @@ dependencies:
 test:
   override:
     - rm ~/.gitconfig # avoid url replacement breaking jgit
-    - ./cbt direct test
-    - ./cbt test
+    - ./cbt direct test:
+        timeout: 1800
+    - ./cbt test:
+        timeout: 1800

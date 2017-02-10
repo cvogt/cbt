@@ -11,16 +11,17 @@ import static java.io.File.pathSeparator;
 import static cbt.NailgunLauncher.*;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
+import static java.lang.Math.min;
 
 public class Stage0Lib{
-  public static void _assert(Boolean condition, Object msg){
+  public static void _assert(boolean condition, Object msg){
     if(!condition){
       throw new AssertionError("Assertion failed: "+msg);
     }
   }
 
   public static int runMain(String cls, String[] args, ClassLoader cl) throws Throwable{
-    Boolean trapExitCodeBefore = TrapSecurityManager.trapExitCode().get();
+    boolean trapExitCodeBefore = TrapSecurityManager.trapExitCode().get();
     try{
       TrapSecurityManager.trapExitCode().set(true);
       cl.loadClass(cls)
@@ -47,33 +48,65 @@ public class Stage0Lib{
     return join( pathSeparator, files );
   }
 
+  public static long lastModified( String... files ){
+    List<Long> lastModified = new ArrayList<Long>();
+    for( String file: files ){
+      lastModified.add( new File(file).lastModified() );
+    }
+    return Collections.max( lastModified );
+  }
+
+  public static ClassLoader loadDependency(
+    String url,
+    String file,
+    String hash,
+    ClassLoaderCache classLoaderCache,
+    ClassLoader parent,
+    String... classpathArray
+  ) throws Throwable {
+    download(new URL(url), Paths.get(file), hash);
+
+    final long lastModified = lastModified( classpathArray );
+    final String classpath = classpath( classpathArray );
+
+    if( !classLoaderCache.containsKey( classpath, lastModified ) )
+      classLoaderCache.put( classpath, classLoader( file, parent ), lastModified );
+
+    return classLoaderCache.get( classpath, lastModified );
+  }
+
   public static File write(File file, String content, OpenOption... options) throws Throwable{
     file.getParentFile().mkdirs();
     Files.write(file.toPath(), content.getBytes(), options);
     return file;
   }
 
-  public static Boolean compile(
-    Boolean changed, Long start, String classpath, String target,
+  public static long compile(
+    long lastModified, String classpath, String target,
     EarlyDependencies earlyDeps, List<File> sourceFiles
   ) throws Throwable{
     File statusFile = new File( new File(target) + ".last-success" );
-    Long lastSuccessfullCompile = statusFile.lastModified();
+    long lastCompiled = statusFile.lastModified();
+
+    long maxLastModified = lastModified;
+    final long start = System.currentTimeMillis(); // <- before recursing, so we catch them all
+
     for( File file: sourceFiles ){
-      if( file.lastModified() > lastSuccessfullCompile ){
-        changed = true;
-        break;
-      }
+      long l = file.lastModified();
+      if( l > maxLastModified ) maxLastModified = l;
+      // performance optimization because we'll recompile and don't need to check other files
+      if( l > lastCompiled ) break;
     }
-    if(changed){
+
+    if( maxLastModified > lastCompiled ){
       List<String> zincArgs = new ArrayList<String>(
         Arrays.asList(
           new String[]{
             "-scala-compiler", earlyDeps.scalaCompiler_2_11_8_File,
             "-scala-library", earlyDeps.scalaLibrary_2_11_8_File,
             "-scala-extra", earlyDeps.scalaReflect_2_11_8_File,
-            "-sbt-interface", earlyDeps.sbtInterface_0_13_9_File,
-            "-compiler-interface", earlyDeps.compilerInterface_0_13_9_File,
+            "-sbt-interface", earlyDeps.sbtInterface_0_13_12_File,
+            "-compiler-interface", earlyDeps.compilerInterface_0_13_12_File,
             "-cp", classpath,
             "-d", target,
             "-S-deprecation",
@@ -100,8 +133,10 @@ public class Stage0Lib{
       } finally {
         System.setOut(oldOut);
       }
+      return statusFile.lastModified(); // can't just use `start` here as system time precision is less than milliseconds on OSX
+    } else {
+      return lastCompiled;
     }
-    return changed;
   }
 
   public static ClassLoader classLoader( String file ) throws Throwable{
@@ -117,7 +152,7 @@ public class Stage0Lib{
 
   private static String getVarFromEnv(String envKey) {
     String value = System.getenv(envKey);
-    if(value==null || value.isEmpty()) {
+    if(value == null || value.isEmpty()) {
       value = System.getenv(envKey.toUpperCase());
     }
     return value;
@@ -126,7 +161,7 @@ public class Stage0Lib{
   private static void setProxyfromPropOrEnv(String envKey, String propKeyH, String propKeyP) {
     String proxyHost = System.getProperty(propKeyH);
     String proxyPort = System.getProperty(propKeyP);
-    if((proxyHost==null || proxyHost.isEmpty()) && (proxyPort==null || proxyPort.isEmpty())) {
+    if((proxyHost == null || proxyHost.isEmpty()) && (proxyPort == null || proxyPort.isEmpty())) {
       String envVar = getVarFromEnv(envKey);
       if(envVar != null && !envVar.isEmpty()) {
         String[] proxy = envVar.replaceFirst("^https?://", "").split(":", 2);
@@ -140,7 +175,7 @@ public class Stage0Lib{
     setProxyfromPropOrEnv("http_proxy", "http.proxyHost", "http.proxyPort");
     setProxyfromPropOrEnv("https_proxy", "https.proxyHost", "https.proxyPort");
     String nonHosts = System.getProperty("http.nonProxyHosts");
-    if(nonHosts==null || nonHosts.isEmpty()) {
+    if(nonHosts == null || nonHosts.isEmpty()) {
       String envVar = getVarFromEnv("no_proxy");
       if(envVar != null && !envVar.isEmpty()) {
         System.setProperty("http.nonProxyHosts", envVar.replaceAll(",","|"));

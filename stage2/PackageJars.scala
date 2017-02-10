@@ -10,20 +10,17 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
     Seq(() => jar, () => docJar, () => srcJar)
   )( _() ).flatten
 
-  private object cacheJarBasicBuild extends Cache[Option[File]]
-  def jar: Option[File] = cacheJarBasicBuild{
-    compile.flatMap( lib.jar( artifactId, scalaMajorVersion, version, _, jarTarget ) )
+  def jar: Option[File] = taskCache[PackageJars]("jar").memoize{
+    compileFile.flatMap( lib.jar( artifactId, scalaMajorVersion, version, _, jarTarget ) )
   }
 
-  private object cacheSrcJarBasicBuild extends Cache[Option[File]]
-  def srcJar: Option[File] = cacheSrcJarBasicBuild{
+  def srcJar: Option[File] = taskCache[PackageJars]("srcJar").memoize{
     lib.srcJar( sourceFiles, artifactId, scalaMajorVersion, version, scalaTarget )
   }
 
-  private object cacheDocBasicBuild extends Cache[Option[File]]
-  def docJar: Option[File] = cacheDocBasicBuild{
+  def docJar: Option[File] = taskCache[PackageJars]("docJar").memoize{
     lib.docJar(
-      context.cbtHasChanged,
+      context.cbtLastModified,
       scalaVersion, sourceFiles, compileClasspath, docTarget,
       jarTarget, artifactId, scalaMajorVersion, version,
       scalacOptions, context.classLoaderCache, context.paths.mavenCache

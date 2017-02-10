@@ -9,7 +9,6 @@ import java.nio.file.attribute.FileTime
 import javax.tools._
 import java.security._
 import java.util.{Set=>_,Map=>_,List=>_,_}
-import java.util.concurrent.ConcurrentHashMap
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
 // CLI interop
@@ -33,7 +32,7 @@ class BaseLib{
   def realpath(name: File) = new File(java.nio.file.Paths.get(name.getAbsolutePath).normalize.toString)
 }
 
-class Stage1Lib( val logger: Logger ) extends BaseLib{
+class Stage1Lib( logger: Logger ) extends BaseLib{
   lib =>
   implicit val implicitLogger: Logger = logger
 
@@ -101,7 +100,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     trapExitCode{
       val c = classLoader.loadClass(cls)
       val m = c.getMethod( "main", classOf[Array[String]] )
-      val instance = 
+      val instance =
         if(!fakeInstance) null else c.newInstance
       assert(
         fakeInstance || (m.getModifiers & java.lang.reflect.Modifier.STATIC) > 0,
@@ -184,37 +183,37 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
-  def needsUpdate( sourceFiles: Seq[File], statusFile: File ) = {
-    val lastCompile = statusFile.lastModified
-    sourceFiles.filter(_.lastModified > lastCompile).nonEmpty
-  }
 
   def compile(
-    cbtHasChanged: Boolean,
-    needsRecompile: Boolean,
-    files: Seq[File],
+    cbtLastModified: Long,
+    sourceFiles: Seq[File],
     compileTarget: File,
     statusFile: File,
-    classpath: ClassPath,
+    dependencies: Seq[Dependency],
     mavenCache: File,
     scalacOptions: Seq[String] = Seq(),
     classLoaderCache: ClassLoaderCache,
     zincVersion: String,
     scalaVersion: String
-  ): Option[File] = {
-
+  )(
+    implicit transientCache: java.util.Map[AnyRef, AnyRef]
+  ): Option[Long] = {
+    val d = Dependencies(dependencies)
+    val classpath = d.classpath
     val cp = classpath.string
     if(classpath.files.isEmpty)
-      throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
+      throw new Exception("Trying to compile with empty classpath. Source files: " ++ sourceFiles.toString)
 
-    if( files.isEmpty ){
+    if( sourceFiles.isEmpty ){
       None
     }else{
-      if( needsRecompile ){
-        def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
+      val start = System.currentTimeMillis
+      val lastCompiled = statusFile.lastModified
+      if( d.lastModified > lastCompiled || sourceFiles.exists(_.lastModified > lastCompiled) ){
+        def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
         val zinc = Resolver(mavenCentral).bindOne(MavenDependency("com.typesafe.zinc","zinc", zincVersion))
         val zincDeps = zinc.transitiveDependencies
-        
+
         val sbtInterface =
           zincDeps
             .collect{ case d @
@@ -241,8 +240,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         val scalaReflect = Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)).jar
         val scalaCompiler = Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion)).jar
 
-        val start = System.currentTimeMillis
-
         val _class = "com.typesafe.zinc.Main"
         val dualArgs =
           Seq(
@@ -255,7 +252,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
           )
         val singleArgs = scalacOptions.map( "-S" ++ _ )
 
-        val code = 
+        val code =
           redirectOutToErr{
             System.err.println("Compiling to " ++ compileTarget.toString)
             try{
@@ -263,7 +260,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
                 _class,
                 dualArgs ++ singleArgs ++ Seq(
                   "-cp", cp // let's put cp last. It so long
-                ) ++ files.map(_.toString),
+                ) ++ sourceFiles.map(_.toString),
                 zinc.classLoader(classLoaderCache)
               )
             } catch {
@@ -282,9 +279,11 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   -cp \\
   ${classpath.strings.mkString(":\\\n")} \\
   \\
-  ${files.sorted.mkString(" \\\n")}
+  ${sourceFiles.sorted.mkString(" \\\n")}
   """
               )
+
+              redirectOutToErr( e.printStackTrace )
               ExitCode.Failure
             }
           }
@@ -297,8 +296,10 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         } else {
           System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
         }
+        Some( start )
+      } else {
+        Some( lastCompiled )
       }
-      Some( compileTarget )
     }
   }
   def redirectOutToErr[T](code: => T): T = {
@@ -357,11 +358,11 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     )
 
   def cacheOnDisk[T]
-    ( cbtHasChanged: Boolean, cacheFile: File )
+    ( cbtLastModified: Long, cacheFile: File )
     ( deserialize: String => T )
     ( serialize: T => String )
     ( compute: => Seq[T] ) = {
-    if(!cbtHasChanged && cacheFile.exists){
+    if(cacheFile.exists && cacheFile.lastModified > cbtLastModified ){
       import collection.JavaConversions._
       Files
         .readAllLines( cacheFile.toPath, StandardCharsets.UTF_8 )
@@ -377,7 +378,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def dependencyTreeRecursion(root: Dependency, indent: Int = 0): String = (
     ( " " * indent )
-    ++ (if(root.needsUpdate) red(root.show) else root.show)
+    ++ root.show // (if(root.needsUpdate) red(root.show) else root.show)
     ++ root.dependencies.map( d =>
       "\n" ++ dependencyTreeRecursion(d,indent + 1)
     ).mkString
@@ -416,32 +417,61 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   }
 
   def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
-    val d = dependency
+    // FIXME: shouldn't we be using KeyLockedLazyCache instead of hashmap directly here?
     val dependencies = dependency.dependencies
-    def dependencyClassLoader( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+    val dependencyClassLoader: ClassLoader = {
       if( dependency.dependencies.isEmpty ){
-        // wrap for caching
-        new cbt.URLClassLoader( ClassPath(), ClassLoader.getSystemClassLoader().getParent() )
+        NailgunLauncher.jdkClassLoader
       } else if( dependencies.size == 1 ){
         classLoaderRecursion( dependencies.head, latest, cache )
       } else{
-        val cp = d.dependencyClasspath.string
-        if( dependencies.exists(_.needsUpdate) && cache.persistent.containsKey(cp) ){
-          cache.persistent.remove(cp)
-        }
-        def cl = new MultiClassLoader( dependencies.map( classLoaderRecursion(_, latest, cache) ) )
-        if(d.isInstanceOf[BuildInterface])
+        val lastModified = dependencies.map( _.lastModified ).max
+        val cp = dependency.dependencyClasspath.string
+        val cl =
+          new MultiClassLoader(
+            dependencies.map( classLoaderRecursion(_, latest, cache) )
+          )
+        if(dependency.isInstanceOf[BuildInterface])
           cl // Don't cache builds right now. We need to fix invalidation first.
-        else
-          cache.persistent.get( cp, cl )
+        else{
+          if( !cache.containsKey( cp, lastModified ) ){
+            cache.put( cp, cl, lastModified )
+          }
+          cache.get( cp, lastModified )
+        }
       }
     }
 
     val a = actual( dependency, latest )
-    def cl = new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
-    if(d.isInstanceOf[BuildInterface])
-      cl
-    else
-      cache.persistent.get( a.classpath.string, cl )
+    def cl = new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader )
+
+    val cp = a.classpath.string
+    val lastModified = a.lastModified
+    if( !cache.containsKey( cp, lastModified ) ){
+      cache.put( cp, cl, lastModified )
+    }
+    cache.get( cp, lastModified )
+  }
+
+}
+
+import scala.reflect._
+import scala.language.existentials
+case class PerClassCache(cache: java.util.Map[AnyRef,AnyRef], moduleKey: String)(implicit logger: Logger){
+  def apply[D <: Dependency: ClassTag](key: AnyRef): MethodCache[D] = new MethodCache[D](key)
+  case class MethodCache[D <: Dependency: ClassTag](key: AnyRef){
+    def memoize[T <: AnyRef](task: => T): T = {
+      val fullKey = (classTag[D].runtimeClass, moduleKey, key)
+      logger.transientCache("fetching key"+fullKey)
+      if( cache.containsKey(fullKey) ){
+        logger.transientCache("found    key"+fullKey)
+        cache.get(fullKey).asInstanceOf[T]
+      } else{
+        val value = task
+        logger.transientCache("put      key"+fullKey)
+        cache.put( fullKey, value )
+        value
+      }
+    }
   }
 }

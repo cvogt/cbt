@@ -2,7 +2,6 @@ package cbt
 import java.io._
 import java.nio.file._
 import java.net._
-import java.util.concurrent.ConcurrentHashMap
 
 object `package`{
   implicit class TypeInferenceSafeEquals[T](value: T){
@@ -34,6 +33,11 @@ object `package`{
     def ++( s: String ): URL = new URL( url.toString ++ s )
     def string = url.toString
   }
+  implicit class SeqExtensions[T](seq: Seq[T]){
+     def maxOption(implicit ev: Ordering[T]): Option[T] = try{ Some(seq.max) } catch {
+       case e:java.lang.UnsupportedOperationException if e.getMessage === "empty.max" => None
+     }
+  }
   implicit class BuildInterfaceExtensions(build: BuildInterface){
     import build._
     // TODO: if every build has a method triggers a callback if files change
@@ -53,47 +57,43 @@ object `package`{
     def exportedClasspath: ClassPath = ClassPath(exportedClasspathArray.to)
     def classpath = exportedClasspath ++ dependencyClasspath
     def dependencies: Seq[Dependency] = dependenciesArray.to
-    def needsUpdate: Boolean = needsUpdateCompat
   }
   implicit class ContextExtensions(subject: Context){
     import subject._
     val paths = CbtPaths(cbtHome, cache)
     implicit def logger: Logger = new Logger(enabledLoggers, start)
-    def classLoaderCache: ClassLoaderCache = new ClassLoaderCache(
-      logger,
-      permanentKeys,
-      permanentClassLoaders
-    )
-    def cbtDependency = {
+
+    def classLoaderCache: ClassLoaderCache = new ClassLoaderCache( persistentCache )
+    def cbtDependencies = {
       import paths._
-      CbtDependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)
+      new CbtDependencies(mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)(logger, transientCache)
     }
+    val cbtDependency = cbtDependencies.stage2Dependency
+
     def args: Seq[String] = argsArray.to
     def enabledLoggers: Set[String] = enabledLoggersArray.to
     def scalaVersion = Option(scalaVersionOrNull)
     def parentBuild = Option(parentBuildOrNull)
-    def start: scala.Long = startCompat
-    def cbtHasChanged: scala.Boolean = cbtHasChangedCompat
+    def cbtLastModified: scala.Long = subject.cbtLastModified
 
     def copy(
       projectDirectory: File = projectDirectory,
       args: Seq[String] = args,
       //enabledLoggers: Set[String] = enabledLoggers,
-      cbtHasChanged: Boolean = cbtHasChanged,
+      cbtLastModified: Long = cbtLastModified,
       scalaVersion: Option[String] = scalaVersion,
       cbtHome: File = cbtHome,
       parentBuild: Option[BuildInterface] = None
-    ): Context = ContextImplementation(
+    ): Context = new ContextImplementation(
       projectDirectory,
       cwd,
       args.to,
       enabledLoggers.to,
-      startCompat,
-      cbtHasChangedCompat,
+      start,
+      cbtLastModified,
       scalaVersion.getOrElse(null),
-      permanentKeys,
-      permanentClassLoaders,
-      taskCache,
+      persistentCache,
+      transientCache,
       cache,
       cbtHome,
       cbtRootHome,

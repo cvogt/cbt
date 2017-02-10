@@ -6,7 +6,7 @@ trait ScalaTest extends BaseBuild{
   override def run: ExitCode = {
     import ScalaTestLib._
     val _classLoader = classLoader(context.classLoaderCache)
-    val suiteNames = compile.map( d => discoverSuites(d, _classLoader) ).toVector.flatten
+    val suiteNames = compileFile.map( d => discoverSuites(d, _classLoader) ).toVector.flatten
     runSuites( suiteNames.map( loadSuite( _, _classLoader ) ) )
     ExitCode.Success
   }

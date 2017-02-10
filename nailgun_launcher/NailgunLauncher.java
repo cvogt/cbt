@@ -4,7 +4,6 @@ import java.lang.reflect.*;
 import java.net.*;
 import java.security.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import static cbt.Stage0Lib.*;
 import static java.io.File.pathSeparator;
 
@@ -15,10 +14,7 @@ import static java.io.File.pathSeparator;
  */
 public class NailgunLauncher{
   /** Persistent cache for caching classloaders for the JVM life time. */
-  private final static ClassLoaderCache2<ClassLoader> classLoaderCache = new ClassLoaderCache2<ClassLoader>(
-    new ConcurrentHashMap<String,Object>(),
-    new ConcurrentHashMap<Object,ClassLoader>()
-  );
+  private static Map<Object,Object> classLoaderCacheHashMap = new HashMap<Object,Object>();
 
   public final static SecurityManager initialSecurityManager
     = System.getSecurityManager();
@@ -30,14 +26,13 @@ public class NailgunLauncher{
   @SuppressWarnings("unchecked")
   public static Object getBuild( Object context ) throws Throwable{
     BuildStage1Result res = buildStage1(
-      (Boolean) get(context, "cbtHasChangedCompat"),
-      (Long) get(context, "startCompat"),
+      (long) get(context, "cbtLastModified"),
+      (long) get(context, "start"),
       ((File) get(context, "cache")).toString() + "/",
       ((File) get(context, "cbtHome")).toString(),
       ((File) get(context, "compatibilityTarget")).toString() + "/",
-      new ClassLoaderCache2<ClassLoader>(
-        (ConcurrentHashMap<String,Object>) get(context, "permanentKeys"),
-        (ConcurrentHashMap<Object,ClassLoader>) get(context, "permanentClassLoaders")
+      new ClassLoaderCache(
+        (HashMap) get(context, "persistentCache")
       )
     );
     return
@@ -48,8 +43,16 @@ public class NailgunLauncher{
         .invoke(null, context, res);
   }
 
+  public static long nailgunLauncherLastModified = -1; // this initial value should be overwritten, never read
+
+  // wrap for caching
+  public static ClassLoader jdkClassLoader = new CbtURLClassLoader(
+    new URL[]{},
+    ClassLoader.getSystemClassLoader().getParent()
+  );
+
   public static void main( String[] args ) throws Throwable {
-    Long _start = System.currentTimeMillis();
+    long _start = System.currentTimeMillis();
     if(args[0].equals("check-alive")){
       System.exit(33);
       return;
@@ -65,13 +68,13 @@ public class NailgunLauncher{
     // scala.Console, which captured them at startup
     try{
       System.out.getClass().getDeclaredField("streams"); // nailgun ThreadLocalPrintStream
-      assert(System.out.getClass().getName() == "com.martiansoftware.nailgun.ThreadLocalPrintStream");
+      assert(System.out.getClass().getName().equals("com.martiansoftware.nailgun.ThreadLocalPrintStream"));
     } catch( NoSuchFieldException e ){
       System.setOut( new PrintStream(new ThreadLocalOutputStream(System.out), true) );
     }
     try{
       System.err.getClass().getDeclaredField("streams"); // nailgun ThreadLocalPrintStream
-      assert(System.err.getClass().getName() == "com.martiansoftware.nailgun.ThreadLocalPrintStream");
+      assert(System.err.getClass().getName().equals("com.martiansoftware.nailgun.ThreadLocalPrintStream"));
     } catch( NoSuchFieldException e ){
       System.setErr( new PrintStream(new ThreadLocalOutputStream(System.err), true) );
     }
@@ -81,28 +84,38 @@ public class NailgunLauncher{
     String CBT_HOME = System.getenv("CBT_HOME");
     String cache = CBT_HOME + "/cache/";
     String compatibilityTarget = CBT_HOME + "/compatibility/" + TARGET;
+    // copy cache, so that this thread has a consistent view despite other threads
+    // changing their copies
+    // replace again before returning, see below
+    ClassLoaderCache classLoaderCache = new ClassLoaderCache(
+      new HashMap<Object,Object>(classLoaderCacheHashMap)
+    );
+
+    String nailgunTarget = CBT_HOME + "/" + NAILGUN + TARGET;
+    long nailgunLauncherLastModified = new File( nailgunTarget + "../classes.last-success" ).lastModified();
+
     BuildStage1Result res = buildStage1(
-      false, start, cache, CBT_HOME, compatibilityTarget, classLoaderCache
+      nailgunLauncherLastModified, start, cache, CBT_HOME, compatibilityTarget, classLoaderCache
     );
 
     try{
-      System.exit(
-        (Integer) res
-          .classLoader
-          .loadClass("cbt.Stage1")
-          .getMethod(
-            "run",
-            String[].class, File.class, File.class, BuildStage1Result.class,
-            Long.class, ConcurrentHashMap.class, ConcurrentHashMap.class
-          )
-          .invoke(
-            null,
-            (Object) args, new File(cache), new File(CBT_HOME), res,
-            start, classLoaderCache.keys, classLoaderCache.values
-          )
-      );
+      int exitCode = (int) res
+        .classLoader
+        .loadClass("cbt.Stage1")
+        .getMethod(
+          "run", String[].class, File.class, File.class, BuildStage1Result.class, Map.class
+        ).invoke(
+          null, (Object) args, new File(cache), new File(CBT_HOME), res, classLoaderCache.hashMap
+        );
+
+      System.exit( exitCode );
     } catch (java.lang.reflect.InvocationTargetException e) {
       throw unwrapInvocationTargetException(e);
+    } finally {
+      // This replaces the cache and should be thread-safe.
+      // For competing threads the last one wins with a consistent cache.
+      // So worst case, we loose some of the cache that's replaced.
+      classLoaderCacheHashMap = classLoaderCache.hashMap;
     }
   }
 
@@ -115,7 +128,8 @@ public class NailgunLauncher{
   }
 
   public static BuildStage1Result buildStage1(
-    Boolean changed, long start, String cache, String cbtHome, String compatibilityTarget, ClassLoaderCache2<ClassLoader> classLoaderCache
+    final long lastModified, final long start, final String cache, final String cbtHome,
+    final String compatibilityTarget, final ClassLoaderCache classLoaderCache
   ) throws Throwable {
     _assert(TARGET != null, "environment variable TARGET not defined");
     String nailgunTarget = cbtHome + "/" + NAILGUN + TARGET;
@@ -128,30 +142,32 @@ public class NailgunLauncher{
     ClassLoader rootClassLoader = new CbtURLClassLoader( new URL[]{}, ClassLoader.getSystemClassLoader().getParent() ); // wrap for caching
     EarlyDependencies earlyDeps = new EarlyDependencies(mavenCache, mavenUrl, classLoaderCache, rootClassLoader);
 
-    ClassLoader compatibilityClassLoader;
+    long nailgunLauncherLastModified = new File( nailgunTarget + "../classes.last-success" ).lastModified();
+
+    long compatibilityLastModified;
     if(!compatibilityTarget.startsWith(cbtHome)){
-      compatibilityClassLoader = classLoaderCache.get( compatibilityTarget );
+      compatibilityLastModified = new File( compatibilityTarget + "../classes.last-success" ).lastModified();
     } else {
       List<File> compatibilitySourceFiles = new ArrayList<File>();
       for( File f: compatibilitySources.listFiles() ){
-        if( f.isFile() && (f.toString().endsWith(".scala") || f.toString().endsWith(".java")) ){
+        if( f.isFile() && f.toString().endsWith(".java") ){
           compatibilitySourceFiles.add(f);
         }
       }
-      changed = compile(changed, start, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles);
-      
-      if( classLoaderCache.contains( compatibilityTarget ) ){
-        compatibilityClassLoader = classLoaderCache.get( compatibilityTarget );
-      } else {
-        compatibilityClassLoader = classLoaderCache.put( classLoader(compatibilityTarget, rootClassLoader), compatibilityTarget );
+
+      compatibilityLastModified = compile( 0L, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles);
+
+      if( !classLoaderCache.containsKey( compatibilityTarget, compatibilityLastModified ) ){
+        classLoaderCache.put( compatibilityTarget, classLoader(compatibilityTarget, rootClassLoader), compatibilityLastModified );
       }
     }
+    final ClassLoader compatibilityClassLoader = classLoaderCache.get( compatibilityTarget, compatibilityLastModified );
 
     String[] nailgunClasspathArray = append( earlyDeps.classpathArray, nailgunTarget );
     String nailgunClasspath = classpath( nailgunClasspathArray );
-    ClassLoader nailgunClassLoader = new CbtURLClassLoader( new URL[]{}, NailgunLauncher.class.getClassLoader() ); // wrap for caching
-    if( !classLoaderCache.contains( nailgunClasspath ) ){
-      nailgunClassLoader = classLoaderCache.put( nailgunClassLoader, nailgunClasspath );
+    final ClassLoader nailgunClassLoader = new CbtURLClassLoader( new URL[]{}, NailgunLauncher.class.getClassLoader() ); // wrap for caching
+    if( !classLoaderCache.containsKey( nailgunClasspath, nailgunLauncherLastModified ) ){
+      classLoaderCache.put( nailgunClasspath, nailgunClassLoader, nailgunLauncherLastModified );
     }
 
     String[] stage1ClasspathArray =
@@ -164,14 +180,24 @@ public class NailgunLauncher{
         stage1SourceFiles.add(f);
       }
     }
-    changed = compile(changed, start, stage1Classpath, stage1Target, earlyDeps, stage1SourceFiles);
 
-    ClassLoader stage1classLoader;
-    if( !changed && classLoaderCache.contains( stage1Classpath ) ){
-      stage1classLoader = classLoaderCache.get( stage1Classpath );
-    } else {
-      stage1classLoader =
+    final long stage1BeforeCompiled = System.currentTimeMillis();
+    final long stage0LastModified = Math.max(
+      lastModified,
+      Math.max( lastModified, compatibilityLastModified )
+    );
+    final long stage1LastModified = compile(
+      stage0LastModified, stage1Classpath, stage1Target, earlyDeps, stage1SourceFiles
+    );
+
+    if( stage1LastModified < compatibilityLastModified )
+      throw new AssertionError(
+        "Cache invalidation bug: cbt compatibility layer recompiled, but cbt stage1 did not."
+      );
+
+    if( !classLoaderCache.containsKey( stage1Classpath, stage1LastModified ) ){
       classLoaderCache.put(
+        stage1Classpath,
         classLoader(
           stage1Target,
           new MultiClassLoader2(
@@ -180,12 +206,14 @@ public class NailgunLauncher{
             earlyDeps.classLoader
           )
         ),
-        stage1Classpath
+        stage1LastModified
       );
     }
+    final ClassLoader stage1classLoader = classLoaderCache.get( stage1Classpath, stage1LastModified );
 
     return new BuildStage1Result(
-      changed,
+      start,
+      stage1LastModified,
       stage1classLoader,
       stage1Classpath,
       nailgunClasspath,
