@@ -10,7 +10,7 @@ trait Frege extends BaseBuild{
   def fregeTarget: String = "1.8"
   def enableMakeMode = true
   def enableOptimisation = true
-  def fregeDependencies: Seq[String] = dependencies.map{ _.classpath.string}
+  def fregeDependencies: Seq[Dependency] = dependencies
   def inline = true
 
   private def fregeOptions: Seq[String] = {
@@ -18,21 +18,18 @@ trait Frege extends BaseBuild{
     opts.filter(_._2).map(_._1)
   }
   override def scalaTarget: File = target ++ s"/frege-$fregeVersion"
-  
+
   private lazy val fregeLib = new FregeLib(
-    logger, context.cbtHasChanged, context.paths.mavenCache,
+    logger, context.cbtLastModified, context.paths.mavenCache,
     context.classLoaderCache, fregeVersion = fregeVersion, classifier = classifier,
     fregeDependencies = fregeDependencies, fregeTarget = fregeTarget
   )
 
   override def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".fr") || file.toString.endsWith(".java")
 
-  private object compileCache extends Cache[Option[File]]
-  override def compile: Option[File] = compileCache{
+  override def compile: Option[Long] = taskCache[Frege]("compile").memoize{
     fregeLib.compile(
-      needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
-      sourceFiles, compileTarget, compileStatusFile, compileClasspath,
-      fregeOptions
+      sourceFiles, compileTarget, compileStatusFile, dependencies, fregeOptions
     )
   }
 
@@ -44,46 +41,48 @@ trait Frege extends BaseBuild{
 
 class FregeLib(
   logger: Logger,
-  cbtHasChanged: Boolean,
+  cbtLastModified: Long,
   mavenCache: File,
   classLoaderCache: ClassLoaderCache,
   fregeVersion: String,
   classifier: Option[String],
-  fregeDependencies: Seq[String],
+  fregeDependencies: Seq[Dependency],
   fregeTarget: String
-){
+)(implicit transientCache: java.util.Map[AnyRef,AnyRef]){
   val lib = new Lib(logger)
   import lib._
 
-  private def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
+  private def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
   private lazy val fregeDependency = Resolver(mavenCentral).bindOne(
     MavenDependency("org.frege-lang","frege",fregeVersion, Classifier(classifier))
   )
 
   def compile(
-    needsRecompile: Boolean,
-    files: Seq[File],
+    sourceFiles: Seq[File],
     compileTarget: File,
     statusFile: File,
-    classpath: ClassPath,
+    dependencies: Seq[Dependency],
     fregeOptions: Seq[String]
-  ): Option[File] = {
-
+  ): Option[Long] = {
+    val d = Dependencies(dependencies)
+    val classpath = d.classpath
+    val cp = classpath.string
     if(classpath.files.isEmpty)
-      throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
+      throw new Exception("Trying to compile with empty classpath. Source files: " ++ sourceFiles.toString)
 
-    if( files.isEmpty ){
+    if( sourceFiles.isEmpty ){
       None
-    }else{
-      if( needsRecompile ){
-        val start = System.currentTimeMillis
+    } else {
+      val start = System.currentTimeMillis
+      val lastCompiled = statusFile.lastModified
+      if( d.lastModified > lastCompiled || sourceFiles.exists(_.lastModified > lastCompiled) ){
 
         val _class = "frege.compiler.Main"
         val dualArgs =
           Seq(
             "-target", fregeTarget,
             "-d", compileTarget.toString,
-            "-fp", (fregeDependency.classpath.strings ++ fregeDependencies).mkString(":")
+            "-fp", (fregeDependency.classpath.strings ++ fregeDependencies.map(_.classpath.string)).mkString(":")
           )
         val singleArgs = fregeOptions
         val code = 
@@ -93,7 +92,7 @@ class FregeLib(
             redirectOutToErr{
               lib.runMain(
                 _class,
-                dualArgs ++ singleArgs ++ files.map(_.toString),
+                dualArgs ++ singleArgs ++ sourceFiles.map(_.toString),
                 fregeDependency.classLoader(classLoaderCache)
               )
             }
@@ -115,7 +114,7 @@ ${fregeDependency.classpath.strings.mkString(":\\\n")} \\
 -classpath \\
 ${classpath.strings.mkString(":\\\n")} \\
 \\
-${files.sorted.mkString(" \\\n")}
+${sourceFiles.sorted.mkString(" \\\n")}
 """
             )
             ExitCode.Failure
@@ -129,8 +128,10 @@ ${files.sorted.mkString(" \\\n")}
         } else {
           System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
         }
+        Some( start )
+      } else {
+        Some( lastCompiled )
       }
-      Some( compileTarget )
     }
   }
 }
