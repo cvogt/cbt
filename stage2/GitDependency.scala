@@ -76,5 +76,5 @@ case class GitDependency(
 
   def exportedClasspath = ClassPath()
   private[cbt] def targetClasspath = exportedClasspath
-  def needsUpdate: Boolean = false
+  def lastModified: Long = dependency.lastModified
 }

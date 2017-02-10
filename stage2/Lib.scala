@@ -15,7 +15,7 @@ import scala.util._
 case class Developer(id: String, name: String, timezone: String, url: URL)
 
 /** Don't extend. Create your own libs :). */
-final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
+final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
   lib =>
 
   val buildClassName = "Build"
@@ -74,7 +74,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
   }
 
   def docJar(
-    cbtHasChanged: Boolean,
+    cbtLastModified: Long,
     scalaVersion: String,
     sourceFiles: Seq[File],
     dependencyClasspath: ClassPath,
@@ -101,7 +101,7 @@ final class Lib(logger: Logger) extends Stage1Lib(logger) with Scaffold{
         runMain(
           "scala.tools.nsc.ScalaDoc",
           args,
-          new ScalaDependencies(cbtHasChanged,mavenCache,scalaVersion).classLoader(classLoaderCache)
+          new ScalaDependencies(cbtLastModified,mavenCache,scalaVersion).classLoader(classLoaderCache)
         )
       }
       lib.jarFile(

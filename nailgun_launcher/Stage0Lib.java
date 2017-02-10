@@ -11,6 +11,7 @@ import static java.io.File.pathSeparator;
 import static cbt.NailgunLauncher.*;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
+import static java.lang.Math.min;
 
 public class Stage0Lib{
   public static void _assert(Boolean condition, Object msg){
@@ -47,25 +48,57 @@ public class Stage0Lib{
     return join( pathSeparator, files );
   }
 
+  public static long lastModified( String... files ){
+    List<Long> lastModified = new ArrayList<Long>();
+    for( String file: files ){
+      lastModified.add( new File(file).lastModified() );
+    }
+    return Collections.max( lastModified );
+  }
+
+  public static ClassLoader loadDependency(
+    String url,
+    String file,
+    String hash,
+    ClassLoaderCache classLoaderCache,
+    ClassLoader parent,
+    String... classpathArray
+  ) throws Throwable {
+    download(new URL(url), Paths.get(file), hash);
+
+    final long lastModified = lastModified( classpathArray );
+    final String classpath = classpath( classpathArray );
+
+    if( !classLoaderCache.containsKey( classpath, lastModified ) )
+      classLoaderCache.put( classpath, classLoader( file, parent ), lastModified );
+
+    return classLoaderCache.get( classpath, lastModified );
+  }
+
   public static File write(File file, String content, OpenOption... options) throws Throwable{
     file.getParentFile().mkdirs();
     Files.write(file.toPath(), content.getBytes(), options);
     return file;
   }
 
-  public static Boolean compile(
-    Boolean changed, Long start, String classpath, String target,
+  public static long compile(
+    long lastModified, String classpath, String target,
     EarlyDependencies earlyDeps, List<File> sourceFiles
   ) throws Throwable{
     File statusFile = new File( new File(target) + ".last-success" );
-    Long lastSuccessfullCompile = statusFile.lastModified();
+    long lastCompiled = statusFile.lastModified();
+
+    long maxLastModified = lastModified;
+    final long start = System.currentTimeMillis(); // <- before recursing, so we catch them all
+
     for( File file: sourceFiles ){
-      if( file.lastModified() > lastSuccessfullCompile ){
-        changed = true;
-        break;
-      }
+      long l = file.lastModified();
+      if( l > maxLastModified ) maxLastModified = l;
+      // performance optimization because we'll recompile and don't need to check other files
+      if( l > lastCompiled ) break;
     }
-    if(changed){
+
+    if( maxLastModified > lastCompiled ){
       List<String> zincArgs = new ArrayList<String>(
         Arrays.asList(
           new String[]{
@@ -100,8 +133,10 @@ public class Stage0Lib{
       } finally {
         System.setOut(oldOut);
       }
+      return statusFile.lastModified(); // can't just use `start` here as system time precision is less than milliseconds on OSX
+    } else {
+      return lastCompiled;
     }
-    return changed;
   }
 
   public static ClassLoader classLoader( String file ) throws Throwable{

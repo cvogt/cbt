@@ -18,22 +18,14 @@ trait DependencyImplementation extends Dependency{
    */
   protected lazy val taskCache = new PerClassCache(transientCache, moduleKey)
 
-  /**
-  CAREFUL: this is never allowed to return true for the same dependency more than 
-  once in a single cbt run. Otherwise we can end up with multiple classloaders
-  for the same classes since classLoaderRecursion recreates the classLoader when it
-  sees this flag and it can be called multiple times. Maybe we can find a safer
-  solution than this current state.
-  */
-  def needsUpdate: Boolean
-  //def cacheClassLoader: Boolean = false
   private[cbt] def targetClasspath: ClassPath
   def dependencyClasspathArray: Array[File] = dependencyClasspath.files.toArray
   def exportedClasspathArray: Array[File] = exportedClasspath.files.toArray
   def exportedClasspath: ClassPath
   def dependenciesArray: Array[Dependency] = dependencies.to
 
-  def needsUpdateCompat: java.lang.Boolean = needsUpdate
+  @deprecated("this method is replaced by lastModifiedCompat","")
+  def needsUpdateCompat = true
 
   /*
   //private type BuildCache = KeyLockedLazyCache[Dependency, Future[ClassPath]]
@@ -122,63 +114,63 @@ trait DependencyImplementation extends Dependency{
 }
 
 // TODO: all this hard codes the scala version, needs more flexibility
-class ScalaCompilerDependency(cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-compiler",version, Classifier.none), Seq(mavenCentral))
-class ScalaLibraryDependency (cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-library",version, Classifier.none), Seq(mavenCentral))
-class ScalaReflectDependency (cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BoundMavenDependency(cbtHasChanged, mavenCache, MavenDependency("org.scala-lang","scala-reflect",version, Classifier.none), Seq(mavenCentral))
+class ScalaCompilerDependency(cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BoundMavenDependency(cbtLastModified, mavenCache, MavenDependency("org.scala-lang","scala-compiler",version, Classifier.none), Seq(mavenCentral))
+class ScalaLibraryDependency (cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BoundMavenDependency(cbtLastModified, mavenCache, MavenDependency("org.scala-lang","scala-library",version, Classifier.none), Seq(mavenCentral))
+class ScalaReflectDependency (cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BoundMavenDependency(cbtLastModified, mavenCache, MavenDependency("org.scala-lang","scala-reflect",version, Classifier.none), Seq(mavenCentral))
 
-class ScalaDependencies(cbtHasChanged: Boolean, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends Dependencies(
+class ScalaDependencies(cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends Dependencies(
   Seq(
-    new ScalaCompilerDependency(cbtHasChanged, mavenCache, version),
-    new ScalaLibraryDependency(cbtHasChanged, mavenCache, version),
-    new ScalaReflectDependency(cbtHasChanged, mavenCache, version)
+    new ScalaCompilerDependency(cbtLastModified, mavenCache, version),
+    new ScalaLibraryDependency(cbtLastModified, mavenCache, version),
+    new ScalaReflectDependency(cbtLastModified, mavenCache, version)
   )
 )
 
 case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]) extends DependencyImplementation{
   assert(paths.nonEmpty)
   def exportedClasspath = ClassPath(paths)
-  override def needsUpdate = false
+  override def lastModified = paths.map(_.lastModified).maxOption.getOrElse(0) // FIXME: cache this
   def targetClasspath = exportedClasspath
   def moduleKey = this.getClass.getName ++ "(" ++ paths.mkString(", ") ++ ")"
 }
 
 /** Allows to easily assemble a bunch of dependencies */
 case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]) extends DependencyImplementation{
-  override def needsUpdate = dependencies.exists(_.needsUpdate)
-  override def exportedClasspath = ClassPath()
-  override def targetClasspath = ClassPath()
+  override def lastModified = dependencies.map(_.lastModified).maxOption.getOrElse(0)
   def moduleKey = this.getClass.getName ++ "(" ++ dependencies.map(_.moduleKey).mkString(", ") ++ ")"
+  def targetClasspath = ClassPath() 
+  def exportedClasspath = ClassPath() 
 }
 
-class Stage1Dependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTarget: File, stage1Target: File, compatibilityTarget: File)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BinaryDependency(
-  Seq(nailgunTarget, stage1Target),
-  Seq(
-    new CompatibilityDependency(cbtHasChanged, compatibilityTarget)
-  ) ++
-  MavenResolver(cbtHasChanged,mavenCache,mavenCentral).bind(
-    MavenDependency("org.scala-lang","scala-library",constants.scalaVersion),
-    MavenDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
-  )
-){
-  val compatibilityDependency = new CompatibilityDependency(cbtHasChanged, compatibilityTarget)
-
+case class PostBuildDependency(target: File, _dependencies: Seq[DependencyImplementation])(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]) extends DependencyImplementation{
+  override final lazy val lastModified = (target++".last-success").lastModified
+  def moduleKey = target.string
+  override def targetClasspath = exportedClasspath
+  override def exportedClasspath = ClassPath( Seq(target) )
+  override def dependencies = _dependencies
 }
-
-class CompatibilityDependency(cbtHasChanged: Boolean, compatibilityTarget: File)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BinaryDependency(
-  Seq(compatibilityTarget), Nil
-)
-
-class CbtDependency(cbtHasChanged: Boolean, mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BinaryDependency(
-  Seq( stage2Target ),
-  Seq(
-    new Stage1Dependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, compatibilityTarget)
-  ) ++ 
-  MavenResolver(cbtHasChanged, mavenCache,mavenCentral).bind(
-    MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
-    MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
+case class CbtDependencies(mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]){
+  val compatibilityDependency = PostBuildDependency(compatibilityTarget, Nil)
+  val cbtLastModified = (stage2Target++".last-success").lastModified
+  val stage1Dependency = PostBuildDependency(
+    stage1Target,
+    Seq(
+      PostBuildDependency(nailgunTarget, Nil),
+      compatibilityDependency
+    ) ++
+    MavenResolver(cbtLastModified,mavenCache,mavenCentral).bind(
+      MavenDependency("org.scala-lang","scala-library",constants.scalaVersion),
+      MavenDependency("org.scala-lang.modules","scala-xml_"+constants.scalaMajorVersion,constants.scalaXmlVersion)
+    )
   )
-){
-  val stage1Dependency = new Stage1Dependency(cbtHasChanged, mavenCache, nailgunTarget, stage1Target, compatibilityTarget)
+  val stage2Dependency = PostBuildDependency(
+    stage2Target,
+    stage1Dependency +:
+    MavenResolver(cbtLastModified, mavenCache,mavenCentral).bind(
+      MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
+      MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
+    )
+  )
 }
 
 case class Classifier(name: Option[String])
@@ -191,11 +183,11 @@ abstract class DependenciesProxy{
 
 }
 class BoundMavenDependencies(
-  cbtHasChanged: Boolean, mavenCache: File, urls: Seq[URL], mavenDependencies: Seq[MavenDependency]
+  cbtLastModified: Long, mavenCache: File, urls: Seq[URL], mavenDependencies: Seq[MavenDependency]
 )(
   implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]
 ) extends Dependencies(
-  mavenDependencies.map( BoundMavenDependency(cbtHasChanged,mavenCache,_,urls) )
+  mavenDependencies.map( BoundMavenDependency(cbtLastModified,mavenCache,_,urls) )
 )
 case class MavenDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
@@ -209,7 +201,7 @@ object MavenDependency{
 }
 // FIXME: take MavenResolver instead of mavenCache and repositories separately
 case class BoundMavenDependency(
-  cbtHasChanged: Boolean, mavenCache: File, mavenDependency: MavenDependency, repositories: Seq[URL]
+  cbtLastModified: Long, mavenCache: File, mavenDependency: MavenDependency, repositories: Seq[URL]
 )(
   implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]
 ) extends ArtifactInfo with DependencyImplementation{
@@ -233,7 +225,7 @@ case class BoundMavenDependency(
   )
     override def show: String = this.getClass.getSimpleName ++ "(" ++ mavenDependency.serialize ++ ")"
 
-  override def needsUpdate = false
+  override final lazy val lastModified = classpath.strings.map(new File(_).lastModified).max
 
   private val groupPath = groupId.split("\\.").mkString("/")
   protected[cbt] def basePath(useClassifier: Boolean) = s"/$groupPath/$artifactId/$version/$artifactId-$version" ++ (if (useClassifier) classifier.name.map("-"++_).getOrElse("") else "")
@@ -276,7 +268,7 @@ case class BoundMavenDependency(
     (pomXml \ "parent").collect{
       case parent =>
         BoundMavenDependency(
-          cbtHasChanged: Boolean,
+          cbtLastModified: Long,
           mavenCache,
           MavenDependency(
             (parent \ "groupId").text,
@@ -314,7 +306,7 @@ case class BoundMavenDependency(
     if(classifier == Classifier.sources) Seq()
     else {
       lib.cacheOnDisk(
-        cbtHasChanged, mavenCache ++ basePath(true) ++ ".pom.dependencies"
+        cbtLastModified, mavenCache ++ basePath(true) ++ ".pom.dependencies"
       )( MavenDependency.deserialize )( _.serialize ){
         (pomXml \ "dependencies" \ "dependency").collect{
           case xml if ( (xml \ "scope").text == "" || (xml \ "scope").text == "compile" ) && (xml \ "optional").text != "true" =>
@@ -339,7 +331,7 @@ case class BoundMavenDependency(
             MavenDependency( groupId, artifactId, version, classifier )
         }.toVector
       }.map(
-        BoundMavenDependency( cbtHasChanged, mavenCache, _, repositories )
+        BoundMavenDependency( cbtLastModified, mavenCache, _, repositories )
       ).to
     }
   }

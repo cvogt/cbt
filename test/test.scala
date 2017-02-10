@@ -103,7 +103,7 @@ object Main{
 
     val cache = cbtHome ++ "/cache"
     val mavenCache = cache ++ "/maven"
-    val cbtHasChanged = true
+    val cbtLastModified = System.currentTimeMillis
     implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
     def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
 
@@ -114,7 +114,7 @@ object Main{
         Array(),
         Array(),
         start,
-        cbtHasChanged,
+        cbtLastModified,
         null,
         new HashMap[AnyRef,AnyRef],
         new HashMap[AnyRef,AnyRef],

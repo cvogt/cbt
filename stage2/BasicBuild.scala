@@ -98,7 +98,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   }
   logEmptySourceDirectories()
 
-  def Resolver( urls: URL* ) = MavenResolver( context.cbtHasChanged, context.paths.mavenCache, urls: _* )
+  def Resolver( urls: URL* ) = MavenResolver( context.cbtLastModified, context.paths.mavenCache, urls: _* )
 
   def ScalaDependency(
     groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
@@ -126,7 +126,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     val resourcesDirectory = projectDirectory ++ "/resources"
       ClassPath( if(resourcesDirectory.exists) Seq(resourcesDirectory) else Nil )
   }
-  def exportedClasspath   : ClassPath = ClassPath(compile.toSeq) ++ resourceClasspath
+  def exportedClasspath   : ClassPath = ClassPath(compileFile.toSeq) ++ resourceClasspath
   def targetClasspath = ClassPath(Seq(compileTarget))
   // ========== compile, run, test ==========
 
@@ -137,23 +137,20 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     "-unchecked"
   )
 
-  def needsUpdate: Boolean = taskCache[BaseBuild]("needsUpdate").memoize[java.lang.Boolean](
-    context.cbtHasChanged
-    || lib.needsUpdate( sourceFiles, compileStatusFile )
-    || transitiveDependencies.filterNot(_ == context.parentBuild).exists(_.needsUpdate)
-  )
+  final def lastModified: Long = compile.getOrElse(0L)
 
-  def compile: Option[File] = taskCache[BaseBuild]("compile").memoize{
+  final def compileFile: Option[File] = compile.map(_ => compileTarget)
+
+  def compile: Option[Long] = taskCache[BaseBuild]("_compile").memoize{
     lib.compile(
-      context.cbtHasChanged,
-      needsUpdate || context.parentBuild.map(_.needsUpdate).getOrElse(false),
+      context.cbtLastModified,
       sourceFiles, compileTarget, compileStatusFile, compileDependencies,
       context.paths.mavenCache, scalacOptions, context.classLoaderCache,
       zincVersion = zincVersion, scalaVersion = scalaVersion
     )
   }
 
-  def mainClasses: Seq[Class[_]] = compile.toSeq.flatMap( lib.mainClasses( _, classLoader(classLoaderCache) ) )
+  def mainClasses: Seq[Class[_]] = compileFile.toSeq.flatMap( lib.mainClasses( _, classLoader(classLoaderCache) ) )
 
   def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
 
@@ -181,7 +178,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
       System.setProperty(colorized, "true")
     }
 
-    val scalac = new ScalaCompilerDependency(context.cbtHasChanged, context.paths.mavenCache, scalaVersion)
+    val scalac = new ScalaCompilerDependency(context.cbtLastModified, context.paths.mavenCache, scalaVersion)
     lib.runMain(
       "scala.tools.nsc.MainGenericRunner",
       Seq(

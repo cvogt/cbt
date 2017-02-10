@@ -32,7 +32,7 @@ class BaseLib{
   def realpath(name: File) = new File(java.nio.file.Paths.get(name.getAbsolutePath).normalize.toString)
 }
 
-class Stage1Lib( val logger: Logger ) extends BaseLib{
+class Stage1Lib( logger: Logger ) extends BaseLib{
   lib =>
   implicit val implicitLogger: Logger = logger
 
@@ -183,15 +183,10 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     }
   }
 
-  def needsUpdate( sourceFiles: Seq[File], statusFile: File ) = {
-    val lastCompile = statusFile.lastModified
-    sourceFiles.filter(_.lastModified > lastCompile).nonEmpty
-  }
 
   def compile(
-    cbtHasChanged: Boolean,
-    needsRecompile: Boolean,
-    files: Seq[File],
+    cbtLastModified: Long,
+    sourceFiles: Seq[File],
     compileTarget: File,
     statusFile: File,
     dependencies: Seq[Dependency],
@@ -202,20 +197,23 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     scalaVersion: String
   )(
     implicit transientCache: java.util.Map[AnyRef, AnyRef]
-  ): Option[File] = {
-    val classpath = Dependencies(dependencies).classpath
+  ): Option[Long] = {
+    val d = Dependencies(dependencies)
+    val classpath = d.classpath
     val cp = classpath.string
     if(classpath.files.isEmpty)
-      throw new Exception("Trying to compile with empty classpath. Source files: " ++ files.toString)
+      throw new Exception("Trying to compile with empty classpath. Source files: " ++ sourceFiles.toString)
 
-    if( files.isEmpty ){
+    if( sourceFiles.isEmpty ){
       None
     }else{
-      if( needsRecompile ){
-        def Resolver(urls: URL*) = MavenResolver(cbtHasChanged, mavenCache, urls: _*)
+      val start = System.currentTimeMillis
+      val lastCompiled = statusFile.lastModified
+      if( d.lastModified > lastCompiled || sourceFiles.exists(_.lastModified > lastCompiled) ){
+        def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
         val zinc = Resolver(mavenCentral).bindOne(MavenDependency("com.typesafe.zinc","zinc", zincVersion))
         val zincDeps = zinc.transitiveDependencies
-        
+
         val sbtInterface =
           zincDeps
             .collect{ case d @
@@ -242,8 +240,6 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         val scalaReflect = Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)).jar
         val scalaCompiler = Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion)).jar
 
-        val start = System.currentTimeMillis
-
         val _class = "com.typesafe.zinc.Main"
         val dualArgs =
           Seq(
@@ -264,7 +260,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
                 _class,
                 dualArgs ++ singleArgs ++ Seq(
                   "-cp", cp // let's put cp last. It so long
-                ) ++ files.map(_.toString),
+                ) ++ sourceFiles.map(_.toString),
                 zinc.classLoader(classLoaderCache)
               )
             } catch {
@@ -283,7 +279,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
   -cp \\
   ${classpath.strings.mkString(":\\\n")} \\
   \\
-  ${files.sorted.mkString(" \\\n")}
+  ${sourceFiles.sorted.mkString(" \\\n")}
   """
               )
 
@@ -300,8 +296,10 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
         } else {
           System.exit(code.integer) // FIXME: let's find a better solution for error handling. Maybe a monad after all.
         }
+        Some( start )
+      } else {
+        Some( lastCompiled )
       }
-      Some( compileTarget )
     }
   }
   def redirectOutToErr[T](code: => T): T = {
@@ -360,11 +358,11 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
     )
 
   def cacheOnDisk[T]
-    ( cbtHasChanged: Boolean, cacheFile: File )
+    ( cbtLastModified: Long, cacheFile: File )
     ( deserialize: String => T )
     ( serialize: T => String )
     ( compute: => Seq[T] ) = {
-    if(!cbtHasChanged && cacheFile.exists){
+    if(cacheFile.exists && cacheFile.lastModified > cbtLastModified ){
       import collection.JavaConversions._
       Files
         .readAllLines( cacheFile.toPath, StandardCharsets.UTF_8 )
@@ -380,7 +378,7 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def dependencyTreeRecursion(root: Dependency, indent: Int = 0): String = (
     ( " " * indent )
-    ++ (if(root.needsUpdate) red(root.show) else root.show)
+    ++ root.show // (if(root.needsUpdate) red(root.show) else root.show)
     ++ root.dependencies.map( d =>
       "\n" ++ dependencyTreeRecursion(d,indent + 1)
     ).mkString
@@ -420,33 +418,40 @@ class Stage1Lib( val logger: Logger ) extends BaseLib{
 
   def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
     // FIXME: shouldn't we be using KeyLockedLazyCache instead of hashmap directly here?
-    val d = dependency
     val dependencies = dependency.dependencies
-    def dependencyClassLoader( latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+    val dependencyClassLoader: ClassLoader = {
       if( dependency.dependencies.isEmpty ){
         // wrap for caching
         new cbt.URLClassLoader( ClassPath(), ClassLoader.getSystemClassLoader().getParent() )
       } else if( dependencies.size == 1 ){
         classLoaderRecursion( dependencies.head, latest, cache )
       } else{
-        val cp = d.dependencyClasspath.string
-        if( dependencies.exists(_.needsUpdate) && cache.cache.containsKey(cp) ){
-          cache.cache.remove(cp)
-        }
-        def cl = new MultiClassLoader( dependencies.map( classLoaderRecursion(_, latest, cache) ) )
-        if(d.isInstanceOf[BuildInterface])
+        val lastModified = dependencies.map( _.lastModified ).max
+        val cp = dependency.dependencyClasspath.string
+        val cl =
+          new MultiClassLoader(
+            dependencies.map( classLoaderRecursion(_, latest, cache) )
+          )
+        if(dependency.isInstanceOf[BuildInterface])
           cl // Don't cache builds right now. We need to fix invalidation first.
-        else
-          cache.cache.get( cp, cl )
+        else{
+          if( !cache.containsKey( cp, lastModified ) ){
+            cache.put( cp, cl, lastModified )
+          }
+          cache.get( cp, lastModified )
+        }
       }
     }
 
     val a = actual( dependency, latest )
-    def cl = new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader(latest, cache) )
-    if(d.isInstanceOf[BuildInterface])
-      cl
-    else
-      cache.cache.get( a.classpath.string, cl ).asInstanceOf[ClassLoader]
+    def cl = new cbt.URLClassLoader( a.exportedClasspath, dependencyClassLoader )
+
+    val cp = a.classpath.string
+    val lastModified = a.lastModified
+    if( !cache.containsKey( cp, lastModified ) ){
+      cache.put( cp, cl, lastModified )
+    }
+    cache.get( cp, lastModified )
   }
 
 }

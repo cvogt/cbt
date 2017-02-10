@@ -27,7 +27,7 @@ final case class DirectoryDependency(context: Context) extends TriggerLoop{
   def exportedClasspath = ClassPath()
   def dependencies = Seq(build)
   def triggerLoopFiles = root.triggerLoopFiles
-  def needsUpdate = build.needsUpdate
+  def lastModified = build.lastModified
   def targetClasspath = ClassPath()
 }
 /*

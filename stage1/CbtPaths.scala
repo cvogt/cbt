@@ -9,7 +9,9 @@ case class CbtPaths(private val cbtHome: File, private val cache: File){
   private val target = NailgunLauncher.TARGET.stripSuffix("/")
   val stage1Target: File = stage1 ++ ("/" ++ target)
   val stage2Target: File = stage2 ++ ("/" ++ target)
+  val stage1StatusFile: File = stage1Target ++ ".last-success"
   val stage2StatusFile: File = stage2Target ++ ".last-success"
   val compatibility: File = cbtHome ++ "/compatibility"
   val nailgunTarget: File = nailgun ++ ("/" ++ target)
+  val nailgunStatusFile: File = nailgunTarget ++ ".last-success"
 }
