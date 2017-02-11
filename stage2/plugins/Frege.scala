@@ -67,8 +67,6 @@ class FregeLib(
     val d = Dependencies(dependencies)
     val classpath = d.classpath
     val cp = classpath.string
-    if(classpath.files.isEmpty)
-      throw new Exception("Trying to compile with empty classpath. Source files: " ++ sourceFiles.toString)
 
     if( sourceFiles.isEmpty ){
       None
@@ -78,11 +76,13 @@ class FregeLib(
       if( d.lastModified > lastCompiled || sourceFiles.exists(_.lastModified > lastCompiled) ){
 
         val _class = "frege.compiler.Main"
+        val fp = (fregeDependency.classpath.strings ++ fregeDependencies.map(_.classpath.string))
         val dualArgs =
           Seq(
             "-target", fregeTarget,
-            "-d", compileTarget.toString,
-            "-fp", (fregeDependency.classpath.strings ++ fregeDependencies.map(_.classpath.string)).mkString(":")
+            "-d", compileTarget.toString
+          ) ++ (
+            if(fp.isEmpty) Nil else Seq("-fp", fp.mkString(":"))
           )
         val singleArgs = fregeOptions
         val code = 
@@ -111,8 +111,7 @@ ${singleArgs.mkString(" \\\n")} \\
 \\
 -bootclasspath \\
 ${fregeDependency.classpath.strings.mkString(":\\\n")} \\
--classpath \\
-${classpath.strings.mkString(":\\\n")} \\
+${if(classpath.strings.isEmpty) "" else ("  -fp \\\n" ++ classpath.strings.mkString(":\\\n"))} \\
 \\
 ${sourceFiles.sorted.mkString(" \\\n")}
 """

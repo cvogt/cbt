@@ -201,8 +201,6 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     val d = Dependencies(dependencies)
     val classpath = d.classpath
     val cp = classpath.string
-    if(classpath.files.isEmpty)
-      throw new Exception("Trying to compile with empty classpath. Source files: " ++ sourceFiles.toString)
 
     if( sourceFiles.isEmpty ){
       None
@@ -258,29 +256,28 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
             try{
               lib.runMain(
                 _class,
-                dualArgs ++ singleArgs ++ Seq(
-                  "-cp", cp // let's put cp last. It so long
+                dualArgs ++ singleArgs ++ (
+                  if(cp.isEmpty) Nil else Seq("-cp", cp)
                 ) ++ sourceFiles.map(_.toString),
                 zinc.classLoader(classLoaderCache)
               )
             } catch {
-              case e: Exception =>
+              case scala.util.control.NonFatal(e) =>
               System.err.println(red("The Scala compiler crashed. Try running it by hand:"))
               System.out.println(s"""
-  java -cp \\
-  ${zinc.classpath.strings.mkString(":\\\n")} \\
-  \\
-  ${_class} \\
-  \\
-  ${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
-  \\
-  ${singleArgs.mkString(" \\\n")} \\
-  \\
-  -cp \\
-  ${classpath.strings.mkString(":\\\n")} \\
-  \\
-  ${sourceFiles.sorted.mkString(" \\\n")}
-  """
+java -cp \\
+${zinc.classpath.strings.mkString(":\\\n")} \\
+\\
+${_class} \\
+\\
+${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
+\\
+${singleArgs.mkString(" \\\n")} \\
+\\
+${if(cp.isEmpty) "" else ("  -classpath \\\n" ++ classpath.strings.mkString(":\\\n"))} \\
+\\
+${sourceFiles.sorted.mkString(" \\\n")}
+"""
               )
 
               redirectOutToErr( e.printStackTrace )

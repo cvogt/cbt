@@ -107,8 +107,6 @@ class DottyLib(
     val d = Dependencies(dependencies)
     val classpath = d.classpath
     val cp = classpath.string
-    if(classpath.files.isEmpty)
-      throw new Exception("Trying to compile with empty classpath. Source files: " ++ sourceFiles.toString)
 
     if( sourceFiles.isEmpty ){
       None
@@ -123,7 +121,7 @@ class DottyLib(
             "-d", compileTarget.toString
           )
         val singleArgs = dottyOptions.map( "-S" ++ _ )
-
+        val cl = dependency.classLoader(classLoaderCache)
         val code =
           try{
             System.err.println("Compiling with Dotty to " ++ compileTarget.toString)
@@ -132,15 +130,17 @@ class DottyLib(
               lib.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ Seq(
-                  "-bootclasspath", dependency.classpath.string, // let's put cp last. It so long
-                  "-classpath", classpath.string // let's put cp last. It so long
+                  "-bootclasspath", dependency.classpath.string
+                ) ++ (
+                  if(cp.isEmpty) Nil else Seq("-classpath", cp) // let's put cp last. It so long
                 ) ++ sourceFiles.map(_.toString),
-                dependency.classLoader(classLoaderCache)
+                cl
               )
             }
           } catch {
             case e: Exception =>
             System.err.println(red("Dotty crashed. See https://github.com/lampepfl/dotty/issues. To reproduce run:"))
+            System.err.println(cl)
             System.out.println(s"""
 java -cp \\
 ${dependency.classpath.strings.mkString(":\\\n")} \\
@@ -153,13 +153,13 @@ ${singleArgs.mkString(" \\\n")} \\
 \\
 -bootclasspath \\
 ${dependency.classpath.strings.mkString(":\\\n")} \\
--classpath \\
-${classpath.strings.mkString(":\\\n")} \\
+${if(cp.isEmpty) "" else ("  -classpath \\\n" ++ classpath.strings.mkString(":\\\n"))} \\
 \\
 ${sourceFiles.sorted.mkString(" \\\n")}
+
 """
             )
-            ExitCode.Failure
+            throw e
           }
 
         if(code == ExitCode.Success){
