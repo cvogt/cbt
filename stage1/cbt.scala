@@ -12,7 +12,7 @@ object `package`{
 
   val mavenCentral = new URL("https://repo1.maven.org/maven2")
   val jcenter = new URL("https://jcenter.bintray.com")
-  def bintray(owner: String) = new URL(s"https://dl.bintray.com/$owner/maven") // FIXME: url encode owner
+  def bintray(owner: String) = new URL(s"""https://dl.bintray.com/${URLEncoder.encode(owner, "UTF-8")}/maven""")
   private val sonatypeBase  = new URL("https://oss.sonatype.org/content/repositories/")
   val sonatypeReleases = sonatypeBase ++ "releases"
   val sonatypeSnapshots = sonatypeBase ++ "snapshots"
