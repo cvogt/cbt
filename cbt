@@ -178,7 +178,7 @@ stage1 () {
 		$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
 		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
-		COMPILE_TIME=$(date -j +%YY%mm%dd%HH%MM.%SS|sed "s/[YmdHMS]//g")
+		COMPILE_TIME=$(date +%YY%mm%dd%HH%MM.%SS|sed "s/[YmdHMS]//g")
 		javac -Xlint:deprecation -Xlint:unchecked -d $NAILGUN$TARGET `ls $NAILGUN*.java`
 		compiles=$?
 		if [ $compiles -eq 0 ]; then
