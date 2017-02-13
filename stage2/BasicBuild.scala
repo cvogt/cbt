@@ -129,7 +129,10 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     val resourcesDirectory = projectDirectory ++ "/resources"
       ClassPath( if(resourcesDirectory.exists) Seq(resourcesDirectory) else Nil )
   }
-  def exportedClasspath   : ClassPath = ClassPath(compileFile.toSeq) ++ resourceClasspath
+  def exportedClasspath   : ClassPath = {
+    compile
+    ClassPath(Seq(compileTarget).filter(_.exists)) ++ resourceClasspath
+  }
   def targetClasspath = ClassPath(Seq(compileTarget))
   // ========== compile, run, test ==========
 
@@ -142,8 +145,6 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   final def lastModified: Long = compile.getOrElse(0L)
 
-  final def compileFile: Option[File] = compile.map(_ => compileTarget)
-
   def compile: Option[Long] = taskCache[BaseBuild]("_compile").memoize{
     lib.compile(
       context.cbtLastModified,
@@ -153,7 +154,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     )
   }
 
-  def mainClasses: Seq[Class[_]] = compileFile.toSeq.flatMap( lib.mainClasses( _, classLoader(classLoaderCache) ) )
+  def mainClasses: Seq[Class[_]] = exportedClasspath.files.flatMap( lib.mainClasses( _, classLoader(classLoaderCache) ) )
 
   def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
 
