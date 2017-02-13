@@ -15,7 +15,7 @@ public class CbtURLClassLoader extends java.net.URLClassLoader{
       + "\n)"
     );
   }
-  ConcurrentHashMap<String,Class> cache = new ConcurrentHashMap<String,Class>();
+  ConcurrentHashMap<Object,Object> cache = new ConcurrentHashMap<Object,Object>();
   public Class loadClass(String name) throws ClassNotFoundException{
     Class _class = super.loadClass(name);
     if(_class == null) throw new ClassNotFoundException(name);
@@ -25,12 +25,18 @@ public class CbtURLClassLoader extends java.net.URLClassLoader{
     //System.out.println("loadClass("+name+") on \n"+this);
     synchronized( cache ){
       if(!cache.containsKey(name))
+        cache.put(name, new Object());
+    }
+    Object key = cache.get(name);
+    synchronized( key ){
+      if(!cache.containsKey(key)){
         try{
-          cache.put(name, super.loadClass(name, resolve));
+          cache.put(key, super.loadClass(name, resolve));
         } catch (ClassNotFoundException e){
-          cache.put(name, Object.class);
+          cache.put(key, Object.class);
         }
-      Class _class = cache.get(name);
+      }
+      Class _class = (Class) cache.get(key);
       if(_class == Object.class){
         if( name.equals("java.lang.Object") )
           return Object.class;
