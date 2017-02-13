@@ -44,7 +44,6 @@ object `package`{
     // then we wouldn't need this and could provide this method from a 
     // plugin rather than hard-coding trigger files stuff in cbt
     def triggerLoopFiles: Seq[File] = triggerLoopFilesArray.to
-    def crossScalaVersions: Seq[String] = crossScalaVersionsArray.to
   }
   implicit class ArtifactInfoExtensions(subject: ArtifactInfo){
     import subject._
@@ -53,9 +52,10 @@ object `package`{
   }
   implicit class DependencyExtensions(subject: Dependency){
     import subject._
-    def dependencyClasspath: ClassPath = ClassPath(dependencyClasspathArray.to)
+    def dependencyClasspath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]): ClassPath
+      = Dependencies(dependenciesArray.to).classpath
     def exportedClasspath: ClassPath = ClassPath(exportedClasspathArray.to)
-    def classpath = exportedClasspath ++ dependencyClasspath
+    def classpath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) = exportedClasspath ++ dependencyClasspath
     def dependencies: Seq[Dependency] = dependenciesArray.to
   }
   implicit class ContextExtensions(subject: Context){

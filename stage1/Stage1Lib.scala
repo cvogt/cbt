@@ -413,7 +413,7 @@ ${sourceFiles.sorted.mkString(" \\\n")}
     case d => d
   }
 
-  def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency], cache: ClassLoaderCache ): ClassLoader = {
+  def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency], cache: ClassLoaderCache)(implicit transientCache: java.util.Map[AnyRef,AnyRef] ): ClassLoader = {
     // FIXME: shouldn't we be using KeyLockedLazyCache instead of hashmap directly here?
     val dependencies = dependency.dependencies
     val dependencyClassLoader: ClassLoader = {

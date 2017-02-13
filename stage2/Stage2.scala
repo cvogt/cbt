@@ -12,12 +12,10 @@ object Stage2 extends Stage2Base{
     val paths = CbtPaths(args.cbtHome,args.cache)
     import paths._
     val lib = new Lib(args.logger)
-
     logger.stage2(s"Stage2 start")
     val loop = args.args.lift(0) == Some("loop")
-    val cross = args.args.lift(0) == Some("cross")
 
-    val taskIndex = if (loop || cross) {
+    val taskIndex = if (loop) {
       1
     } else {
       0
@@ -44,15 +42,7 @@ object Stage2 extends Stage2Base{
     val build = first.finalBuild
 
     def call(build: BuildInterface): ExitCode = {
-      if(cross){
-        build.crossScalaVersions.map{
-          v => new lib.ReflectBuild(
-            build.copy(context.copy(scalaVersion = Some(v)))
-          ).callNullary(task)
-        }.filter(_ != ExitCode.Success).headOption getOrElse ExitCode.Success
-      } else {
-        new lib.ReflectBuild(build).callNullary(task)
-      }
+      new lib.ReflectBuild(build).callNullary(task)
     }
 
     val res =
