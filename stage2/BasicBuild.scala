@@ -157,9 +157,28 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
 
-  def run: ExitCode = runClass.map( lib.runMain( _, context.args, classLoader(context.classLoaderCache) ) ).getOrElse{
-    logger.task( "No main class found for " ++ projectDirectory.string )
-    ExitCode.Success
+  def runMain( className: String, args: String* ) = lib.runMain( className, args, classLoader(context.classLoaderCache) )
+
+  def flatClassLoader: Boolean = false
+
+  def run: ExitCode = {
+    if(flatClassLoader){
+      runClass.map(
+        lib.runMain(
+          _,
+          context.args,
+          new java.net.URLClassLoader(classpath.strings.map(f => new URL("file://" ++ f)).toArray)
+        )
+      ).getOrElse{
+        logger.task( "No main class found for " ++ projectDirectory.string )
+        ExitCode.Success
+      }
+    } else {
+      runClass.map( runMain( _, context.args: _* ) ).getOrElse{
+        logger.task( "No main class found for " ++ projectDirectory.string )
+        ExitCode.Success
+      }
+    }
   }
 
   def clean: ExitCode = {

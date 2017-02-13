@@ -73,4 +73,8 @@ trait DynamicOverrides extends BaseBuild{
       createBuild( context ).asInstanceOf[T]
     }
   }
+
+  def runFlat: ExitCode = newBuild[DynamicOverrides]{"""
+    override def flatClassLoader = true
+  """}.run
 }
