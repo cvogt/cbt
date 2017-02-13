@@ -12,3 +12,4 @@ realpath/realpath
 node_modules
 *fastopt*
 *fullopt*
+examples/dotty-example/_site
