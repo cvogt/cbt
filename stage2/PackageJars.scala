@@ -11,7 +11,7 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
   )( _() ).flatten
 
   def jar: Option[File] = taskCache[PackageJars]("jar").memoize{
-    compileFile.flatMap( lib.jar( artifactId, scalaMajorVersion, version, _, jarTarget ) )
+    lib.jar( artifactId, scalaMajorVersion, version, exportedClasspath.files, jarTarget )
   }
 
   def srcJar: Option[File] = taskCache[PackageJars]("srcJar").memoize{

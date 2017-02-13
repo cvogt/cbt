@@ -66,10 +66,10 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
     )
   }
 
-  def jar(artifactId: String, scalaMajorVersion: String, version: String, compileTarget: File, jarTarget: File): Option[File] = {
+  def jar(artifactId: String, scalaMajorVersion: String, version: String, files: Seq[File], jarTarget: File): Option[File] = {
     lib.jarFile(
       jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++".jar"),
-      Seq(compileTarget)
+      files
     )
   }
 
