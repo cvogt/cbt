@@ -327,6 +327,18 @@ object Main{
       assert(res.out.contains("All tests passed"), res.out)
     }
 
+    {
+      val res = runCbt("../examples/resources-example", Seq("run"))
+      assert(res.exit0)
+      assert(res.out.contains("via parent.parent: false 0"), res.out)
+    }
+
+    {
+      val res = runCbt("../examples/resources-example", Seq("runFlat"))
+      assert(res.exit0)
+      assert(res.out.contains("via parent.parent: true 2"), res.out)
+    }
+
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
     if(failures > 0) System.exit(1) else System.exit(0)
