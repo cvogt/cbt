@@ -156,14 +156,19 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
       .collect{
         // no $ to avoid inner classes
         case path if !path.contains("$") && path.endsWith(".class") =>
-          classLoader.loadClass(
-            path
-              .stripSuffix(".class")
-              .stripPrefix(targetDirectory.getPath)
-              .stripPrefix(File.separator) // 1 for the slash
-              .replace(File.separator, ".")
-          )
-      }.filter(
+          try{
+            classLoader.loadClass(
+              path
+                .stripSuffix(".class")
+                .stripPrefix(targetDirectory.getPath)
+                .stripPrefix(File.separator) // 1 for the slash
+                .replace(File.separator, ".")
+            )
+          } catch {
+            case e: ClassNotFoundException => null
+            case e: NoClassDefFoundError => null
+          }
+      }.filterNot(_ == null).filter(
         _.getDeclaredMethods().exists( m =>
           m.getName == "main"
             && m.getParameterTypes.toList == List(arrayClass)
@@ -192,11 +197,10 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     dependencies: Seq[Dependency],
     mavenCache: File,
     scalacOptions: Seq[String] = Seq(),
-    classLoaderCache: ClassLoaderCache,
     zincVersion: String,
     scalaVersion: String
   )(
-    implicit transientCache: java.util.Map[AnyRef, AnyRef]
+    implicit transientCache: java.util.Map[AnyRef, AnyRef], classLoaderCache: ClassLoaderCache
   ): Option[Long] = {
     val d = Dependencies(dependencies)
     val classpath = d.classpath
@@ -259,7 +263,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
                 dualArgs ++ singleArgs ++ (
                   if(cp.isEmpty) Nil else Seq("-cp", cp)
                 ) ++ sourceFiles.map(_.toString),
-                zinc.classLoader(classLoaderCache)
+                zinc.classLoader
               )
             } catch {
               case scala.util.control.NonFatal(e) =>
@@ -409,33 +413,33 @@ ${sourceFiles.sorted.mkString(" \\\n")}
 
 
   def actual(current: Dependency, latest: Map[(String,String),Dependency]) = current match {
-    case d: ArtifactInfo => latest((d.groupId,d.artifactId))
+    case d: ArtifactInfo =>
+      val key = (d.groupId,d.artifactId)
+      latest.get(key).getOrElse(
+        throw new Exception( s"This should never happend. Could not find $key in \n"++latest.map{case (k,v) => k+" -> "+v}.mkString("\n") )
+      )
     case d => d
   }
 
-  def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency], cache: ClassLoaderCache)(implicit transientCache: java.util.Map[AnyRef,AnyRef] ): ClassLoader = {
+  def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency])(implicit transientCache: java.util.Map[AnyRef,AnyRef], cache: ClassLoaderCache): ClassLoader = {
     // FIXME: shouldn't we be using KeyLockedLazyCache instead of hashmap directly here?
     val dependencies = dependency.dependencies
     val dependencyClassLoader: ClassLoader = {
       if( dependency.dependencies.isEmpty ){
         NailgunLauncher.jdkClassLoader
       } else if( dependencies.size == 1 ){
-        classLoaderRecursion( dependencies.head, latest, cache )
+        classLoaderRecursion( dependencies.head, latest )
       } else{
         val lastModified = dependencies.map( _.lastModified ).max
         val cp = dependency.dependencyClasspath.string
         val cl =
           new MultiClassLoader(
-            dependencies.map( classLoaderRecursion(_, latest, cache) )
+            dependencies.map( classLoaderRecursion(_, latest) )
           )
-        if(dependency.isInstanceOf[BuildInterface])
-          cl // Don't cache builds right now. We need to fix invalidation first.
-        else{
-          if( !cache.containsKey( cp, lastModified ) ){
-            cache.put( cp, cl, lastModified )
-          }
-          cache.get( cp, lastModified )
+        if( !cache.containsKey( cp, lastModified ) ){
+          cache.put( cp, cl, lastModified )
         }
+        cache.get( cp, lastModified )
       }
     }
 

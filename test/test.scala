@@ -105,6 +105,7 @@ object Main{
     val mavenCache = cache ++ "/maven"
     val cbtLastModified = System.currentTimeMillis
     implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
+    implicit val classLoaderCache: ClassLoaderCache = new ClassLoaderCache( new java.util.HashMap )
     def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
 
     {

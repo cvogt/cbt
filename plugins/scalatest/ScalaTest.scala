@@ -5,9 +5,8 @@ import org.scalatest._
 trait ScalaTest extends BaseBuild{
   override def run: ExitCode = {
     import ScalaTestLib._
-    val _classLoader = classLoader(context.classLoaderCache)
-    val suiteNames = exportedClasspath.files.map( d => discoverSuites(d, _classLoader) ).flatten
-    runSuites( suiteNames.map( loadSuite( _, _classLoader ) ) )
+    val suiteNames = exportedClasspath.files.map( d => discoverSuites(d, classLoader) ).flatten
+    runSuites( suiteNames.map( loadSuite( _, classLoader ) ) )
     ExitCode.Success
   }
   override def dependencies = super.dependencies ++ Resolver( mavenCentral ).bind( ScalaDependency("org.scalatest","scalatest","2.2.4") )
@@ -28,16 +27,16 @@ object ScalaTestLib{
     }
   }
 
-  def discoverSuites(discoveryPath: File, _classLoader: ClassLoader): Seq[String] = {
-    _classLoader
+  def discoverSuites(discoveryPath: File, classLoader: ClassLoader): Seq[String] = {
+    classLoader
       .loadClass("org.scalatest.tools.SuiteDiscoveryHelper")
       .getMethod("discoverSuiteNames", classOf[List[_]], classOf[ClassLoader], classOf[Option[_]])
-      .invoke(null, List(discoveryPath.string ++ "/"), _classLoader, None)
+      .invoke(null, List(discoveryPath.string ++ "/"), classLoader, None)
       .asInstanceOf[Set[String]]
       .to
   }
-  def loadSuite(name: String, _classLoader: ClassLoader) = {
-    _classLoader.loadClass(name).getConstructor().newInstance().asInstanceOf[Suite]
-  }  
+  def loadSuite(name: String, classLoader: ClassLoader) = {
+    classLoader.loadClass(name).getConstructor().newInstance().asInstanceOf[Suite]
+  }
 }
 

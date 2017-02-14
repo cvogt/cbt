@@ -23,7 +23,7 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
       context.cbtLastModified,
       scalaVersion, sourceFiles, compileClasspath, docTarget,
       jarTarget, artifactId, scalaMajorVersion, version,
-      scalacOptions, context.classLoaderCache, context.paths.mavenCache
+      scalacOptions, context.paths.mavenCache
     )
   }
 }

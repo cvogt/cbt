@@ -2,7 +2,7 @@ package cbt
 import java.io._
 
 class ContextImplementation(
-  override val projectDirectory: File,
+  override val workingDirectory: File,
   override val cwd: File,
   override val argsArray: Array[String],
   override val enabledLoggersArray: Array[String],
@@ -17,6 +17,8 @@ class ContextImplementation(
   override val compatibilityTarget: File,
   override val parentBuildOrNull: BuildInterface
 ) extends Context{
+  @deprecated("this method is replaced by workingDirectory","")
+  def projectDirectory = workingDirectory
   @deprecated("this method is replaced by cbtLastModified","")
   def cbtHasChangedCompat = true
   @deprecated("this method is replaced by start","")

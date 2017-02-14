@@ -9,7 +9,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   // will create new instances given the context, which means operations in the
   // overrides will happen multiple times and if they are not idempotent stuff likely breaks
   def context: Context
-  def moduleKey: String = "BaseBuild("+projectDirectory.string+")"
+  def moduleKey: String = "BaseBuild("+target.string+")"
   implicit def transientCache: java.util.Map[AnyRef,AnyRef] = context.transientCache
 
   // library available to builds
@@ -21,7 +21,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   // ========== general stuff ==========
 
   def enableConcurrency = false
-  final def projectDirectory: File = lib.realpath(context.projectDirectory)
+  def projectDirectory: File = lib.realpath(context.workingDirectory)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   assert(
     projectDirectory.getName =!= "build" ||
@@ -107,7 +107,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
   final def DirectoryDependency(path: File) = cbt.DirectoryDependency(
-    context.copy( projectDirectory = path, args = Seq() )
+    context.copy( workingDirectory = path, args = Seq() )
   )
 
   def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
@@ -125,9 +125,9 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   def resourceClasspath: ClassPath = {
     val resourcesDirectory = projectDirectory ++ "/resources"
-      ClassPath( if(resourcesDirectory.exists) Seq(resourcesDirectory) else Nil )
+    ClassPath(Seq(resourcesDirectory).filter(_.exists))
   }
-  def exportedClasspath   : ClassPath = {
+  def exportedClasspath: ClassPath = {
     compile
     ClassPath(Seq(compileTarget).filter(_.exists)) ++ resourceClasspath
   }
@@ -147,37 +147,9 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     lib.compile(
       context.cbtLastModified,
       sourceFiles, compileTarget, compileStatusFile, compileDependencies,
-      context.paths.mavenCache, scalacOptions, context.classLoaderCache,
+      context.paths.mavenCache, scalacOptions,
       zincVersion = zincVersion, scalaVersion = scalaVersion
     )
-  }
-
-  def mainClasses: Seq[Class[_]] = exportedClasspath.files.flatMap( lib.mainClasses( _, classLoader(classLoaderCache) ) )
-
-  def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
-
-  def runMain( className: String, args: String* ) = lib.runMain( className, args, classLoader(context.classLoaderCache) )
-
-  def flatClassLoader: Boolean = false
-
-  def run: ExitCode = {
-    if(flatClassLoader){
-      runClass.map(
-        lib.runMain(
-          _,
-          context.args,
-          new java.net.URLClassLoader(classpath.strings.map(f => new URL("file://" ++ f)).toArray)
-        )
-      ).getOrElse{
-        logger.task( "No main class found for " ++ projectDirectory.string )
-        ExitCode.Success
-      }
-    } else {
-      runClass.map( runMain( _, context.args: _* ) ).getOrElse{
-        logger.task( "No main class found for " ++ projectDirectory.string )
-        ExitCode.Success
-      }
-    }
   }
 
   def clean: ExitCode = {
@@ -200,22 +172,24 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     }
 
     val scalac = new ScalaCompilerDependency(context.cbtLastModified, context.paths.mavenCache, scalaVersion)
-    lib.runMain(
+    runMain(
       "scala.tools.nsc.MainGenericRunner",
       Seq(
         "-bootclasspath",
         scalac.classpath.string,
         "-classpath",
         classpath.string
-      ) ++ context.args,
-      scalac.classLoader(classLoaderCache)
+      ) ++ context.args : _*
     )
   }
 
-  def test: Option[ExitCode] =
+  def run: ExitCode = run( context.args: _* )
+
+  def test: Any =
     Some(new lib.ReflectBuild(
       DirectoryDependency(projectDirectory++"/test").build
     ).callNullary(Some("run")))
+
   def t = test
   def rt = recursiveUnsafe(Some("test"))
 
@@ -257,7 +231,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
           ExitCode.Success
         } catch {
           case e: Throwable => println(e.getClass); throw e
-        }        
+        }
       }
       ExitCode.Success
     }
@@ -283,6 +257,24 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   // a method that can be called only to trigger any side-effects
   final def `void` = ()
+
+  final override def transitiveDependencies: Seq[Dependency] =
+    taskCache[BaseBuild]( "transitiveDependencies" ).memoize{
+      val res = super.transitiveDependencies
+      val duplicateBuilds = res.collect{
+        case b: BaseBuild => b
+      }.groupBy(
+        b => ( b.projectDirectory, b.moduleKey )
+      ).filter( _._2.size > 1 ).mapValues(_.map(_.getClass))
+      duplicateBuilds.foreach{ case ((projectDirectory, moduleKey), classes) =>
+        assert(
+          classes.distinct.size == 1,
+          "multiple builds found for\nprojectDirectory: $projectDirectory\nmoduleKey: $moduleKey\nbut different classes: " + classes.mkString(", ")
+        )
+      }
+      res
+    }
+
 
   @deprecated("use the MultipleScalaVersions plugin instead","")
   final def crossScalaVersionsArray = Array(scalaVersion)
