@@ -156,14 +156,19 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
       .collect{
         // no $ to avoid inner classes
         case path if !path.contains("$") && path.endsWith(".class") =>
-          classLoader.loadClass(
-            path
-              .stripSuffix(".class")
-              .stripPrefix(targetDirectory.getPath)
-              .stripPrefix(File.separator) // 1 for the slash
-              .replace(File.separator, ".")
-          )
-      }.filter(
+          try{
+            classLoader.loadClass(
+              path
+                .stripSuffix(".class")
+                .stripPrefix(targetDirectory.getPath)
+                .stripPrefix(File.separator) // 1 for the slash
+                .replace(File.separator, ".")
+            )
+          } catch {
+            case e: ClassNotFoundException => null
+            case e: NoClassDefFoundError => null
+          }
+      }.filterNot(_ == null).filter(
         _.getDeclaredMethods().exists( m =>
           m.getName == "main"
             && m.getParameterTypes.toList == List(arrayClass)
