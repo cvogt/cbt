@@ -77,7 +77,7 @@ object `package`{
     def cbtLastModified: scala.Long = subject.cbtLastModified
 
     def copy(
-      projectDirectory: File = projectDirectory,
+      workingDirectory: File = workingDirectory,
       args: Seq[String] = args,
       //enabledLoggers: Set[String] = enabledLoggers,
       cbtLastModified: Long = cbtLastModified,
@@ -85,7 +85,7 @@ object `package`{
       cbtHome: File = cbtHome,
       parentBuild: Option[BuildInterface] = None
     ): Context = new ContextImplementation(
-      projectDirectory,
+      workingDirectory,
       cwd,
       args.to,
       enabledLoggers.to,

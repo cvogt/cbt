@@ -31,7 +31,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
       if(buildDir.exists) findStartDir(buildDir) else directory
     }
 
-    val directory = context.projectDirectory
+    val directory = context.workingDirectory
 
     context.logger.composition( context.logger.showInvocation("Build.loadRoot",directory) )
 
@@ -41,7 +41,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     try{
       if(useBasicBuild) {
-        new BasicBuild( context.copy( projectDirectory = directory) )
+        new BasicBuild( context.copy( workingDirectory = directory ) )
       } else if(
         // essentials depends on eval, which has a build that depends on scalatest
         // this means in these we can't depend on essentials
@@ -50,9 +50,9 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
         || directory == (context.cbtHome ++ "/libraries/eval")
         || directory == (context.cbtHome ++ "/plugins/scalatest")
       )
-        new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuildWithoutEssentials
+        new cbt.BasicBuild( context.copy( workingDirectory = start ) ) with BuildBuildWithoutEssentials
       else
-        new cbt.BasicBuild( context.copy( projectDirectory = start ) ) with BuildBuild
+        new cbt.BasicBuild( context.copy( workingDirectory = start ) ) with BuildBuild
     } catch {
       case e:ClassNotFoundException if e.getMessage == "Build" =>
         throw new Exception(s"no class Build found in " ++ start.string)

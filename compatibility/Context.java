@@ -18,9 +18,11 @@ public interface Context{
   public default long start(){
     throw new IncompatibleCbtVersionException("You need to define method start.");
   };
+  public default File workingDirectory(){
+    return projectDirectory();
+  };
 
   // methods that exist for longer which every CBT version in use should have by now, no default values needed
-  public abstract File projectDirectory();
   public abstract File cwd(); // REPLACE by something that allows to run cbt on some other directly
   public abstract String[] argsArray(); // replace this by https://github.com/cvogt/cbt/issues/172 ?
   public abstract String[] enabledLoggersArray();
@@ -40,4 +42,6 @@ public interface Context{
   public abstract ConcurrentHashMap<String,Object> permanentKeys();
   @java.lang.Deprecated
   public abstract ConcurrentHashMap<Object,ClassLoader> permanentClassLoaders();
+  @java.lang.Deprecated
+  public abstract File projectDirectory();
 }

@@ -21,7 +21,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   // ========== general stuff ==========
 
   def enableConcurrency = false
-  final def projectDirectory: File = lib.realpath(context.projectDirectory)
+  def projectDirectory: File = lib.realpath(context.workingDirectory)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   assert(
     projectDirectory.getName =!= "build" ||
@@ -107,7 +107,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
   final def DirectoryDependency(path: File) = cbt.DirectoryDependency(
-    context.copy( projectDirectory = path, args = Seq() )
+    context.copy( workingDirectory = path, args = Seq() )
   )
 
   def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten

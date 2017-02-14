@@ -12,7 +12,7 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
   )
 
   protected final val managedContext = context.copy(
-    projectDirectory = managedBuildDirectory,
+    workingDirectory = managedBuildDirectory,
     parentBuild=Some(this)
   )
 

@@ -21,7 +21,7 @@ case class GitDependency(
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
   private val GitUrl( _, domain, path ) = url  
 
-  private val credentialsFile = context.projectDirectory ++ "/git.login"
+  private val credentialsFile = context.workingDirectory ++ "/git.login"
 
   private def authenticate(_git: CloneCommand) =
     if(!credentialsFile.exists){
@@ -67,7 +67,7 @@ case class GitDependency(
   def dependency = taskCache[GitDependency]("dependency").memoize{
     DirectoryDependency(
       context.copy(
-        projectDirectory = checkout ++ subDirectory.map("/" ++ _).getOrElse("")
+        workingDirectory = checkout ++ subDirectory.map("/" ++ _).getOrElse("")
       )
     )
   }
