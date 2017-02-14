@@ -436,14 +436,10 @@ ${sourceFiles.sorted.mkString(" \\\n")}
           new MultiClassLoader(
             dependencies.map( classLoaderRecursion(_, latest) )
           )
-        if(dependency.isInstanceOf[BuildInterface])
-          cl // Don't cache builds right now. We need to fix invalidation first.
-        else{
-          if( !cache.containsKey( cp, lastModified ) ){
-            cache.put( cp, cl, lastModified )
-          }
-          cache.get( cp, lastModified )
+        if( !cache.containsKey( cp, lastModified ) ){
+          cache.put( cp, cl, lastModified )
         }
+        cache.get( cp, lastModified )
       }
     }
 
