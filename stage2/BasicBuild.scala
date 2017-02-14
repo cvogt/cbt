@@ -125,9 +125,9 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   def resourceClasspath: ClassPath = {
     val resourcesDirectory = projectDirectory ++ "/resources"
-      ClassPath( if(resourcesDirectory.exists) Seq(resourcesDirectory) else Nil )
+    ClassPath(Seq(resourcesDirectory).filter(_.exists))
   }
-  def exportedClasspath   : ClassPath = {
+  def exportedClasspath: ClassPath = {
     compile
     ClassPath(Seq(compileTarget).filter(_.exists)) ++ resourceClasspath
   }
@@ -189,6 +189,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     Some(new lib.ReflectBuild(
       DirectoryDependency(projectDirectory++"/test").build
     ).callNullary(Some("run")))
+
   def t = test
   def rt = recursiveUnsafe(Some("test"))
 
@@ -230,7 +231,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
           ExitCode.Success
         } catch {
           case e: Throwable => println(e.getClass); throw e
-        }        
+        }
       }
       ExitCode.Success
     }
