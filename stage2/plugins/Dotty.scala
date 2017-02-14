@@ -20,10 +20,35 @@ trait Dotty extends BaseBuild{
     context.classLoaderCache, dottyCompiler
   )
 
+  def compileJavaFirst: Boolean = false
+
+  // this makes sure the scala or java classes compiled first are available on subsequent compile
+  override def compileDependencies: Seq[Dependency]
+    = super.compileDependencies ++ Seq( compileTarget ).filter(_.exists).map( t => BinaryDependency( Seq(t), Nil ) )
+
   override def compile: Option[Long] = taskCache[Dotty]("compile").memoize{
-    dottyLib.compile(
-      sourceFiles, compileTarget, compileStatusFile, compileDependencies, dottyOptions
-    )
+    def compileDotty =
+      dottyLib.compile(
+        sourceFiles.filter(_.string.endsWith(".scala")),
+        compileTarget, compileStatusFile, compileDependencies, dottyOptions
+      )
+    def compileJava =
+      lib.compile(
+        context.cbtLastModified,
+        sourceFiles.filter(_.string.endsWith(".java")),
+        compileTarget, compileStatusFile, compileDependencies, context.paths.mavenCache,
+        scalacOptions, zincVersion = zincVersion, classLoaderCache = classLoaderCache, scalaVersion = scalaVersion
+      )
+
+    def set(time: Long) = if(compileStatusFile.exists) Files.setLastModifiedTime(compileStatusFile.toPath, FileTime.fromMillis(time) )
+
+    val before = compileStatusFile.lastModified
+    val firstLastModified = if(compileJavaFirst) compileJava else compileDotty
+    set( before )
+    val secondLastModified = if(!compileJavaFirst) compileJava else compileDotty
+    val min = (firstLastModified ++ secondLastModified).reduceOption(_ min _).getOrElse(0l)
+    set( min )
+    Some(min)
   }
 
   def doc: ExitCode =
