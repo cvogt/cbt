@@ -152,34 +152,6 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     )
   }
 
-  def mainClasses: Seq[Class[_]] = exportedClasspath.files.flatMap( lib.mainClasses( _, classLoader ) )
-
-  def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
-
-  def runMain( className: String, args: String* ) = lib.runMain( className, args, classLoader )
-
-  def flatClassLoader: Boolean = false
-
-  def run: ExitCode = {
-    if(flatClassLoader){
-      runClass.map(
-        lib.runMain(
-          _,
-          context.args,
-          new java.net.URLClassLoader(classpath.strings.map(f => new URL("file://" ++ f)).toArray)
-        )
-      ).getOrElse{
-        logger.task( "No main class found for " ++ projectDirectory.string )
-        ExitCode.Success
-      }
-    } else {
-      runClass.map( runMain( _, context.args: _* ) ).getOrElse{
-        logger.task( "No main class found for " ++ projectDirectory.string )
-        ExitCode.Success
-      }
-    }
-  }
-
   def clean: ExitCode = {
     lib.clean(
       target,
@@ -210,6 +182,8 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
       ) ++ context.args : _*
     )
   }
+
+  def run: ExitCode = run( context.args: _* )
 
   def test: Option[ExitCode] =
     Some(new lib.ReflectBuild(

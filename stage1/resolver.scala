@@ -79,7 +79,20 @@ trait DependencyImplementation extends Dependency{
   }
   */
 
+  def runMain( className: String, args: String* ) = lib.runMain( className, args, classLoader )
+
   def flatClassLoader: Boolean = false
+
+  def mainClasses: Seq[Class[_]] = exportedClasspath.files.flatMap( lib.mainClasses( _, classLoader ) )
+
+  def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
+
+  def run( args: String* ): ExitCode = {
+    runClass.map( runMain( _, args: _* ) ).getOrElse{
+      logger.task( "No main class found for " ++ show )
+      ExitCode.Success
+    }
+  }
 
   def classLoader: ClassLoader = {
     if( flatClassLoader ){
