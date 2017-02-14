@@ -185,7 +185,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   def run: ExitCode = run( context.args: _* )
 
-  def test: Option[ExitCode] =
+  def test: Any =
     Some(new lib.ReflectBuild(
       DirectoryDependency(projectDirectory++"/test").build
     ).callNullary(Some("run")))
