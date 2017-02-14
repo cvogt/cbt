@@ -2,9 +2,8 @@ package cbt
 import java.io.File
 
 case class ScalaJsLib(
-  scalaJsVersion: String, scalaVersion: String,
-  cbtLastModified: Long, classLoaderCache: ClassLoaderCache, mavenCache: File
-)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]){
+  scalaJsVersion: String, scalaVersion: String, cbtLastModified: Long, mavenCache: File
+)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
   sealed trait ScalaJsOutputMode {
     def option: String
     def fileSuffix: String
@@ -36,7 +35,7 @@ case class ScalaJsLib(
         "--stdlib", s"${scalaJsLibraryDependency.jar.getAbsolutePath}",
         "--output", outputPath.string
       ) ++ scalaJsOptions ++ entriesToLink.map(_.getAbsolutePath),
-      scalaJsCliDep.classLoader(classLoaderCache)
+      scalaJsCliDep.classLoader
     )
   }
 

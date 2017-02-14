@@ -16,6 +16,7 @@ trait TriggerLoop extends DependencyImplementation{
 }
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
 final case class DirectoryDependency(context: Context) extends TriggerLoop{
+  def classLoaderCache = context.classLoaderCache
   override def toString = show
   override def show = this.getClass.getSimpleName ++ "(" ++ context.workingDirectory.string ++ ")"
   def moduleKey = this.getClass.getName ++ "("+context.workingDirectory.string+")"

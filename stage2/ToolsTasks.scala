@@ -6,16 +6,15 @@ class ToolsTasks(
   lib: Lib,
   args: Seq[String],
   cwd: File,
-  classLoaderCache: ClassLoaderCache,
   cache: File,
   cbtHome: File,
   cbtLastModified: Long
-){
+)(implicit classLoaderCache: ClassLoaderCache){
   private val paths = CbtPaths(cbtHome, cache)
   import paths._
-  private def Resolver( urls: URL* ) = MavenResolver(cbtLastModified,mavenCache,urls: _*)
   implicit val logger: Logger = lib.logger
   implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
+  private def Resolver( urls: URL* ) = MavenResolver(cbtLastModified,mavenCache,urls: _*)
   def createMain: Unit = lib.createMain( cwd )
   def createBuild: Unit = lib.createBuild( cwd )
   def gui = NailgunLauncher.main(Array(
@@ -48,7 +47,7 @@ class ToolsTasks(
       MavenDependency(
         "com.lihaoyi","ammonite-repl_2.11.8",args.lift(1).getOrElse("0.5.8")
       )
-    ).classLoader(classLoaderCache)
+    ).classLoader
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
     lib.runMain(
       "ammonite.repl.Main", args.drop(2), classLoader
@@ -59,7 +58,7 @@ class ToolsTasks(
     val scalac = new ScalaCompilerDependency( cbtLastModified, mavenCache, version )
     val _args = Seq("-cp", scalac.classpath.string) ++ args.drop(2)
     lib.runMain(
-      "scala.tools.nsc.MainGenericRunner", _args, scalac.classLoader(classLoaderCache)
+      "scala.tools.nsc.MainGenericRunner", _args, scalac.classLoader
     )
   }
   def cbtEarlyDependencies = {

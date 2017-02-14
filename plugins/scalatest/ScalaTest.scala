@@ -5,9 +5,8 @@ import org.scalatest._
 trait ScalaTest extends BaseBuild{
   override def run: ExitCode = {
     import ScalaTestLib._
-    val _classLoader = classLoader(context.classLoaderCache)
-    val suiteNames = exportedClasspath.files.map( d => discoverSuites(d, _classLoader) ).flatten
-    runSuites( suiteNames.map( loadSuite( _, _classLoader ) ) )
+    val suiteNames = exportedClasspath.files.map( d => discoverSuites(d, classLoader) ).flatten
+    runSuites( suiteNames.map( loadSuite( _, classLoader ) ) )
     ExitCode.Success
   }
   override def dependencies = super.dependencies ++ Resolver( mavenCentral ).bind( ScalaDependency("org.scalatest","scalatest","2.2.4") )

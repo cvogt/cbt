@@ -16,8 +16,7 @@ trait Dotty extends BaseBuild{
   override def dependencies: Seq[Dependency] = Seq( dottyLibrary )
 
   private lazy val dottyLib = new DottyLib(
-    logger, context.cbtLastModified, context.paths.mavenCache,
-    context.classLoaderCache, dottyCompiler
+    logger, context.cbtLastModified, context.paths.mavenCache, dottyCompiler
   )
 
   def compileJavaFirst: Boolean = false
@@ -37,7 +36,7 @@ trait Dotty extends BaseBuild{
         context.cbtLastModified,
         sourceFiles.filter(_.string.endsWith(".java")),
         compileTarget, compileStatusFile, compileDependencies, context.paths.mavenCache,
-        scalacOptions, zincVersion = zincVersion, classLoaderCache = classLoaderCache, scalaVersion = scalaVersion
+        scalacOptions, zincVersion = zincVersion, scalaVersion = scalaVersion
       )
 
     def set(time: Long) = if(compileStatusFile.exists) Files.setLastModifiedTime(compileStatusFile.toPath, FileTime.fromMillis(time) )
@@ -73,9 +72,8 @@ class DottyLib(
   logger: Logger,
   cbtLastModified: Long,
   mavenCache: File,
-  classLoaderCache: ClassLoaderCache,
-  dependency: DependencyImplementation
-)(implicit transientCache: java.util.Map[AnyRef,AnyRef]){
+  dottyCompiler: DependencyImplementation
+)(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
   val lib = new Lib(logger)
   import lib._
 
@@ -85,11 +83,11 @@ class DottyLib(
       "dotty.tools.dotc.repl.Main",
       Seq(
         "-bootclasspath",
-        dependency.classpath.string,
+        dottyCompiler.classpath.string,
         "-classpath",
         classpath.string
       ) ++ args,
-      dependency.classLoader(classLoaderCache)
+      dottyCompiler.classLoader
     )
   }
 
@@ -105,7 +103,7 @@ class DottyLib(
       docTarget.mkdirs
       val args = Seq(
         // FIXME: can we use compiler dependency here?
-        "-bootclasspath", dependency.classpath.string, // FIXME: does this break for builds that don't have scalac dependencies?
+        "-bootclasspath", dottyCompiler.classpath.string, // FIXME: does this break for builds that don't have scalac dependencies?
         "-classpath", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
         "-d",  docTarget.toString
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
@@ -114,7 +112,7 @@ class DottyLib(
         runMain(
           "dotty.tools.dottydoc.DocDriver",
           args,
-          dependency.classLoader(classLoaderCache),
+          dottyCompiler.classLoader,
           fakeInstance = true // this is a hack as Dottydoc's main method is not static
         )
       }
@@ -147,7 +145,8 @@ class DottyLib(
             "-d", compileTarget.toString
           )
         val singleArgs = dottyOptions.map( "-S" ++ _ )
-        val cl = dependency.classLoader(classLoaderCache)
+        val urls = dottyCompiler.classpath.strings.map("file://"+_).map(new java.net.URL(_))
+        val cl = new java.net.URLClassLoader( urls.to )
         val code =
           try{
             System.err.println("Compiling with Dotty to " ++ compileTarget.toString)
@@ -156,7 +155,7 @@ class DottyLib(
               lib.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ Seq(
-                  "-bootclasspath", dependency.classpath.string
+                  "-bootclasspath", dottyCompiler.classpath.string
                 ) ++ (
                   if(cp.isEmpty) Nil else Seq("-classpath", cp) // let's put cp last. It so long
                 ) ++ sourceFiles.map(_.toString),
@@ -169,7 +168,7 @@ class DottyLib(
             System.err.println(cl)
             System.out.println(s"""
 java -cp \\
-${dependency.classpath.strings.mkString(":\\\n")} \\
+${dottyCompiler.classpath.strings.mkString(":\\\n")} \\
 \\
 ${_class} \\
 \\
@@ -178,7 +177,7 @@ ${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
 ${singleArgs.mkString(" \\\n")} \\
 \\
 -bootclasspath \\
-${dependency.classpath.strings.mkString(":\\\n")} \\
+${dottyCompiler.classpath.strings.mkString(":\\\n")} \\
 ${if(cp.isEmpty) "" else ("  -classpath \\\n" ++ classpath.strings.mkString(":\\\n"))} \\
 \\
 ${sourceFiles.sorted.mkString(" \\\n")}

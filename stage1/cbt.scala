@@ -52,10 +52,10 @@ object `package`{
   }
   implicit class DependencyExtensions(subject: Dependency){
     import subject._
-    def dependencyClasspath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]): ClassPath
+    def dependencyClasspath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache): ClassPath
       = Dependencies(dependenciesArray.to).classpath
     def exportedClasspath: ClassPath = ClassPath(exportedClasspathArray.to)
-    def classpath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) = exportedClasspath ++ dependencyClasspath
+    def classpath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache) = exportedClasspath ++ dependencyClasspath
     def dependencies: Seq[Dependency] = dependenciesArray.to
   }
   implicit class ContextExtensions(subject: Context){
@@ -66,7 +66,7 @@ object `package`{
     def classLoaderCache: ClassLoaderCache = new ClassLoaderCache( persistentCache )
     def cbtDependencies = {
       import paths._
-      new CbtDependencies(mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)(logger, transientCache)
+      new CbtDependencies(mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)(logger, transientCache, classLoaderCache)
     }
     val cbtDependency = cbtDependencies.stage2Dependency
 

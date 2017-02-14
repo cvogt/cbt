@@ -4,11 +4,7 @@ import java.net.URL
 
 trait ScalaJsBuild extends BaseBuild {
   final protected val scalaJsLib = ScalaJsLib(
-    scalaJsVersion,
-    scalaVersion,
-    context.cbtLastModified,
-    context.classLoaderCache,
-    context.paths.mavenCache
+    scalaJsVersion, scalaVersion, context.cbtLastModified, context.paths.mavenCache
   )
   import scalaJsLib.{link => _,_}
 

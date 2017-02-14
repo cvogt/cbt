@@ -36,17 +36,16 @@ abstract class Stage2Base{
   def run( context: Stage2Args ): ExitCode
 }
 
-case class Stage2Args(
-  cwd: File,
-  args: Seq[String],
-  stage2LastModified: Long,
-  logger: Logger,
-  classLoaderCache: ClassLoaderCache,
-  cache: File,
-  cbtHome: File,
-  compatibilityTarget: File
+class Stage2Args(
+  val cwd: File,
+  val args: Seq[String],
+  val stage2LastModified: Long,
+  val logger: Logger,
+  val cache: File,
+  val cbtHome: File,
+  val compatibilityTarget: File
 )(
-  implicit val transientCache: java.util.Map[AnyRef,AnyRef]
+  implicit val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache
 ){
   val persistentCache = classLoaderCache.hashMap
 }
@@ -61,11 +60,10 @@ object Stage1{
     val logger = new Logger( context.enabledLoggers, buildStage1.start )
     val (cbtLastModified, classLoader) = buildStage2(
       buildStage1,
-      new ClassLoaderCache( context.persistentCache ),
       context.cbtHome,
       context.cache,
       logger
-    )(context.transientCache)
+    )(context.transientCache, new ClassLoaderCache( context.persistentCache ))
 
     classLoader
       .loadClass("cbt.Stage2")
@@ -79,8 +77,8 @@ object Stage1{
   }
 
   def buildStage2(
-    buildStage1: BuildStage1Result, classLoaderCache: ClassLoaderCache, cbtHome: File, cache: File, logger: Logger
-  )(implicit transientCache: java.util.Map[AnyRef,AnyRef]): (Long, ClassLoader) = {
+    buildStage1: BuildStage1Result, cbtHome: File, cache: File, logger: Logger
+  )(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache): (Long, ClassLoader) = {
 
     import buildStage1._
 
@@ -106,9 +104,9 @@ object Stage1{
       stage2sourceFiles, stage2Target, stage2StatusFile,
       cbtDependencies.stage2Dependency.dependencies,
       mavenCache,
-      Seq("-deprecation","-feature","-unchecked"), classLoaderCache,
+      Seq("-deprecation","-feature","-unchecked"),
       zincVersion = constants.zincVersion, scalaVersion = constants.scalaVersion
-    )(transientCache)
+    )
 
     logger.stage1(s"calling CbtDependency.classLoader")
 
@@ -129,19 +127,19 @@ object Stage1{
       "cbt unchanged, expected stage1 classloader to be cached"
     )
 
-    val stage2ClassLoader = cbtDependencies.stage2Dependency.classLoader(classLoaderCache)
+    val stage2ClassLoader = cbtDependencies.stage2Dependency.classLoader
 
     {
       // a few classloader sanity checks
       val compatibilityClassLoader =
-        cbtDependencies.compatibilityDependency.classLoader(classLoaderCache)
+        cbtDependencies.compatibilityDependency.classLoader
       assert(
         classOf[BuildInterface].getClassLoader == compatibilityClassLoader,
         classOf[BuildInterface].getClassLoader.toString ++ "\n\nis not the same as\n\n" ++ compatibilityClassLoader.toString
       )
       //-------------
       val stage1ClassLoader =
-        cbtDependencies.stage1Dependency.classLoader(classLoaderCache)
+        cbtDependencies.stage1Dependency.classLoader
       assert(
         classOf[Stage1ArgsParser].getClassLoader == stage1ClassLoader,
         classOf[Stage1ArgsParser].getClassLoader.toString ++ "\n\nis not the same as\n\n" ++ stage1ClassLoader.toString
@@ -165,20 +163,19 @@ object Stage1{
   ): Int = {
     val args = Stage1ArgsParser(_args.toVector)
     val logger = new Logger(args.enabledLoggers, buildStage1.start)
-    implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
     logger.stage1(s"Stage1 start")
 
-    val classLoaderCache = new ClassLoaderCache( persistentCache )
+    implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
+    implicit val classLoaderCache = new ClassLoaderCache( persistentCache )
 
-    val (stage2LastModified, classLoader) = buildStage2( buildStage1, classLoaderCache, cbtHome, cache, logger )
+    val (stage2LastModified, classLoader) = buildStage2( buildStage1, cbtHome, cache, logger )
 
-    val stage2Args = Stage2Args(
+    val stage2Args = new Stage2Args(
       new File( args.args(0) ),
       args.args.drop(1).dropWhile(_ == "direct").toVector,
       // launcher changes cause entire nailgun restart, so no need for them here
       stage2LastModified = stage2LastModified,
       logger = logger,
-      classLoaderCache = classLoaderCache,
       cache,
       cbtHome,
       new File(buildStage1.compatibilityClasspath)

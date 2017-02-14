@@ -21,7 +21,7 @@ trait Frege extends BaseBuild{
 
   private lazy val fregeLib = new FregeLib(
     logger, context.cbtLastModified, context.paths.mavenCache,
-    context.classLoaderCache, fregeVersion = fregeVersion, classifier = classifier,
+    fregeVersion = fregeVersion, classifier = classifier,
     fregeDependencies = fregeDependencies, fregeTarget = fregeTarget
   )
 
@@ -43,12 +43,11 @@ class FregeLib(
   logger: Logger,
   cbtLastModified: Long,
   mavenCache: File,
-  classLoaderCache: ClassLoaderCache,
   fregeVersion: String,
   classifier: Option[String],
   fregeDependencies: Seq[Dependency],
   fregeTarget: String
-)(implicit transientCache: java.util.Map[AnyRef,AnyRef]){
+)(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
   val lib = new Lib(logger)
   import lib._
 
@@ -63,7 +62,7 @@ class FregeLib(
     statusFile: File,
     dependencies: Seq[Dependency],
     fregeOptions: Seq[String]
-  ): Option[Long] = {
+  )(implicit classLoaderCache: ClassLoaderCache): Option[Long] = {
     val d = Dependencies(dependencies)
     val classpath = d.classpath
     val cp = classpath.string
@@ -93,7 +92,7 @@ class FregeLib(
               lib.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ sourceFiles.map(_.toString),
-                fregeDependency.classLoader(classLoaderCache)
+                fregeDependency.classLoader
               )
             }
           } catch {

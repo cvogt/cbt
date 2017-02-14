@@ -15,6 +15,7 @@ case class GitDependency(
 )(implicit val logger: Logger, classLoaderCache: ClassLoaderCache, context: Context ) extends DependencyImplementation{
   import GitDependency._
   override def lib = new Lib(logger)
+  def classLoaderCache = context.classLoaderCache
   def moduleKey = this.getClass.getName ++ "(" ++ url ++ subDirectory.map("/" ++ _).getOrElse("") ++ "#" ++ ref ++ ")"
   def transientCache = context.transientCache
   // TODO: add support for authentication via ssh and/or https

@@ -147,16 +147,16 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     lib.compile(
       context.cbtLastModified,
       sourceFiles, compileTarget, compileStatusFile, compileDependencies,
-      context.paths.mavenCache, scalacOptions, context.classLoaderCache,
+      context.paths.mavenCache, scalacOptions,
       zincVersion = zincVersion, scalaVersion = scalaVersion
     )
   }
 
-  def mainClasses: Seq[Class[_]] = exportedClasspath.files.flatMap( lib.mainClasses( _, classLoader(classLoaderCache) ) )
+  def mainClasses: Seq[Class[_]] = exportedClasspath.files.flatMap( lib.mainClasses( _, classLoader ) )
 
   def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
 
-  def runMain( className: String, args: String* ) = lib.runMain( className, args, classLoader(context.classLoaderCache) )
+  def runMain( className: String, args: String* ) = lib.runMain( className, args, classLoader )
 
   def flatClassLoader: Boolean = false
 
@@ -200,15 +200,14 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     }
 
     val scalac = new ScalaCompilerDependency(context.cbtLastModified, context.paths.mavenCache, scalaVersion)
-    lib.runMain(
+    runMain(
       "scala.tools.nsc.MainGenericRunner",
       Seq(
         "-bootclasspath",
         scalac.classpath.string,
         "-classpath",
         classpath.string
-      ) ++ context.args,
-      scalac.classLoader(classLoaderCache)
+      ) ++ context.args : _*
     )
   }
 

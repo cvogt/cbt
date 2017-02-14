@@ -57,14 +57,14 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
               // Launcher in the checkout with itself and then run it via reflection.
               val dep = new GitDependency(base, hash, Some("nailgun_launcher"))
               val ctx = managedContext.copy( cbtHome = dep.checkout )
-              dep.classLoader(classLoaderCache)
+              dep.classLoader
                 .loadClass( "cbt.NailgunLauncher" )
                 .getMethod( "getBuild", classOf[AnyRef] )
                 .invoke( null, ctx )
             }
           }.getOrElse{
             try{
-              classLoader(context.classLoaderCache)
+              classLoader
                 .loadClass(lib.buildClassName)
                 .getConstructors.head
                 .newInstance(managedContext)

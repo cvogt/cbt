@@ -4,7 +4,7 @@ import java.net._
 case class MavenResolver(
   cbtLastModified: Long, mavenCache: File, urls: URL*
 )(
-  implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]
+  implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache
 ){
   def bind( dependencies: MavenDependency* ): Seq[BoundMavenDependency]
     = dependencies.map( BoundMavenDependency(cbtLastModified,mavenCache,_,urls.to) ).to

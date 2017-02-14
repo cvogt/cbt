@@ -9,6 +9,7 @@ trait DependencyImplementation extends Dependency{
   implicit protected def logger: Logger
   protected def lib = new Stage1Lib(logger)
   implicit protected def transientCache: java.util.Map[AnyRef,AnyRef]
+  implicit protected def classLoaderCache: ClassLoaderCache
 
   /** key used by taskCache to identify different objects that represent the same logical module */
   protected def moduleKey: String
@@ -78,23 +79,29 @@ trait DependencyImplementation extends Dependency{
   }
   */
 
-  def classLoader( cache: ClassLoaderCache ): ClassLoader = {
-    /*
-    if( concurrencyEnabled ){
-      // trigger concurrent building / downloading dependencies
-      exportClasspathConcurrently
+  def flatClassLoader: Boolean = false
+
+  def classLoader: ClassLoader = {
+    if( flatClassLoader ){
+      new java.net.URLClassLoader(classpath.strings.map(f => new URL("file://" ++ f)).toArray)
+    } else {
+      /*
+      if( concurrencyEnabled ){
+        // trigger concurrent building / downloading dependencies
+        exportClasspathConcurrently
+      }
+      */
+      lib.classLoaderRecursion(
+        this,
+        (this +: transitiveDependencies).collect{
+          case d: ArtifactInfo => d 
+        }.groupBy(
+          d => (d.groupId,d.artifactId)
+        ).mapValues(_.head)
+      )
     }
-    */
-    lib.classLoaderRecursion(
-      this,
-      (this +: transitiveDependencies).collect{
-        case d: ArtifactInfo => d 
-      }.groupBy(
-        d => (d.groupId,d.artifactId)
-      ).mapValues(_.head),
-      cache // FIXME
-    )
   }
+
   // FIXME: these probably need to update outdated as well
   def classpath           : ClassPath = exportedClasspath ++ dependencyClasspath
   def dependencyClasspath : ClassPath = ClassPath(
@@ -116,11 +123,11 @@ trait DependencyImplementation extends Dependency{
 }
 
 // TODO: all this hard codes the scala version, needs more flexibility
-class ScalaCompilerDependency(cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BoundMavenDependency(cbtLastModified, mavenCache, MavenDependency("org.scala-lang","scala-compiler",version, Classifier.none), Seq(mavenCentral))
-class ScalaLibraryDependency (cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BoundMavenDependency(cbtLastModified, mavenCache, MavenDependency("org.scala-lang","scala-library",version, Classifier.none), Seq(mavenCentral))
-class ScalaReflectDependency (cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends BoundMavenDependency(cbtLastModified, mavenCache, MavenDependency("org.scala-lang","scala-reflect",version, Classifier.none), Seq(mavenCentral))
+class ScalaCompilerDependency(cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache) extends BoundMavenDependency(cbtLastModified, mavenCache, MavenDependency("org.scala-lang","scala-compiler",version, Classifier.none), Seq(mavenCentral))
+class ScalaLibraryDependency (cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache) extends BoundMavenDependency(cbtLastModified, mavenCache, MavenDependency("org.scala-lang","scala-library",version, Classifier.none), Seq(mavenCentral))
+class ScalaReflectDependency (cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache) extends BoundMavenDependency(cbtLastModified, mavenCache, MavenDependency("org.scala-lang","scala-reflect",version, Classifier.none), Seq(mavenCentral))
 
-class ScalaDependencies(cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]) extends Dependencies(
+class ScalaDependencies(cbtLastModified: Long, mavenCache: File, version: String)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache) extends Dependencies(
   Seq(
     new ScalaCompilerDependency(cbtLastModified, mavenCache, version),
     new ScalaLibraryDependency(cbtLastModified, mavenCache, version),
@@ -128,7 +135,7 @@ class ScalaDependencies(cbtLastModified: Long, mavenCache: File, version: String
   )
 )
 
-case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]) extends DependencyImplementation{
+case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   assert(paths.nonEmpty)
   def exportedClasspath = ClassPath(paths)
   override def lastModified = paths.map(_.lastModified).maxOption.getOrElse(0) // FIXME: cache this
@@ -137,7 +144,7 @@ case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(i
 }
 
 /** Allows to easily assemble a bunch of dependencies */
-case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]) extends DependencyImplementation{
+case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override def lastModified = dependencies.map(_.lastModified).maxOption.getOrElse(0)
   def moduleKey = this.getClass.getName ++ "(" ++ dependencies.map(_.moduleKey).mkString(", ") ++ ")"
   def targetClasspath = ClassPath() 
@@ -145,14 +152,14 @@ case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Lo
   override def show: String = this.getClass.getSimpleName + "( " + dependencies.map(_.show).mkString(", ") + " )"
 }
 
-case class PostBuildDependency(target: File, _dependencies: Seq[DependencyImplementation])(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]) extends DependencyImplementation{
+case class PostBuildDependency(target: File, _dependencies: Seq[DependencyImplementation])(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override final lazy val lastModified = (target++".last-success").lastModified
   def moduleKey = target.string
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(target) )
   override def dependencies = _dependencies
 }
-case class CbtDependencies(mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]){
+case class CbtDependencies(mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
   val compatibilityDependency = PostBuildDependency(compatibilityTarget, Nil)
   val cbtLastModified = (stage2Target++".last-success").lastModified
   val stage1Dependency = PostBuildDependency(
@@ -188,7 +195,7 @@ abstract class DependenciesProxy{
 class BoundMavenDependencies(
   cbtLastModified: Long, mavenCache: File, urls: Seq[URL], mavenDependencies: Seq[MavenDependency]
 )(
-  implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef]
+  implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache
 ) extends Dependencies(
   mavenDependencies.map( BoundMavenDependency(cbtLastModified,mavenCache,_,urls) )
 )
@@ -206,7 +213,7 @@ object MavenDependency{
 case class BoundMavenDependency(
   cbtLastModified: Long, mavenCache: File, mavenDependency: MavenDependency, repositories: Seq[URL]
 )(
-  implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef]
+  implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache
 ) extends ArtifactInfo with DependencyImplementation{
   def moduleKey = this.getClass.getName ++ "(" ++ mavenDependency.serialize ++ ")"
   val MavenDependency( groupId, artifactId, version, classifier ) = mavenDependency
