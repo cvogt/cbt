@@ -413,7 +413,11 @@ ${sourceFiles.sorted.mkString(" \\\n")}
 
 
   def actual(current: Dependency, latest: Map[(String,String),Dependency]) = current match {
-    case d: ArtifactInfo => latest((d.groupId,d.artifactId))
+    case d: ArtifactInfo =>
+      val key = (d.groupId,d.artifactId)
+      latest.get(key).getOrElse(
+        throw new Exception( s"This should never happend. Could not find $key in \n"++latest.map{case (k,v) => k+" -> "+v}.mkString("\n") )
+      )
     case d => d
   }
 
