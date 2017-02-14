@@ -258,6 +258,24 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   // a method that can be called only to trigger any side-effects
   final def `void` = ()
 
+  final override def transitiveDependencies: Seq[Dependency] =
+    taskCache[BaseBuild]( "transitiveDependencies" ).memoize{
+      val res = super.transitiveDependencies
+      val duplicateBuilds = res.collect{
+        case b: BaseBuild => b
+      }.groupBy(
+        b => ( b.projectDirectory, b.moduleKey )
+      ).filter( _._2.size > 1 ).mapValues(_.map(_.getClass))
+      duplicateBuilds.foreach{ case ((projectDirectory, moduleKey), classes) =>
+        assert(
+          classes.distinct.size == 1,
+          "multiple builds found for\nprojectDirectory: $projectDirectory\nmoduleKey: $moduleKey\nbut different classes: " + classes.mkString(", ")
+        )
+      }
+      res
+    }
+
+
   @deprecated("use the MultipleScalaVersions plugin instead","")
   final def crossScalaVersionsArray = Array(scalaVersion)
 }
