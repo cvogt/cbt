@@ -9,7 +9,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   // will create new instances given the context, which means operations in the
   // overrides will happen multiple times and if they are not idempotent stuff likely breaks
   def context: Context
-  def moduleKey: String = "BaseBuild("+projectDirectory.string+")"
+  def moduleKey: String = "BaseBuild("+target.string+")"
   implicit def transientCache: java.util.Map[AnyRef,AnyRef] = context.transientCache
 
   // library available to builds
