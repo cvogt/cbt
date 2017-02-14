@@ -9,15 +9,15 @@ trait Dotty extends BaseBuild{
   def dottyOptions: Seq[String] = Seq()
   override def scalaTarget: File = target ++ s"/dotty-$dottyVersion"
 
-  def dottyDependency: DependencyImplementation =
-    Resolver(mavenCentral).bindOne(
-      MavenDependency(Dotty.groupId,Dotty.artifactId,Dotty.version)
-    )
+  def dottyCompiler: DependencyImplementation = Resolver(mavenCentral).bindOne( Dotty.compilerOnMaven( dottyVersion ) )
+  def dottyLibrary: DependencyImplementation = Resolver(mavenCentral).bindOne( Dotty.libraryOnMaven( dottyVersion ) )
 
+  // this seems needed for cbt run of dotty produced artifacts
+  override def dependencies: Seq[Dependency] = Seq( dottyLibrary )
 
   private lazy val dottyLib = new DottyLib(
     logger, context.cbtLastModified, context.paths.mavenCache,
-    context.classLoaderCache, dottyDependency
+    context.classLoaderCache, dottyCompiler
   )
 
   override def compile: Option[Long] = taskCache[Dotty]("compile").memoize{
@@ -32,15 +32,16 @@ trait Dotty extends BaseBuild{
     )
 
   override def repl = dottyLib.repl(context.args, classpath)
-
-  // this seems needed for cbt run of dotty produced artifacts
-  override def dependencies: Seq[Dependency] = Seq( dottyDependency )
 }
 
 object Dotty{
-  val version: String = "0.1.1-20170203-da7d723-NIGHTLY"
   val groupId = "ch.epfl.lamp"
-  val artifactId = "dotty_2.11"
+  val version: String = "0.1.1-20170203-da7d723-NIGHTLY"
+  val libraryArtifactId = "dotty-library_2.11"
+  val compilerArtifactId = "dotty-compiler_2.11"
+  val interfacesArtifactId = "dotty-interfaces"
+  def compilerOnMaven(version: String) = MavenDependency(groupId,compilerArtifactId,version)
+  def libraryOnMaven(version: String) = MavenDependency(groupId,libraryArtifactId,version)
 }
 
 class DottyLib(
