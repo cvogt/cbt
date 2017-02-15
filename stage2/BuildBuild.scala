@@ -7,8 +7,8 @@ trait BuildBuild extends BuildBuildWithoutEssentials{
 }
 trait BuildBuildWithoutEssentials extends BaseBuild{
   assert(
-    projectDirectory.getName === "build",
-    "You can't extend BuildBuild in: " + projectDirectory + "/build"
+    projectDirectory.getName === lib.buildDirectoryName,
+    "You can't extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" + lib.buildDirectoryName
   )
 
   protected final val managedContext = context.copy(
@@ -33,12 +33,12 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
     super.dependencies :+ context.cbtDependency
   def managedBuildDirectory: java.io.File = lib.realpath( projectDirectory.parent )
   def managedBuild = taskCache[BuildBuildWithoutEssentials]("managedBuild").memoize{
-    val managedBuildFile = projectDirectory++"/build.scala"
+    val managedBuildFile = projectDirectory++("/"++lib.buildFileName)
     logger.composition("Loading build at " ++ managedBuildDirectory.toString)
     val build = (
       if( !managedBuildFile.exists ){
         throw new Exception(
-          "No file build.scala (lower case) found in " ++ projectDirectory.getPath
+          s"No file ${lib.buildFileName} (lower case) found in " ++ projectDirectory.getPath
         )
       } else {
         val contents = new String(Files.readAllBytes(managedBuildFile.toPath))
@@ -78,8 +78,8 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
     try{
       build.asInstanceOf[BuildInterface]
     } catch {
-      case e: ClassCastException if e.getMessage.contains("Build cannot be cast to cbt.BuildInterface") =>
-        throw new Exception("Your Build class needs to extend BaseBuild in: "+projectDirectory, e)
+      case e: ClassCastException if e.getMessage.contains(s"${lib.buildClassName} cannot be cast to cbt.BuildInterface") =>
+        throw new Exception(s"Your ${lib.buildClassName} class needs to extend BaseBuild in: "+projectDirectory, e)
     }
   }
   override def triggerLoopFiles = super.triggerLoopFiles ++ managedBuild.triggerLoopFiles

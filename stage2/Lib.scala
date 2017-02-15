@@ -18,6 +18,8 @@ case class Developer(id: String, name: String, timezone: String, url: URL)
 final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
   lib =>
 
+  val buildFileName = "build.scala"
+  val buildDirectoryName = "build"
   val buildClassName = "Build"
   val buildBuildClassName = "BuildBuild"
 
@@ -37,7 +39,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
 
     val start = findStartDir(directory)
 
-    val useBasicBuild = directory == start && start.getName != "build"
+    val useBasicBuild = directory == start && start.getName != buildDirectoryName
 
     try{
       if(useBasicBuild) {
@@ -54,8 +56,8 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
       else
         new cbt.BasicBuild( context.copy( workingDirectory = start ) ) with BuildBuild
     } catch {
-      case e:ClassNotFoundException if e.getMessage == "Build" =>
-        throw new Exception(s"no class Build found in " ++ start.string)
+      case e:ClassNotFoundException if e.getMessage == buildClassName =>
+        throw new Exception(s"no class ${buildClassName} found in " ++ start.string)
     }
   }
 

@@ -24,12 +24,12 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def projectDirectory: File = lib.realpath(context.workingDirectory)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   assert(
-    projectDirectory.getName =!= "build" ||
+    projectDirectory.getName =!= lib.buildDirectoryName ||
     {
       def transitiveInterfaces(cls: Class[_]): Vector[Class[_]] = cls.getInterfaces.toVector.flatMap(i => i +: transitiveInterfaces(i))
       transitiveInterfaces(this.getClass).contains(classOf[BuildBuildWithoutEssentials])
     },
-    "You need to extend BuildBuild in: " + projectDirectory + "/build"
+    s"You need to extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" ++ lib.buildDirectoryName
   )
 
   final def usage: String = lib.usage(this.getClass, show)
