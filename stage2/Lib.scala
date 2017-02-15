@@ -15,9 +15,11 @@ import scala.util._
 case class Developer(id: String, name: String, timezone: String, url: URL)
 
 /** Don't extend. Create your own libs :). */
-final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
+final class Lib(val logger: Logger) extends Stage1Lib(logger){
   lib =>
 
+  val buildFileName = "build.scala"
+  val buildDirectoryName = "build"
   val buildClassName = "Build"
   val buildBuildClassName = "BuildBuild"
 
@@ -26,18 +28,13 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
   This can either the Build itself, of if exists a BuildBuild or a BuildBuild for a BuildBuild and so on.
   */
   def loadRoot(context: Context): BuildInterface = {
-    def findStartDir(directory: File): File = {
-      val buildDir = realpath( directory ++ "/build" )
-      if(buildDir.exists) findStartDir(buildDir) else directory
-    }
-
     val directory = context.workingDirectory
 
     context.logger.composition( context.logger.showInvocation("Build.loadRoot",directory) )
 
-    val start = findStartDir(directory)
+    val start = lib.findInnerMostModuleDirectory(directory)
 
-    val useBasicBuild = directory == start && start.getName != "build"
+    val useBasicBuild = directory == start && start.getName != buildDirectoryName
 
     try{
       if(useBasicBuild) {
@@ -54,8 +51,8 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
       else
         new cbt.BasicBuild( context.copy( workingDirectory = start ) ) with BuildBuild
     } catch {
-      case e:ClassNotFoundException if e.getMessage == "Build" =>
-        throw new Exception(s"no class Build found in " ++ start.string)
+      case e:ClassNotFoundException if e.getMessage == buildClassName =>
+        throw new Exception(s"no class ${buildClassName} found in " ++ start.string)
     }
   }
 
@@ -531,5 +528,16 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger) with Scaffold{
         }
       }
     }
+  }
+
+  def findInnerMostModuleDirectory(directory: File): File = {
+    val buildDir = realpath( directory ++ ("/" ++ lib.buildDirectoryName) )
+    // do not appent buildFileName here, so that we detect empty build folders
+    if(buildDir.exists) findInnerMostModuleDirectory(buildDir) else directory
+  }
+  def findOuterMostModuleDirectory(directory: File): File = {
+    if(
+      ( directory.getParentFile ++ ("/" ++ lib.buildDirectoryName) ).exists
+    ) findOuterMostModuleDirectory(directory.getParentFile) else directory
   }
 }

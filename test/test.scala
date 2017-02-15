@@ -181,6 +181,8 @@ object Main{
       path => assert(new File(path).exists, path)
     }
 
+    ScaffoldTest.main(Array())
+
     usage("nothing")
     compile("nothing")
     //clean("nothing")
@@ -238,21 +240,28 @@ object Main{
     }
 
     {
-      val res = runCbt("forgot-extend", Seq("run"))
+      val res = runCbt("broken-build/build-class-with-wrong-arguments", Seq("run"))
       assert(!res.exit0)
-      assert(res.err contains "Build cannot be cast to cbt.BuildInterface", res.err)
+      assert(res.err contains s"Expected class ${lib.buildClassName}(val context: Context), but found different constructor", res.err)
+      assert(res.err contains s"${lib.buildClassName}(int, interface cbt.Context)", res.err)
     }
 
     {
-      val res = runCbt("no-build-file", Seq("run"))
+      val res = runCbt("broken-build/build-class-with-wrong-parent", Seq("run"))
       assert(!res.exit0)
-      assert(res.err contains "No file build.scala (lower case) found in", res.err)
+      assert(res.err contains s"You need to define a class ${lib.buildClassName} extending an appropriate super class", res.err)
     }
 
     {
-      val res = runCbt("empty-build-file", Seq("run"))
+      val res = runCbt("broken-build/no-build-file", Seq("run"))
       assert(!res.exit0)
-      assert(res.err contains "You need to define a class Build in build.scala in", res.err)
+      assert(res.err contains s"No file ${lib.buildFileName} (lower case) found", res.err)
+    }
+
+    {
+      val res = runCbt("broken-build/empty-build-file", Seq("run"))
+      assert(!res.exit0)
+      assert(res.err contains s"You need to define a class ${lib.buildClassName}", res.err)
     }
 
     {
