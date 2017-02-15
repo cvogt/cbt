@@ -59,7 +59,8 @@ object Main{
   def createBuild(
     projectDirectory: File
   ): Unit = {
-    createFile(projectDirectory, "build/build.scala", s"""import cbt._
+    createFile(projectDirectory, lib.buildDirectoryName++"/"++lib.buildFileName, s"""package cbt_build.${packageFromDirectory(projectDirectory)}
+import cbt._
 class Build(val context: Context) extends BaseBuild{
   override def dependencies =
     super.dependencies ++ // don't forget super.dependencies here for scala-library, etc.

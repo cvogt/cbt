@@ -146,35 +146,43 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     pickOne( "Which one do you want to run?", mainClasses )( _.toString )
   }
 
-  def mainClasses( targetDirectory: File, classLoader : ClassLoader ): Seq[Class[_]] = {
-    val arrayClass = classOf[Array[String]]
-    val unitClass = classOf[Unit]
-
-    listFilesRecursive(targetDirectory)
+  /** Given a directory corresponding to the root package, iterate
+      the names of all classes derived from the class files found */
+  def iterateClassNames( classesRootDirectory: File ): Seq[String] =
+    listFilesRecursive(classesRootDirectory)
       .filter(_.isFile)
       .map(_.getPath)
       .collect{
         // no $ to avoid inner classes
         case path if !path.contains("$") && path.endsWith(".class") =>
-          try{
-            classLoader.loadClass(
-              path
-                .stripSuffix(".class")
-                .stripPrefix(targetDirectory.getPath)
-                .stripPrefix(File.separator) // 1 for the slash
-                .replace(File.separator, ".")
-            )
-          } catch {
-            case e: ClassNotFoundException => null
-            case e: NoClassDefFoundError => null
-          }
-      }.filterNot(_ == null).filter(
-        _.getDeclaredMethods().exists( m =>
-          m.getName == "main"
-            && m.getParameterTypes.toList == List(arrayClass)
-            && m.getReturnType == unitClass
-        )
+          path.stripSuffix(".class")
+              .stripPrefix(classesRootDirectory.getPath)
+              .stripPrefix(File.separator) // 1 for the slash
+              .replace(File.separator, ".")
+      }
+
+  /** ignoreMissingClasses allows ignoring other classes root directories which are subdirectories of this one */
+  def iterateClasses( classesRootDirectory: File, classLoader: ClassLoader, ignoreMissingClasses: Boolean ) =
+    iterateClassNames(classesRootDirectory).map{ name =>
+      try{
+        classLoader.loadClass(name)
+      } catch {
+        case e: ClassNotFoundException if ignoreMissingClasses => null
+        case e: NoClassDefFoundError if ignoreMissingClasses => null
+      }
+    }.filterNot(ignoreMissingClasses && _ == null)
+
+  def mainClasses( classesRootDirectory: File, classLoader: ClassLoader ): Seq[Class[_]] = {
+    val arrayClass = classOf[Array[String]]
+    val unitClass = classOf[Unit]
+
+    iterateClasses( classesRootDirectory, classLoader, true ).filter(
+      _.getDeclaredMethods().exists( m =>
+        m.getName == "main"
+          && m.getParameterTypes.toList == List(arrayClass)
+          && m.getReturnType == unitClass
       )
+    )
   }
 
   implicit class ClassLoaderExtensions(classLoader: ClassLoader){
