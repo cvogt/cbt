@@ -30,7 +30,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
   def loadRoot(context: Context): BuildInterface = {
     val directory = context.workingDirectory
 
-    context.logger.composition( context.logger.showInvocation("Build.loadRoot",directory) )
+    context.logger.composition( context.logger.showInvocation("Lib.loadRoot",directory) )
 
     val start = lib.findInnerMostModuleDirectory(directory)
 
