@@ -15,8 +15,9 @@ class ToolsTasks(
   implicit val logger: Logger = lib.logger
   implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
   private def Resolver( urls: URL* ) = MavenResolver(cbtLastModified,mavenCache,urls: _*)
-  def createMain: Unit = lib.createMain( cwd )
-  def createBuild: Unit = lib.createBuild( cwd )
+  val scaffold = new Scaffold(logger)
+  def createMain: Unit = scaffold.createMain( cwd )
+  def createBuild: Unit = scaffold.createBuild( cwd )
   def gui = NailgunLauncher.main(Array(
     "0.0",
     (cbtHome / "tools" / "gui").getAbsolutePath,

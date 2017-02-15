@@ -181,6 +181,8 @@ object Main{
       path => assert(new File(path).exists, path)
     }
 
+    ScaffoldTest.main(Array())
+
     usage("nothing")
     compile("nothing")
     //clean("nothing")
