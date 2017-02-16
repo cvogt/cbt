@@ -139,7 +139,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     (
       (
         if( thisTasks.nonEmpty ){
-          s"""Methods provided by Build ${show}
+          s"""Methods provided by ${show}
 
   ${thisTasks.mkString("  ")}
 
