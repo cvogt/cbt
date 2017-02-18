@@ -106,8 +106,9 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     scalaVersion: String = scalaMajorVersion
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
-  final def DirectoryDependency(path: File) = cbt.DirectoryDependency(
-    context.copy( workingDirectory = path, args = Seq() )
+  final def DirectoryDependency(path: File, pathToNestedBuild: String*) = cbt.DirectoryDependency(
+    context.copy( workingDirectory = path ),
+    pathToNestedBuild: _*
   )
 
   def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
@@ -187,7 +188,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   def test: Any =
     lib.callReflective(
-      DirectoryDependency(projectDirectory++"/test").build,
+      DirectoryDependency(projectDirectory++"/test").dependency,
       Some("run")
     )
 
