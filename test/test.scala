@@ -68,8 +68,8 @@ object Main{
       logger.test(res.toString)
       val debugToken = "usage " ++ path ++ " "
       assertSuccess(res,debugToken)
-      assert(res.out == "", debugToken ++ res.toString)
-      assert(res.err contains usageString, debugToken ++ res.toString)
+      //assert(res.out == "", res.err.toString)
+      assert(res.out contains usageString, usageString + " not found in " ++ res.toString)
     }
     def compile(path: String)(implicit logger: Logger) = task("compile", path)
     def task(name: String, path: String)(implicit logger: Logger) = {
@@ -85,11 +85,11 @@ object Main{
       val debugToken = "\n"++lib.red("Deleting") ++ " " ++ (cbtHome ++("/test/"++path++"/target")).toPath.toAbsolutePath.toString++"\n"
       val debugToken2 = "\n"++lib.red("Deleting") ++ " " ++ (cbtHome ++("/test/"++path)).toPath.toAbsolutePath.toString++"\n"
       assertSuccess(res,debugToken)
-      assert(res.out == "", debugToken ++ " " ++ res.toString)
-      assert(res.err.contains(debugToken), debugToken ++ " " ++ res.toString)
+      assert(res.out == "", "should be empty: " + res.out)
+      assert(res.err.contains(debugToken), debugToken ++ " missing from " ++ res.err.toString)
       assert(
         !res.err.contains(debugToken2),
-        "Tried to delete too much: " ++ debugToken2 ++ " " ++ res.toString
+        "Tried to delete too much: " ++ debugToken2 ++ " found in " ++ res.err.toString
       )
       res.err.split("\n").filter(_.startsWith(lib.red("Deleting"))).foreach{ line =>
         assert(

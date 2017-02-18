@@ -41,10 +41,6 @@ object Stage2 extends Stage2Base{
     val first = lib.loadRoot( context )
     val build = first.finalBuild
 
-    def call(build: BuildInterface): ExitCode = {
-      new lib.ReflectBuild(build).callNullary(task)
-    }
-
     val res =
       if (loop) {
         // TODO: this should allow looping over task specific files, like test files as well
@@ -63,11 +59,11 @@ object Stage2 extends Stage2Base{
           case file if triggerFiles.exists(file.toString startsWith _.toString) =>
             val build = lib.loadRoot(context).finalBuild
             logger.loop(s"Re-running $task for " ++ build.show)
-            call(build)
+            lib.callReflective(build, task)
         }
         ExitCode.Success
       } else {
-        val code = call(build)
+        val code = lib.callReflective(build, task)
         logger.stage2(s"Stage2 end")
         code
       }

@@ -108,7 +108,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
   }
 
   // task reflection helpers
-  def tasks(cls:Class[_]): Map[String, Method] =
+  def taskMethods(cls:Class[_]): Map[String, Method] =
     Stream
       .iterate(cls.asInstanceOf[Class[Any]])(_.getSuperclass)
       .takeWhile(_ != null)
@@ -127,7 +127,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
           .map(m => NameTransformer.decode(m.getName) -> m)
       ).toMap
 
-  def taskNames(cls: Class[_]): Seq[String] = tasks(cls).keys.toVector.sorted
+  def taskNames(cls: Class[_]): Seq[String] = taskMethods(cls).keys.toVector.sorted
 
   def usage(buildClass: Class[_], show: String): String = {
     val baseTasks = Seq(
@@ -151,65 +151,53 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       ) ++ "\n"
   }
 
-  class ReflectBuild[T:scala.reflect.ClassTag](build: BuildInterface) extends ReflectObject(build){
-    def usage = lib.usage(build.getClass, build.show)
+  def callReflective[T <: AnyRef]( obj: T, code: Option[String] ): ExitCode = {
+    callInternal( obj, code.toSeq.flatMap(_.split("\\.").map( NameTransformer.encode )), Nil ) match {
+      case (obj, code, None) =>
+        val s = render(obj)
+        if(s.nonEmpty)
+          System.out.println(s)
+        code getOrElse ExitCode.Success
+      case (obj, code, Some(msg)) =>
+        if(msg.nonEmpty)
+          System.err.println(msg)
+        val s = render(obj)
+        if(s.nonEmpty)
+          System.err.println(s)
+        code getOrElse ExitCode.Failure
+    }
   }
-  abstract class ReflectObject[T](obj: T){
-    def usage: String
-    def callNullary( taskName: Option[String] ): ExitCode = {
+
+  private def render[T]( obj: T ): String = {
+    obj match {
+      case Some(s) => render(s)
+      case None => ""
+      case d: Dependency => lib.usage(d.getClass, d.show())
+      case c: ClassPath => c.string
+      case t:ToolsStage2.type => "Available methods: " ++ lib.taskNames(t.getClass).mkString("  ")
+      case _ => obj.toString
+    }
+  }
+
+  private def callInternal[T <: AnyRef]( obj: T, members: Seq[String], previous: Seq[String] ): (Option[Object], Option[ExitCode], Option[String]) = {
+    members.headOption.map{ taskName =>
       logger.lib("Calling task " ++ taskName.toString)
-      val ts = tasks(obj.getClass)
-      taskName.map( NameTransformer.encode ).flatMap(ts.get).map{ method =>
-        val result: Option[Any] = Option(method.invoke(obj)) // null in case of Unit
-        result.flatMap{
-          case v: Option[_] => v
-          case other => Some(other)
-        }.map{
-          value =>
-          // Try to render console representation. Probably not the best way to do this.
-          scala.util.Try( value.getClass.getDeclaredMethod("toConsole") ) match {
-            case scala.util.Success(toConsole) =>
-              println(toConsole.invoke(value))
-              ExitCode.Success
-
-            case scala.util.Failure(e) if Option(e.getMessage).getOrElse("") contains "toConsole" =>
-              value match {
-                case code if code.getClass.getSimpleName == "ExitCode" =>
-                  // FIXME: ExitCode needs to be part of the compatibility interfaces
-                  ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])
-                case b: BaseBuild =>
-                  val context = b.context.copy(args=b.context.args.drop(1))
-                  val task = b.context.args.lift(0)
-                  new ReflectBuild( b.copy(context=context) ).callNullary( task )
-                case Seq(b: BaseBuild, bs @ _*) if bs.forall(_.isInstanceOf[BaseBuild]) =>
-                  (b +: bs)
-                    .map( _.asInstanceOf[BaseBuild] )
-                    .map{ b =>
-                      val task = b.context.args.lift(0)
-                      new ReflectBuild(
-                        b.copy( context = b.context.copy(args=b.context.args.drop(1)) )
-                      ).callNullary( task )
-                    }
-                    .head
-                case other =>
-                  println( other.toString ) // no method .toConsole, using to String
-                  ExitCode.Success
-              }
-
-            case scala.util.Failure(e) =>
-              throw e
+      taskMethods(obj.getClass).get(taskName).map{ method =>
+        Option(method.invoke(obj) /* null in case of Unit */ ).map{ result => 
+          result match {
+            case code if code.getClass.getSimpleName == "ExitCode" =>
+              // FIXME: ExitCode needs to be part of the compatibility interfaces
+              (None, Some(ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])), None)
+            case Seq(bs @ _*) if bs.forall(_.isInstanceOf[BaseBuild]) =>
+              bs.map( b => callInternal(b.asInstanceOf[BaseBuild], members.tail, previous :+ taskName) ).head
+            case _ => callInternal(result, members.tail, previous :+ taskName)
           }
-        }.getOrElse(ExitCode.Success)
+        }.getOrElse( (None, None, None) )
       }.getOrElse{
-        taskName.foreach{ n =>
-          System.err.println(s"Method not found: $n")
-          System.err.println("")
-        }
-        System.err.println(usage)
-        taskName.map{ _ =>
-          ExitCode.Failure
-        }.getOrElse( ExitCode.Success )
+        ( Some(obj), None, Some("\nMethod not found: " ++ (previous :+ taskName).mkString(".") ++ "\n") )
       }
+    }.getOrElse{
+      ( Some(obj), None, None )
     }
   }
 

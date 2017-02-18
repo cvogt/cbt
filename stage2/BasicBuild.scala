@@ -186,9 +186,10 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def run: ExitCode = run( context.args: _* )
 
   def test: Any =
-    Some(new lib.ReflectBuild(
-      DirectoryDependency(projectDirectory++"/test").build
-    ).callNullary(Some("run")))
+    lib.callReflective(
+      DirectoryDependency(projectDirectory++"/test").build,
+      Some("run")
+    )
 
   def t = test
   def rt = recursiveUnsafe(Some("test"))
@@ -221,13 +222,13 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     recursiveUnsafe(context.args.lift(1))
   }
 
-  def recursiveUnsafe(taskName: Option[String]): ExitCode = {
+  def recursiveUnsafe(code: Option[String]): ExitCode = {
     recursiveSafe{
       b =>
       System.err.println(b.show)
       lib.trapExitCode{ // FIXME: trapExitCode does not seem to work here
         try{
-          new lib.ReflectBuild(b).callNullary(taskName)
+          lib.callReflective(b,code)
           ExitCode.Success
         } catch {
           case e: Throwable => println(e.getClass); throw e
