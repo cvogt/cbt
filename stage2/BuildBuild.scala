@@ -1,5 +1,6 @@
 package cbt
 import java.nio.file._
+import java.io.File
 
 trait BuildBuild extends BuildBuildWithoutEssentials{
   override def dependencies =
@@ -97,5 +98,11 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
     }
   }
   override def triggerLoopFiles = super.triggerLoopFiles ++ managedBuild.triggerLoopFiles
-  override def finalBuild: BuildInterface = if( projectDirectory == context.cwd ) this else managedBuild.finalBuild
+  @deprecated("use finalbuild(File)","")
+  override def finalBuild: BuildInterface = finalBuild( context.cwd )
+  override def finalBuild( current: File ): BuildInterface = {
+    val p = projectDirectory.getCanonicalFile
+    val c = current.getCanonicalFile
+    if( c == p ) this else managedBuild.finalBuild( current )
+  }
 }

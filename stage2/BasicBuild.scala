@@ -253,7 +253,12 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   */
 
   // ========== cbt internals ==========
+  @deprecated("use finalbuild(File)","")
   def finalBuild: BuildInterface = this
+  override def finalBuild( current: File ): BuildInterface = {
+    //assert( current.getCanonicalFile == projectDirectory.getCanonicalFile, s"$current == $projectDirectory" )
+    this
+  }
   override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
 
   // a method that can be called only to trigger any side-effects
