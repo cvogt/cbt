@@ -1,0 +1,2 @@
+package cbt_examples.multi_combined_example.sub6
+class Sub6Example

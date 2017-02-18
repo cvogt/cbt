@@ -1,0 +1,2 @@
+package cbt_examples.multi_combined_example.sub4.sub41.sub42
+class Sub4Example

@@ -1,2 +1,2 @@
-package cbt.examples.multi_combined
+package cbt_examples.multi_combined
 object SomeConcreteClass extends SomeSharedClass
