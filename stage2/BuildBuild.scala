@@ -2,6 +2,8 @@ package cbt
 import java.nio.file._
 import java.io.File
 
+class ConcreteBuildBuild(val context: Context) extends BuildBuild
+class ConcreteBuildBuildWithoutEssentials(val context: Context) extends BuildBuildWithoutEssentials
 trait BuildBuild extends BuildBuildWithoutEssentials{
   override def dependencies =
     super.dependencies :+ plugins.essentials

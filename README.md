@@ -495,3 +495,36 @@ only show first 20 lines of type errors to catch the root ones
 ```
 cbt c 2>&1 | head -n 20
 ```
+
+Inheritance Pittfalls
+---------------------
+```
+trait Shared extends BaseBuild{
+  // this lowers the type from Seq[Dependency] to Seq[DirectoryDependency]
+  override def dependencies = Seq( DirectoryDependency(...) )
+}
+class Build(...) extends Shared{
+  // this now fails because GitDependency is not a DirectoryDependency
+  override def dependencies = Seq( GitDependency(...) )
+}
+// Solution: raise the type explicitly
+trait Shared extends BaseBuild{
+  // this lowers the type from Seq[Dependency] to Seq[DirectoryDependency]
+  override def dependencies: Seq[Dependency] = Seq( DirectoryDependency(...) )
+}
+```
+
+```
+trait Shared extends BaseBuild{
+  override def dependencies: Seq[Dependency] = Seq() // removes all dependencies, does not inclide super.dependencies
+}
+trait SomePlugin extends BaseBuild{
+  // adds a dependency
+  override def dependencies: Seq[Dependency] = super.dependencies ++ Seq( baz )
+}
+class Build(...) extends Shared with SomePlugin{
+  // dependencies does now contain baz here, which can be surprising
+}
+// Solution can be being careful about the order and using traits instead of classes for mixins
+class Build(...) extends SomePlugin with Shared
+```

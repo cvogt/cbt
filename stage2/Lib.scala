@@ -47,9 +47,9 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
         || directory == (context.cbtHome ++ "/libraries/eval")
         || directory == (context.cbtHome ++ "/plugins/scalatest")
       )
-        new cbt.BasicBuild( context.copy( workingDirectory = start ) ) with BuildBuildWithoutEssentials
+        new cbt.ConcreteBuildBuildWithoutEssentials( context.copy( workingDirectory = start ) )
       else
-        new cbt.BasicBuild( context.copy( workingDirectory = start ) ) with BuildBuild
+        new cbt.ConcreteBuildBuild( context.copy( workingDirectory = start ) )
     } catch {
       case e:ClassNotFoundException if e.getMessage == buildClassName =>
         throw new Exception(s"no class ${buildClassName} found in " ++ start.string)
@@ -139,7 +139,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     (
       (
         if( thisTasks.nonEmpty ){
-          s"""Methods provided by Build ${show}
+          s"""Methods provided by ${show}
 
   ${thisTasks.mkString("  ")}
 
