@@ -16,7 +16,7 @@ case class ClassPath(files: Seq[File] = Seq()){
     nonExisting.isEmpty,
     "Classpath contains entires that don't exist on disk:\n" ++ nonExisting.mkString("\n") ++ "\nin classpath:\n"++string
   )
-  
+
   def +:(file: File) = ClassPath(file +: files)
   def :+(file: File) = ClassPath(files :+ file)
   def ++(other: ClassPath) = ClassPath(files ++ other.files)
@@ -24,5 +24,4 @@ case class ClassPath(files: Seq[File] = Seq()){
   def strings = files.map{
     f => f.string ++ ( if(f.isDirectory) "/" else "" )
   }.sorted
-  def toConsole = string
 }

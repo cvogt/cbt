@@ -106,8 +106,9 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     scalaVersion: String = scalaMajorVersion
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
 
-  final def DirectoryDependency(path: File) = cbt.DirectoryDependency(
-    context.copy( workingDirectory = path, args = Seq() )
+  final def DirectoryDependency(path: File, pathToNestedBuild: String*) = cbt.DirectoryDependency(
+    context.copy( workingDirectory = path ),
+    pathToNestedBuild: _*
   )
 
   def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
@@ -186,9 +187,10 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def run: ExitCode = run( context.args: _* )
 
   def test: Any =
-    Some(new lib.ReflectBuild(
-      DirectoryDependency(projectDirectory++"/test").build
-    ).callNullary(Some("run")))
+    lib.callReflective(
+      DirectoryDependency(projectDirectory++"/test").dependency,
+      Some("run")
+    )
 
   def t = test
   def rt = recursiveUnsafe(Some("test"))
@@ -221,13 +223,13 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     recursiveUnsafe(context.args.lift(1))
   }
 
-  def recursiveUnsafe(taskName: Option[String]): ExitCode = {
+  def recursiveUnsafe(code: Option[String]): ExitCode = {
     recursiveSafe{
       b =>
       System.err.println(b.show)
       lib.trapExitCode{ // FIXME: trapExitCode does not seem to work here
         try{
-          new lib.ReflectBuild(b).callNullary(taskName)
+          lib.callReflective(b,code)
           ExitCode.Success
         } catch {
           case e: Throwable => println(e.getClass); throw e
@@ -252,7 +254,12 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   */
 
   // ========== cbt internals ==========
+  @deprecated("use finalbuild(File)","")
   def finalBuild: BuildInterface = this
+  override def finalBuild( current: File ): BuildInterface = {
+    //assert( current.getCanonicalFile == projectDirectory.getCanonicalFile, s"$current == $projectDirectory" )
+    this
+  }
   override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
 
   // a method that can be called only to trigger any side-effects

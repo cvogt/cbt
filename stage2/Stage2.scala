@@ -4,7 +4,7 @@ import java.util._
 
 object Stage2 extends Stage2Base{
   def getBuild(context: Context) = {
-    new Lib( context.logger ).loadRoot( context ).finalBuild
+    new Lib( context.logger ).loadRoot( context ).finalBuild( context.cwd )
   }
 
   def run( args: Stage2Args ): ExitCode = {
@@ -39,11 +39,7 @@ object Stage2 extends Stage2Base{
       null
     )
     val first = lib.loadRoot( context )
-    val build = first.finalBuild
-
-    def call(build: BuildInterface): ExitCode = {
-      new lib.ReflectBuild(build).callNullary(task)
-    }
+    val build = first.finalBuild( context.cwd )
 
     val res =
       if (loop) {
@@ -61,13 +57,13 @@ object Stage2 extends Stage2Base{
             scala.util.control.Breaks.break
 
           case file if triggerFiles.exists(file.toString startsWith _.toString) =>
-            val build = lib.loadRoot(context).finalBuild
+            val build = lib.loadRoot(context).finalBuild( context.cwd )
             logger.loop(s"Re-running $task for " ++ build.show)
-            call(build)
+            lib.callReflective(build, task)
         }
         ExitCode.Success
       } else {
-        val code = call(build)
+        val code = lib.callReflective(build, task)
         logger.stage2(s"Stage2 end")
         code
       }

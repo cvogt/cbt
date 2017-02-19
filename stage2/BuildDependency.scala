@@ -15,7 +15,7 @@ trait TriggerLoop extends DependencyImplementation{
   def triggerLoopFiles: Seq[File]
 }
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
-final case class DirectoryDependency(context: Context) extends TriggerLoop{
+final case class DirectoryDependency(context: Context, pathToNestedBuild: String*) extends TriggerLoop{
   def classLoaderCache = context.classLoaderCache
   override def toString = show
   override def show = this.getClass.getSimpleName ++ "(" ++ context.workingDirectory.string ++ ")"
@@ -23,12 +23,33 @@ final case class DirectoryDependency(context: Context) extends TriggerLoop{
   lazy val logger = context.logger
   override lazy val lib: Lib = new Lib(logger)
   def transientCache = context.transientCache
-  private lazy val root = lib.loadRoot( context.copy(args=Seq()) )
-  lazy val build = root.finalBuild
+  private lazy val root = lib.loadRoot( context )
+  lazy val dependency: Dependency = {
+    def selectNestedBuild( build: Dependency, names: Seq[String], previous: Seq[String] ): Dependency = {
+      names.headOption.map{ name =>
+        if( lib.taskNames(build.getClass).contains(name) ){
+          val method = build.getClass.getMethod(name)
+          val returnType = method.getReturnType
+          if( classOf[Dependency] isAssignableFrom returnType ){
+            selectNestedBuild(
+              method.invoke(build).asInstanceOf[Dependency],
+              names.tail,
+              previous :+ name
+            )
+          } else {
+            throw new RuntimeException( s"Expected subtype of Dependency, found $returnType for  " + previous.mkString(".") + " in " + show )
+          }
+        } else {
+          throw new RuntimeException( (previous :+ name).mkString(".") + " not found in " + show )
+        }
+      }.getOrElse( build )
+    }
+    selectNestedBuild( root.finalBuild(context.workingDirectory), pathToNestedBuild, Nil )
+  }
   def exportedClasspath = ClassPath()
-  def dependencies = Seq(build)
+  def dependencies = Seq(dependency)
   def triggerLoopFiles = root.triggerLoopFiles
-  def lastModified = build.lastModified
+  def lastModified = dependency.lastModified
   def targetClasspath = ClassPath()
 }
 /*
