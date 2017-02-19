@@ -56,10 +56,13 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     }
   }
 
-  def srcJar(sourceFiles: Seq[File], artifactId: String, scalaMajorVersion: String, version: String, jarTarget: File): Option[File] = {
+  def srcJar(
+    sourceFiles: Seq[File], artifactId: String, scalaMajorVersion: String, version: String, jarTarget: File,
+    filter: File => Boolean, stripBase: File
+  ): Option[File] = {
     lib.jarFile(
       jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-sources.jar"),
-      sourceFiles
+      sourceFiles, filter=filter, stripBase=Some( stripBase )
     )
   }
 
@@ -268,11 +271,15 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     for {
       base <- sources.filter(_.exists).map(lib.realpath)
       file <- lib.listFilesRecursive(base) if file.isFile && sourceFileFilter(file)
-    } yield file    
+    } yield file
   }
 
   // FIXME: for some reason it includes full path in docs
-  def jarFile( jarFile: File, files: Seq[File], mainClass: Option[String] = None ): Option[File] = {
+  def jarFile(
+    jarFile: File, files: Seq[File], mainClass: Option[String] = None,
+    filter: File => Boolean = _ => true, stripBase: Option[File] = None
+  ): Option[File] = {
+    val stripBaseCanonical = stripBase
     Files.deleteIfExists(jarFile.toPath)
     if( files.isEmpty ){
       None
@@ -291,9 +298,10 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
           base <- files.filter(_.exists).map(realpath)
           file <- listFilesRecursive(base) if file.isFile
         } yield {
-            val name = if(base.isDirectory){
-              file.toString stripPrefix (base.toString ++ File.separator)
-            } else file.toString
+            val strip = Some( base ).filter(_.isDirectory) ++ stripBaseCanonical
+            val name = strip.foldLeft( file.getCanonicalPath )(
+              (f, prefix) => f.stripPrefix( prefix.getCanonicalPath ++ File.separator )
+            )
             val entry = new JarEntry( name )
             entry.setTime(file.lastModified)
             jar.putNextEntry(entry)
