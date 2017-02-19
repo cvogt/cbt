@@ -11,12 +11,19 @@ object GitDependency{
   val GitUrl = "(git:|https:|file:/)//([^/]+)/(.+)".r
 }
 case class GitDependency(
-  url: String, ref: String, subDirectory: Option[String] = None // example: git://github.com/cvogt/cbt.git#<some-hash>
+  url: String, ref: String, subDirectory: Option[String] = None, // example: git://github.com/cvogt/cbt.git#<some-hash>
+  pathToNestedBuild: Seq[String] = Seq()
 )(implicit val logger: Logger, classLoaderCache: ClassLoaderCache, context: Context ) extends DependencyImplementation{
   import GitDependency._
   override def lib = new Lib(logger)
   def classLoaderCache = context.classLoaderCache
-  def moduleKey = this.getClass.getName ++ "(" ++ url ++ subDirectory.map("/" ++ _).getOrElse("") ++ "#" ++ ref ++ ")"
+  def moduleKey = (
+    this.getClass.getName
+    ++ "(" ++ url ++ subDirectory.map("/" ++ _).getOrElse("") ++ "#" ++ ref
+    ++ ", "
+    ++ pathToNestedBuild.mkString(", ")
+    ++ ")"
+  )
   def transientCache = context.transientCache
   // TODO: add support for authentication via ssh and/or https
   // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
@@ -69,7 +76,8 @@ case class GitDependency(
     DirectoryDependency(
       context.copy(
         workingDirectory = checkout ++ subDirectory.map("/" ++ _).getOrElse("")
-      )
+      ),
+      pathToNestedBuild: _*
     )
   }
 
