@@ -15,7 +15,7 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
   }
 
   def srcJar: Option[File] = taskCache[PackageJars]("srcJar").memoize{
-    lib.srcJar( sourceFiles, artifactId, scalaMajorVersion, version, scalaTarget )
+    lib.srcJar( sources, artifactId, scalaMajorVersion, version, scalaTarget, sourceFileFilter, projectDirectory )
   }
 
   def docJar: Option[File] = taskCache[PackageJars]("docJar").memoize{
