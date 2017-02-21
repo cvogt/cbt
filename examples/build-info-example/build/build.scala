@@ -2,7 +2,7 @@ import cbt._
 import java.nio.file.Files._
 
 class Build(val context: Context) extends PackageJars{
-  def name = "build-info-example"
+  override def name = "build-info-example"
   def groupId = "cbt.examples"
   override def defaultScalaVersion = "2.11.8"
   def version = "0.1"

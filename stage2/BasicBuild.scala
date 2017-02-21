@@ -41,7 +41,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def defaultScalaVersion: String = constants.scalaVersion
   final def scalaVersion = context.scalaVersion getOrElse defaultScalaVersion
   final def scalaMajorVersion: String = lib.libMajorVersion(scalaVersion)
-  def projectName = "default"
+  def name = projectDirectory.getName
 
   // TODO: get rid of this in favor of newBuild.
   // currently blocked on DynamicOverride being not parts

@@ -1,6 +1,6 @@
 import cbt._
 class Build(val context: Context) extends ScalaJsBuild{
-  override def projectName = "my-project"
+  override def name = "my-project"
 
   override def sources = super.sources ++ Seq(
     projectDirectory.getParentFile ++ "/shared"
@@ -14,5 +14,5 @@ class Build(val context: Context) extends ScalaJsBuild{
   )
 
   override def scalaJsTargetFile =
-    projectDirectory.getParentFile ++ ("/server/public/generated/" ++ projectName ++ ".js")
+    projectDirectory.getParentFile ++ ("/server/public/generated/" ++ name ++ ".js")
 }

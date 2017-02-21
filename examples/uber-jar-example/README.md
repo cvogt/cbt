@@ -4,7 +4,7 @@ This example shows how to build uber jar(aka fat jar) with `UberJar` plugin.
 
 In order to create uber jar: execute `cbt uberJar`. Produced jar will be in target folder.
 
-By default, jar name is your `cbt projectName`, you can provide other name via overriding `uberJarName` task.
+By default, jar name is your `cbt name`, you can provide other name via overriding `uberJarName` task.
 
 By default, main class is `Main`. You can provide custom main class via overriding `uberJarMainClass` task.
 

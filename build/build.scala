@@ -16,7 +16,7 @@ class Build(val context: Context) extends Publish{
   def groupId: String = "org.cvogt"
 
   def version: String = "0.9"
-  def name: String = "cbt"
+  override def name: String = "cbt"
 
   // Members declared in cbt.Publish
   def description: String = "Fast, intuitive Build Tool for Scala"
