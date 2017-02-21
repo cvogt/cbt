@@ -38,6 +38,16 @@ object `package`{
        case e:java.lang.UnsupportedOperationException if e.getMessage === "empty.max" => None
      }
   }
+  implicit class ClassLoaderExtensions(classLoader: ClassLoader){
+    def canLoad(className: String) = {
+      try{
+        classLoader.loadClass(className)
+        true
+      } catch {
+        case e: ClassNotFoundException => false
+      }
+    }
+  }
   implicit class BuildInterfaceExtensions(build: BuildInterface){
     import build._
     // TODO: if every build has a method triggers a callback if files change
