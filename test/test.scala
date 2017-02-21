@@ -338,7 +338,7 @@ object Main{
     }
 
     {
-      val res = runCbt("../libraries/eval", Seq("test"))
+      val res = runCbt("../libraries/eval", Seq("test.run"))
       assert(res.exit0)
       assert(res.out.contains("All tests passed"), res.out)
     }

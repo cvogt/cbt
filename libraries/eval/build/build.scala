@@ -4,11 +4,11 @@ class Build(val context: Context) extends BaseBuild{
   override def dependencies = super.dependencies :+
     new ScalaCompilerDependency( context.cbtLastModified, context.paths.mavenCache, scalaVersion )
 
-  override def test: Option[ExitCode] = Some{
+  override def test: Dependency = {
     new BasicBuild(context.copy(workingDirectory = projectDirectory ++ "/test")) with ScalaTest{
       override def dependencies = super.dependencies ++ Seq(
         DirectoryDependency(projectDirectory++"/..")
       )
-    }.run
-  }  
+    }
+  }
 }

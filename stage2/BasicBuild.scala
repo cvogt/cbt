@@ -187,16 +187,22 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   }
 
   def run: ExitCode = run( context.args: _* )
-
-  def test: Any =
-    lib.callReflective(
-      DirectoryDependency(projectDirectory++"/test").dependency,
-      Some("run"),
-      context
-    )
-
-  def t = test
-  def rt = recursiveUnsafe(Some("test"))
+  def test: Dependency = {
+    val testDirectory = projectDirectory / "test"
+    if( (testDirectory / lib.buildDirectoryName / lib.buildFileName).exists ){
+      // FIYME: maybe we can make loadRoot(...).finalBuild an Option some
+      DirectoryDependency( testDirectory ).dependency
+    } else {
+      new BasicBuild( context.copy(workingDirectory = testDirectory) ){
+        override def dependencies = Seq(
+          DirectoryDependency(projectDirectory++"/..")
+        )
+        def apply = run
+      }
+    }
+  }
+  def t: Any = lib.callReflective( test, Some("run"), context )
+  def rt = recursiveUnsafe(Some("test.run"))
 
   def recursiveSafe(_run: BuildInterface => Any): ExitCode = {
     val builds = (this +: transitiveDependencies).collect{
