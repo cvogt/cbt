@@ -62,7 +62,7 @@ object Main{
     createFile(projectDirectory, lib.buildDirectoryName++"/"++lib.buildFileName, s"""package cbt_build.${packageFromDirectory(projectDirectory)}
 import cbt._
 class Build(val context: Context) extends BaseBuild{
-  override def dependencies =
+  override def dependencies = (
     super.dependencies ++ // don't forget super.dependencies here for scala-library, etc.
     Seq(
       // source dependency
@@ -78,6 +78,7 @@ class Build(val context: Context) extends BaseBuild{
       // "com.lihaoyi" %% "ammonite-ops" % "0.5.5"
       // "com.lihaoyi" % "ammonite-ops_2.11" % "0.5.5"
     )
+  )
 }
 """
     )
