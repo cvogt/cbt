@@ -261,7 +261,7 @@ case class BoundMavenDependency(
   import scala.collection.JavaConversions._
 
   private def resolve(suffix: String, hash: Option[String], useClassifier: Boolean): File = {
-    logger.resolver("Resolving "+this)
+    logger.resolver(lib.blue("Resolving ")+this)
     val file = mavenCache ++ basePath(useClassifier) ++ "." ++ suffix
     val urls = repositories.map(_ ++ basePath(useClassifier) ++ "." ++ suffix)
     urls.find(
