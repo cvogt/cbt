@@ -34,7 +34,7 @@ class BaseLib{
 
 class Stage1Lib( logger: Logger ) extends BaseLib{
   lib =>
-  implicit val implicitLogger: Logger = logger
+  implicit protected val implicitLogger: Logger = logger
 
   def libMajorVersion(libFullVersion: String) = libFullVersion.split("\\.").take(2).mkString(".")
 

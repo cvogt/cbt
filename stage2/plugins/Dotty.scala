@@ -16,7 +16,7 @@ trait Dotty extends BaseBuild{
   override def dependencies: Seq[Dependency] = Seq( dottyLibrary )
 
   private lazy val dottyLib = new DottyLib(
-    logger, context.cbtLastModified, context.paths.mavenCache, dottyCompiler
+    context.cbtLastModified, context.paths.mavenCache, dottyCompiler
   )
 
   def compileJavaFirst: Boolean = false
@@ -69,11 +69,10 @@ object Dotty{
 }
 
 class DottyLib(
-  logger: Logger,
   cbtLastModified: Long,
   mavenCache: File,
   dottyCompiler: DependencyImplementation
-)(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
+)(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache, logger: Logger){
   val lib = new Lib(logger)
   import lib._
 
