@@ -331,6 +331,11 @@ object Main{
       assert(res.exit0)
       assert(res.out startsWith "Bar2: Some(DynamicBuild", res.out ++ res.err)
     }
+    {
+      val res = runCbt("../examples/cross-build-example", Seq("cross.scalaVersion"))
+      assert(res.exit0)
+      assert(res.out == "2.10.5\n2.11.7\n", res.out ++ res.err)
+    }
 
     {
       val res = runCbt("../libraries/eval", Seq("test"))
