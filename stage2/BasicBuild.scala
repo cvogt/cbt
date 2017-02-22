@@ -153,9 +153,11 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     )
   }
 
+  def cleanFiles: Seq[File] = Seq( target )
+
   def clean: ExitCode = {
     lib.clean(
-      target,
+      cleanFiles,
       context.args.contains("force"),
       context.args.contains("dry-run"),
       context.args.contains("list"),
