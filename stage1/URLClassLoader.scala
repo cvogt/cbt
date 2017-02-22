@@ -8,6 +8,10 @@ case class URLClassLoader( classPath: ClassPath, parent: ClassLoader )( implicit
     classPath.strings.map( p => new URL("file:" ++ p) ).toArray,
     parent
   ) with CachingClassLoader{
+    override def loadClass(name: String) = {
+      logger.log("classloader","loadClass " + name)
+      super.loadClass(name)
+    }
   val id = Math.abs( new java.util.Random().nextInt )
   override def toString = (
     scala.Console.BLUE
