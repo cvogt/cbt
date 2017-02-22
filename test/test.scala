@@ -216,8 +216,8 @@ object Main{
       task("run","../examples/dotty-example")
       task("doc","../examples/dotty-example")
     }
-    task("fastOptJS","../examples/scalajs-react-example/js")
-    task("fullOptJS","../examples/scalajs-react-example/js")
+    task("compile","../examples/scalajs-react-example/js")
+    task("fullOpt.compile","../examples/scalajs-react-example/js")
     compile("../examples/uber-jar-example")
     
     {

@@ -23,14 +23,14 @@ case class ScalaJsLib(
   )
 
   def link(
-    mode: ScalaJsOutputMode, outputPath: File,
+    outputPath: File,
     scalaJsOptions: Seq[String], entriesToLink: Seq[File]
   ) = {
     val scalaJsCliDep = dep( "scalajs-cli_"++lib.libMajorVersion(scalaVersion) )
+    outputPath.getParentFile.mkdirs
     lib.runMain(
       "org.scalajs.cli.Scalajsld",
       Seq(
-        mode.option,
         "--sourceMap",
         "--stdlib", s"${scalaJsLibraryDependency.jar.getAbsolutePath}",
         "--output", outputPath.string

@@ -210,7 +210,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     )
   }
 
-  def clean(target: File, force: Boolean, dryRun: Boolean, list: Boolean, help: Boolean): ExitCode = {
+  def clean(targets: Seq[File], force: Boolean, dryRun: Boolean, list: Boolean, help: Boolean): ExitCode = {
     def depthFirstFileStream(file: File): Vector[File] = {
       (
         if (file.isDirectory) {
@@ -218,7 +218,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
         } else Vector()
       ) :+ file
     }
-    lazy val files = depthFirstFileStream( target )
+    lazy val files = targets.filter(_.exists).flatMap( depthFirstFileStream )
 
     if( help ){
       System.err.println( s"""
@@ -227,8 +227,8 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
   dry-run   does not actually delete files
 """ )
       ExitCode.Success
-    } else if (!target.exists){
-      System.err.println( "Nothing to clean. Does not exist: " ++ target.string )
+    } else if (files.isEmpty){
+      System.err.println( "Nothing to clean." )
       ExitCode.Success
     } else if( list ){
       files.map(_.string).foreach( println )
@@ -237,7 +237,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       val performDelete = (
         force || {
           val console = consoleOrFail("Use `cbt direct clean` or `cbt clean help`")
-          System.err.println("Files to be deleted:\n\n")
+          System.err.println("Files to be deleted:\n")
           files.foreach( System.err.println )
           System.err.println("")
           System.err.print("To delete the above files type 'delete': ")
