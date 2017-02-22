@@ -13,3 +13,4 @@ node_modules
 *fastopt*
 *fullopt*
 examples/dotty-example/_site
+examples/scalajs-plain-example/server/public/generated
