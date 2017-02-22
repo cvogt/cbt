@@ -1,0 +1,5 @@
+
+
+## Related gitter chats
+### Why CBT uses inheritance
+https://gitter.im/cvogt/cbt?at=58a95663de50490822e869e5
