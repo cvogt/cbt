@@ -154,8 +154,8 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       ) ++ "\n"
   }
 
-  def callReflective[T <: AnyRef]( obj: T, code: Option[String] ): ExitCode = {
-    callInternal( obj, code.toSeq.flatMap(_.split("\\.").map( NameTransformer.encode )), Nil ) match {
+  def callReflective[T <: AnyRef]( obj: T, code: Option[String], context: Context ): ExitCode = {
+    callInternal( obj, code.toSeq.flatMap(_.split("\\.").map( NameTransformer.encode )), Nil, context ) match {
       case (obj, code, None) =>
         val s = render(obj)
         if(s.nonEmpty)
@@ -182,7 +182,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     }
   }
 
-  private def callInternal[T <: AnyRef]( obj: T, members: Seq[String], previous: Seq[String] ): (Option[Object], Option[ExitCode], Option[String]) = {
+  private def callInternal[T <: AnyRef]( obj: T, members: Seq[String], previous: Seq[String], context: Context ): (Option[Object], Option[ExitCode], Option[String]) = {
     members.headOption.map{ taskName =>
       logger.lib("Calling task " ++ taskName.toString)
       taskMethods(obj.getClass).get(taskName).map{ method =>
@@ -192,12 +192,25 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
               // FIXME: ExitCode needs to be part of the compatibility interfaces
               (None, Some(ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])), None)
             case Seq(bs @ _*) if bs.forall(_.isInstanceOf[BaseBuild]) =>
-              bs.map( b => callInternal(b.asInstanceOf[BaseBuild], members.tail, previous :+ taskName) ).head
-            case _ => callInternal(result, members.tail, previous :+ taskName)
+              bs.map( b => callInternal(b.asInstanceOf[BaseBuild], members.tail, previous :+ taskName, context) ).head
+            case _ => callInternal(result, members.tail, previous :+ taskName, context)
           }
         }.getOrElse( (None, None, None) )
       }.getOrElse{
-        ( Some(obj), None, Some("\nMethod not found: " ++ (previous :+ taskName).mkString(".") ++ "\n") )
+        val folder = NameTransformer.decode(taskName)
+        if( context != null && (context.workingDirectory / folder).exists ){
+          val newContext = context.copy( workingDirectory = context.workingDirectory / folder )
+          callInternal(
+            lib.loadRoot(
+              newContext
+            ).finalBuild,
+            members.tail,
+            previous,
+            newContext
+          )
+        } else {
+          ( Some(obj), None, Some("\nMethod not found: " ++ (previous :+ taskName).mkString(".") ++ "\n") )
+        }
       }
     }.getOrElse{
       ( Some(obj), None, None )

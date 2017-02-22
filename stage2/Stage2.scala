@@ -59,11 +59,11 @@ object Stage2 extends Stage2Base{
           case file if triggerFiles.exists(file.toString startsWith _.toString) =>
             val build = lib.loadRoot(context).finalBuild( context.cwd )
             logger.loop(s"Re-running $task for " ++ build.show)
-            lib.callReflective(build, task)
+            lib.callReflective(build, task, context)
         }
         ExitCode.Success
       } else {
-        val code = lib.callReflective(build, task)
+        val code = lib.callReflective(build, task, context)
         logger.stage2(s"Stage2 end")
         code
       }

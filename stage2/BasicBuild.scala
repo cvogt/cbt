@@ -189,7 +189,8 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def test: Any =
     lib.callReflective(
       DirectoryDependency(projectDirectory++"/test").dependency,
-      Some("run")
+      Some("run"),
+      context
     )
 
   def t = test
@@ -229,7 +230,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
       System.err.println(b.show)
       lib.trapExitCode{ // FIXME: trapExitCode does not seem to work here
         try{
-          lib.callReflective(b,code)
+          lib.callReflective(b,code,context)
           ExitCode.Success
         } catch {
           case e: Throwable => println(e.getClass); throw e

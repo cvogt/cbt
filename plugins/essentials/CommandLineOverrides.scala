@@ -9,7 +9,8 @@ trait CommandLineOverrides extends DynamicOverrides{
       )( s"""
         ${context.args.lift(0).getOrElse("")}
       """ ),
-      context.args.lift(1) orElse Some("void")
+      context.args.lift(1) orElse Some("void"),
+      context
     )
   }
   def eval = {
@@ -19,7 +20,8 @@ trait CommandLineOverrides extends DynamicOverrides{
           args = ( context.args.lift(0).map("println{ "+_+" }") ).toSeq
         )
       ){""},
-      Some("with")
+      Some("with"),
+      context
     )
   }
 }
