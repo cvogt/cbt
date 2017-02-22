@@ -2,7 +2,7 @@ package cbt
 import java.io.File
 import java.net.URL
 
-trait ScalaJsBuild extends BaseBuild {
+trait ScalaJsBuild extends DynamicOverrides{
   final protected val scalaJsLib = ScalaJsLib(
     scalaJsVersion, scalaVersion, context.cbtLastModified, context.paths.mavenCache
   )
@@ -21,28 +21,23 @@ trait ScalaJsBuild extends BaseBuild {
     def %%%(artifactId: String) = new DependencyBuilder2(
       groupId, artifactId + artifactIdSuffix, Some(scalaMajorVersion))
   }
-  
-  private def link(mode: ScalaJsOutputMode, outputPath: File) = scalaJsLib.link(
-    mode, outputPath, scalaJsOptions,
-    target +: dependencies.collect{case d: BoundMavenDependency => d.jar}
-  )
+
+  override def compile = {
+    super.compile
+    scalaJsLib.link(
+      scalaJsTargetFile, scalaJsOptions, target +: dependencies.collect{case d: BoundMavenDependency => d.jar}
+    )
+    None // FIXME: we need to rethink the concept of a "compile" task I think. There is no time to return here.
+  }
 
   def scalaJsOptions: Seq[String] = Seq()
-  def scalaJsOptionsFastOpt: Seq[String] = scalaJsOptions
-  def scalaJsOptionsFullOpt: Seq[String] = scalaJsOptions
 
-  private def output(mode: ScalaJsOutputMode) = target ++ s"/$projectName-${mode.fileSuffix}.js"
-  protected def fastOptJSFile: File = output(FastOptJS)
-  protected def fullOptJSFile: File = output(FullOptJS)
+  /** Where to put the generated js file */
+  def scalaJsTargetFile: File
 
-  def fastOptJS = {
-    compile
-    link(FastOptJS, fastOptJSFile)
-    fastOptJSFile
-  }
-  def fullOptJS = {
-    compile
-    link(FullOptJS, fullOptJSFile)
-    fullOptJSFile
-  }
+  override def cleanFiles = super.cleanFiles :+ scalaJsTargetFile :+ (scalaJsTargetFile ++ ".map")
+
+  def fullOpt = newBuild[ScalaJsBuild]("""
+    override def scalaJsOptions = "--fullOpt" +: super.scalaJsOptions
+  """)
 }

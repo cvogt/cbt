@@ -16,7 +16,6 @@ class Build(val context: Context) extends ScalaJsBuild{
       )
   )
 
-  override protected def fastOptJSFile = {
-    projectDirectory.getParentFile ++ "/server/public" ++ ("/"++super.fastOptJSFile.getName)
-  }
+  override def scalaJsTargetFile =
+    projectDirectory.getParentFile ++ ("/server/public/generated/" ++ projectName ++ ".js")
 }
