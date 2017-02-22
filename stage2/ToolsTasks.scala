@@ -30,7 +30,7 @@ class ToolsTasks(
       args(1).split(",").toVector.map{
         d =>
           val v = d.split(":")
-          Resolver(mavenCentral).bindOne(MavenDependency(v(0),v(1),v(2))).classpath
+          Resolver(mavenCentral, sonatypeSnapshots).bindOne(MavenDependency(v(0),v(1),v(2))).classpath
       }
     )
   }

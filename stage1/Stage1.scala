@@ -40,12 +40,11 @@ class Stage2Args(
   val cwd: File,
   val args: Seq[String],
   val stage2LastModified: Long,
-  val logger: Logger,
   val cache: File,
   val cbtHome: File,
   val compatibilityTarget: File
 )(
-  implicit val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache
+  implicit val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache, val logger: Logger
 ){
   val persistentCache = classLoaderCache.hashMap
 }
@@ -61,9 +60,8 @@ object Stage1{
     val (cbtLastModified, classLoader) = buildStage2(
       buildStage1,
       context.cbtHome,
-      context.cache,
-      logger
-    )(context.transientCache, new ClassLoaderCache( context.persistentCache ))
+      context.cache
+    )(context.transientCache, new ClassLoaderCache( context.persistentCache ), logger)
 
     classLoader
       .loadClass("cbt.Stage2")
@@ -77,8 +75,8 @@ object Stage1{
   }
 
   def buildStage2(
-    buildStage1: BuildStage1Result, cbtHome: File, cache: File, logger: Logger
-  )(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache): (Long, ClassLoader) = {
+    buildStage1: BuildStage1Result, cbtHome: File, cache: File
+  )(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache, logger: Logger): (Long, ClassLoader) = {
 
     import buildStage1._
 
@@ -162,20 +160,19 @@ object Stage1{
     persistentCache: java.util.Map[AnyRef,AnyRef]
   ): Int = {
     val args = Stage1ArgsParser(_args.toVector)
-    val logger = new Logger(args.enabledLoggers, buildStage1.start)
+    implicit val logger = new Logger(args.enabledLoggers, buildStage1.start)
     logger.stage1(s"Stage1 start")
 
     implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
     implicit val classLoaderCache = new ClassLoaderCache( persistentCache )
 
-    val (stage2LastModified, classLoader) = buildStage2( buildStage1, cbtHome, cache, logger )
+    val (stage2LastModified, classLoader) = buildStage2( buildStage1, cbtHome, cache )
 
     val stage2Args = new Stage2Args(
       new File( args.args(0) ),
       args.args.drop(1).dropWhile(_ == "direct").toVector,
       // launcher changes cause entire nailgun restart, so no need for them here
       stage2LastModified = stage2LastModified,
-      logger = logger,
       cache,
       cbtHome,
       new File(buildStage1.compatibilityClasspath)

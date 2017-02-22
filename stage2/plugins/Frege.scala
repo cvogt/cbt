@@ -20,7 +20,7 @@ trait Frege extends BaseBuild{
   override def scalaTarget: File = target ++ s"/frege-$fregeVersion"
 
   private lazy val fregeLib = new FregeLib(
-    logger, context.cbtLastModified, context.paths.mavenCache,
+    context.cbtLastModified, context.paths.mavenCache,
     fregeVersion = fregeVersion, classifier = classifier,
     fregeDependencies = fregeDependencies, fregeTarget = fregeTarget
   )
@@ -40,14 +40,13 @@ trait Frege extends BaseBuild{
 }
 
 class FregeLib(
-  logger: Logger,
   cbtLastModified: Long,
   mavenCache: File,
   fregeVersion: String,
   classifier: Option[String],
   fregeDependencies: Seq[Dependency],
   fregeTarget: String
-)(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
+)(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache, logger: Logger){
   val lib = new Lib(logger)
   import lib._
 
