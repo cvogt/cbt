@@ -5,6 +5,6 @@ object ToolsStage2 extends Stage2Base{
     val args = _args.args.dropWhile(Seq("tools","direct") contains _)
     val lib = new Lib(_args.logger)
     val toolsTasks = new ToolsTasks(lib, args, _args.cwd, _args.cache, _args.cbtHome, _args.stage2LastModified)(_args.classLoaderCache)
-    lib.callReflective(toolsTasks, args.lift(0))
+    lib.callReflective(toolsTasks, args.lift(0), null)
   }
 }
