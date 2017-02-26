@@ -55,7 +55,7 @@ final public class ClassLoaderCache{
     for( Object key: hashMap.keySet() ){
       if( key instanceof String )
         res.append(
-          join( "\n", key.toString().split(":") ) + " -> " + hashMap.get( hashMap.get(key) )
+          mkString( "\n", key.toString().split(":") ) + " -> " + hashMap.get( hashMap.get(key) )
           + "\n\n"
         );
     }
