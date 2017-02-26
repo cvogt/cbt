@@ -12,7 +12,10 @@ import java.util.{Set=>_,Map=>_,List=>_,_}
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
 // CLI interop
-case class ExitCode(integer: Int)
+case class ExitCode(integer: Int){
+  def ||( other: => ExitCode ) = if( this == ExitCode.Success ) this else other
+  def &&( other: => ExitCode ) = if( this != ExitCode.Success ) this else other
+}
 object ExitCode{
   val Success = ExitCode(0)
   val Failure = ExitCode(1)
