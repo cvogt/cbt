@@ -229,4 +229,10 @@ public class Stage0Lib{
     copy[array.length] = item;
     return copy;
   }
+
+  public static String[] concat( String[] left, String[] right ){
+    String[] result = Arrays.copyOf(left, left.length + right.length);
+    System.arraycopy(right, 0, result, left.length, right.length);
+    return result;
+  }
 }
