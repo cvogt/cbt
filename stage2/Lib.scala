@@ -192,7 +192,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
             case code if code.getClass.getSimpleName == "ExitCode" =>
               // FIXME: ExitCode needs to be part of the compatibility interfaces
               (None, Some(ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])), None)
-            case Seq(bs @ _*) if bs.forall(_.isInstanceOf[BaseBuild]) =>
+            case Seq(b, bs @ _*) if (b +: bs).forall(_.isInstanceOf[BaseBuild]) =>
               bs.map( b => callInternal(b.asInstanceOf[BaseBuild], members.tail, previous :+ taskName, context) ).head
             case _ => callInternal(result, members.tail, previous :+ taskName, context)
           }
