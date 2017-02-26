@@ -74,7 +74,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
         try{
           Files.copy(stream, incomplete, StandardCopyOption.REPLACE_EXISTING)
         } finally {
-          stream.close()
+          stream.close
         }
         sha1.foreach{
           hash =>
