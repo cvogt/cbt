@@ -89,6 +89,10 @@ trait DependencyImplementation extends Dependency{
 
   def run( args: String* ): ExitCode = {
     runClass.map( runMain( _, args: _* ) ).getOrElse{
+      // FIXME: this just doing nothing when class is not found has been repeatedly
+      // surprising. Let's try to make this more visible than just logging an error.
+      // Currently blocked on task `recursive` trying every subbuild and would error
+      // for all that don't have a run class. Maybe that's ok actually.
       logger.task( "No main class found for " ++ show )
       ExitCode.Success
     }
