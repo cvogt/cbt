@@ -2,6 +2,7 @@ package cbt
 import java.io.File
 import java.net.URL
 
+// TODO: maybe move this into stage2 to avoid having to call zinc separately for this as a plugin
 trait ScalaJsBuild extends DynamicOverrides{
   final protected val scalaJsLib = ScalaJsLib(
     scalaJsVersion, scalaVersion, context.cbtLastModified, context.paths.mavenCache

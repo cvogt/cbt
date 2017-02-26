@@ -25,6 +25,7 @@ final case class DirectoryDependency(context: Context, pathToNestedBuild: String
   def transientCache = context.transientCache
   private lazy val root = lib.loadRoot( context )
   lazy val dependency: Dependency = {
+    // TODO: move this into finalBuild probably
     def selectNestedBuild( build: Dependency, names: Seq[String], previous: Seq[String] ): Dependency = {
       names.headOption.map{ name =>
         if( lib.taskNames(build.getClass).contains(name) ){
