@@ -140,18 +140,15 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     ).flatMap(lib.taskNames).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks
     (
-      (
+      s"Methods provided by $show\n\n"
+      ++ (
         if( thisTasks.nonEmpty ){
-          s"""Methods provided by ${show}
-
-  ${thisTasks.mkString("  ")}
-
-"""
-        } else ""
-      ) ++ s"""Methods provided by CBT (but possibly overwritten)
-
-  ${baseTasks.mkString("  ")}"""
-      ) ++ "\n"
+          thisTasks.mkString("  ") ++ "\n\n"
+        } else "<none>"
+      )
+      ++ s"\n\nMethods provided by CBT (but possibly overwritten)\n\n"
+      ++ baseTasks.mkString("  ") + "\n"
+    )
   }
 
   def callReflective[T <: AnyRef]( obj: T, code: Option[String], context: Context ): ExitCode = {
