@@ -178,6 +178,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       case d: Dependency => lib.usage(d.getClass, d.show())
       case c: ClassPath => c.string
       case t:ToolsStage2.type => "Available methods: " ++ lib.taskNames(t.getClass).mkString("  ")
+      case ExitCode(int) => System.err.println(int); System.exit(int); ???
       case _ => obj.toString
     }
   }
