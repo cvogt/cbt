@@ -32,7 +32,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     s"You need to extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" ++ lib.buildDirectoryName
   )
 
-  final def usage: String = lib.usage(this.getClass, show)
+  final def help: String = lib.usage(this.getClass, show)
 
   final def taskNames: String = lib.taskNames(this.getClass).sorted.mkString("\n")
 
