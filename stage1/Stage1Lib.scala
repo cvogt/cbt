@@ -86,12 +86,6 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     }
   }
 
-  def listFilesRecursive(f: File): Seq[File] = {
-    f +: (
-      if( f.isDirectory ) f.listFiles.flatMap(listFilesRecursive).toVector else Seq[File]()
-    )
-  }
-
   // ========== compilation / execution ==========
 
   def runMain( cls: String, args: Seq[String], classLoader: ClassLoader, fakeInstance: Boolean = false ): ExitCode = {
@@ -149,7 +143,8 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
   /** Given a directory corresponding to the root package, iterate
       the names of all classes derived from the class files found */
   def iterateClassNames( classesRootDirectory: File ): Seq[String] =
-    listFilesRecursive(classesRootDirectory)
+    classesRootDirectory
+      .listRecursive
       .filter(_.isFile)
       .map(_.getPath)
       .collect{

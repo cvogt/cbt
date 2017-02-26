@@ -283,7 +283,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
   def sourceFiles( sources: Seq[File], sourceFileFilter: File => Boolean ): Seq[File] = {
     for {
       base <- sources.filter(_.exists).map(lib.realpath)
-      file <- lib.listFilesRecursive(base) if file.isFile && sourceFileFilter(file)
+      file <- base.listRecursive if file.isFile && sourceFileFilter(file)
     } yield file
   }
 
@@ -309,7 +309,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       try{
         val names = for {
           base <- files.filter(_.exists).map(realpath)
-          file <- listFilesRecursive(base) if file.isFile
+          file <- base.listRecursive if file.isFile
         } yield {
             val strip = Some( base ).filter(_.isDirectory) ++ stripBaseCanonical
             val name = strip.foldLeft( file.getCanonicalPath )(

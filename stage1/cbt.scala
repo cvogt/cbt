@@ -28,6 +28,12 @@ object `package`{
     def /(s: String): File = new File( file, s )
     def parent = lib.realpath(file ++ "/..")
     def string = file.toString
+  
+    def listRecursive: Seq[File] = {
+      file +: (
+        if( file.isDirectory ) file.listFiles.flatMap(_.listRecursive).toVector else Seq[File]()
+      )
+    }
   }
   implicit class URLExtensionMethods( url: URL ){
     def ++( s: String ): URL = new URL( url.toString ++ s )
