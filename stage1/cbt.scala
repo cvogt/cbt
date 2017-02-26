@@ -28,7 +28,23 @@ object `package`{
     def /(s: String): File = new File( file, s )
     def parent = lib.realpath(file ++ "/..")
     def string = file.toString
-  
+    /* recursively deletes folders*/
+    def deleteRecursive: Unit = {
+      val s = file.string
+      // some desperate attempts to keep people from accidentally deleting their hard drive
+      assert( file == file.getCanonicalFile, "deleteRecursive requires previous .getCanonicalFile" )
+      assert( file.isAbsolute, "deleteRecursive requires absolute path" )
+      assert( file.string != "", "deleteRecursive requires non-empty file path" )
+      assert( s.split("/").size > 4, "deleteRecursive requires absolute path of at least depth 4" )
+      assert( s.split("\\").size > 4, "deleteRecursive requires absolute path of at least depth 4" )
+      assert( !listRecursive.exists(_.isHidden), "deleteRecursive requires no files to be hidden" )
+      assert( listRecursive.forall(_.canWrite), "deleteRecursive requires all files to be writable" )
+      if( file.isDirectory ){
+        file.listFiles.map(_.deleteRecursive)
+      }
+      //file.delete
+    }
+
     def listRecursive: Seq[File] = {
       file +: (
         if( file.isDirectory ) file.listFiles.flatMap(_.listRecursive).toVector else Seq[File]()
