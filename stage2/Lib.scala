@@ -214,7 +214,15 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
         }
       }
     }.getOrElse{
-      ( Some(obj), None, None )
+      (
+        Some(
+          obj.getClass.getMethods.find(m => m.getName == "apply" && m.getParameterCount == 0).map(
+            _.invoke(obj)
+          ).getOrElse( obj )
+        ),
+        None,
+        None
+      )
     }
   }
 
