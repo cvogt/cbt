@@ -268,7 +268,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
                 _class,
                 dualArgs ++ singleArgs ++ (
                   if(cp.isEmpty) Nil else Seq("-cp", cp)
-                ) ++ sourceFiles.map(_.toString),
+                ) ++ sourceFiles.map(_.string),
                 zinc.classLoader
               )
             } catch {
