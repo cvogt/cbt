@@ -93,7 +93,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
 
   def runMain( cls: String, args: Seq[String], classLoader: ClassLoader, fakeInstance: Boolean = false ): ExitCode = {
     import java.lang.reflect.Modifier
-    logger.lib(s"Running $cls.main($args) with classLoader: " ++ classLoader.toString)
+    logger.run(s"Running $cls.main($args) with classLoader: " ++ classLoader.toString)
     trapExitCode{
       val c = classLoader.loadClass(cls)
       val m = c.getMethod( "main", classOf[Array[String]] )

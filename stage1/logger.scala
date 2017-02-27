@@ -20,7 +20,7 @@ case class Logger(enabledLoggers: Set[String], start: Long) {
   def log(name: String, msg: => String) = {
     if(
       (
-      (enabledLoggers contains name)
+        (enabledLoggers contains name)
         || (enabledLoggers contains "all")
       ) && !(disabledLoggers contains name)
     ){
@@ -41,6 +41,7 @@ case class Logger(enabledLoggers: Set[String], start: Long) {
   final def git(msg: => String) = log(names.git, msg)
   final def pom(msg: => String) = log(names.pom, msg)
   final def dynamic(msg: => String) = log(names.dynamic, msg)
+  final def run(msg: => String) = log(names.run, msg)
   final def transientCache(msg: => String) = log(names.transientCache, msg)
 
   private object names{
@@ -53,6 +54,7 @@ case class Logger(enabledLoggers: Set[String], start: Long) {
     val lib = "lib"
     val test = "test"
     val pom = "pom"
+    val run = "run"
     val git = "git"
     val dynamic = "dynamic"
     val transientCache = "transientCache"

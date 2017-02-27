@@ -288,7 +288,10 @@ case class BoundMavenDependency(
   def jar: File = taskCache[BoundMavenDependency]("jar").memoize{ resolve("jar", Some(jarSha1), true) }
   def pom: File = taskCache[BoundMavenDependency]("pom").memoize{ resolve("pom", Some(pomSha1), false) }
 
-  private def pomXml = XML.loadFile(pom.string)
+  private def pomXml = {
+    logger.resolver( "Loading pom file: " ++ pom.string )
+    XML.loadFile(pom.string)
+  }
   // ========== pom traversal ==========
 
   private lazy val transitivePom: Seq[BoundMavenDependency] = {
