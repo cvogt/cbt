@@ -226,6 +226,11 @@ case class BoundMavenDependency(
   implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache
 ) extends ArtifactInfo with DependencyImplementation{
   def moduleKey = this.getClass.getName ++ "(" ++ mavenDependency.serialize ++ ")"
+  override def hashCode = mavenDependency.hashCode
+  override def equals(other: Any) = other match{
+    case o: BoundMavenDependency => o.mavenDependency == mavenDependency && o.repositories == repositories
+    case _ => false
+  }
   val MavenDependency( groupId, artifactId, version, classifier ) = mavenDependency
   assert(
     Option(groupId).collect{
