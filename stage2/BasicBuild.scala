@@ -85,7 +85,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
 
   /** Which file endings to consider being source files. */
-  def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
+  def sourceFileFilter(file: File) = lib.sourceFileFilter(file)
 
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
   final def sourceFiles: Seq[File] = lib.sourceFiles(sources, sourceFileFilter)
