@@ -209,13 +209,6 @@ object Classifier{
 abstract class DependenciesProxy{
 
 }
-class BoundMavenDependencies(
-  cbtLastModified: Long, mavenCache: File, urls: Seq[URL], mavenDependencies: Seq[MavenDependency]
-)(
-  implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache
-) extends Dependencies(
-  mavenDependencies.map( BoundMavenDependency(cbtLastModified,mavenCache,_,urls) )
-)
 case class MavenDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
 ){
