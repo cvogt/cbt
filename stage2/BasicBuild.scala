@@ -271,6 +271,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   }
   override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
 
+  override def toString = show
   // a method that can be called only to trigger any side-effects
   final def `void` = ()
 
