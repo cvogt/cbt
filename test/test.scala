@@ -214,7 +214,7 @@ object Main{
     } else {
       compile("../examples/dotty-example")
       task("run","../examples/dotty-example")
-      task("doc","../examples/dotty-example")
+      task("dottydoc","../examples/dotty-example")
     }
     task("compile","../examples/scalajs-react-example/js")
     task("fullOpt.compile","../examples/scalajs-react-example/js")

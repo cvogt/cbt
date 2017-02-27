@@ -10,20 +10,20 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
     Seq(() => jar, () => docJar, () => srcJar)
   )( _() ).flatten
 
+
+  def jarFilePrefix = artifactId++"_"++scalaMajorVersion++"-"++version
+
   def jar: Option[File] = taskCache[PackageJars]("jar").memoize{
-    lib.jar( artifactId, scalaMajorVersion, version, exportedClasspath.files, jarTarget )
+    lib.createJar( jarTarget / jarFilePrefix++".jar", exportedClasspath.files )
   }
 
   def srcJar: Option[File] = taskCache[PackageJars]("srcJar").memoize{
-    lib.srcJar( sources, artifactId, scalaMajorVersion, version, scalaTarget, sourceFileFilter, projectDirectory )
+    lib.createJar(
+      jarTarget / jarFilePrefix++"-sources.jar", sourceFiles, Some(projectDirectory)
+    )
   }
 
   def docJar: Option[File] = taskCache[PackageJars]("docJar").memoize{
-    lib.docJar(
-      context.cbtLastModified,
-      scalaVersion, sourceFiles, compileClasspath, docTarget,
-      jarTarget, artifactId, scalaMajorVersion, version,
-      scalacOptions, context.paths.mavenCache
-    )
+    lib.createJar( jarTarget / jarFilePrefix++"-javadoc.jar", scaladoc.toSeq )
   }
 }
