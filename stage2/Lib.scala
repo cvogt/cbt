@@ -140,22 +140,19 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     ).flatMap(lib.taskNames).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks
     (
-      (
+      s"Methods provided by $show\n\n"
+      ++ (
         if( thisTasks.nonEmpty ){
-          s"""Methods provided by ${show}
-
-  ${thisTasks.mkString("  ")}
-
-"""
-        } else ""
-      ) ++ s"""Methods provided by CBT (but possibly overwritten)
-
-  ${baseTasks.mkString("  ")}"""
-      ) ++ "\n"
+          thisTasks.mkString("  ") ++ "\n\n"
+        } else "<none>"
+      )
+      ++ s"\n\nMethods provided by CBT (but possibly overwritten)\n\n"
+      ++ baseTasks.mkString("  ") + "\n"
+    )
   }
 
   def callReflective[T <: AnyRef]( obj: T, code: Option[String], context: Context ): ExitCode = {
-    callInternal( obj, code.toSeq.flatMap(_.split("\\.").map( NameTransformer.encode )), Nil, context ) match {
+    callInternal( obj, code.toSeq.flatMap(_.split("\\.").map( NameTransformer.encode )), Nil, context ).map {
       case (obj, code, None) =>
         val s = render(obj)
         if(s.nonEmpty)
@@ -168,7 +165,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
         if(s.nonEmpty)
           System.err.println(s)
         code getOrElse ExitCode.Failure
-    }
+    }.reduceOption(_ && _).getOrElse( ExitCode.Failure )
   }
 
   private def render[T]( obj: T ): String = {
@@ -177,12 +174,12 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       case None => ""
       case d: Dependency => lib.usage(d.getClass, d.show())
       case c: ClassPath => c.string
-      case t:ToolsStage2.type => "Available methods: " ++ lib.taskNames(t.getClass).mkString("  ")
+      case ExitCode(int) => System.err.println(int); System.exit(int); ???
       case _ => obj.toString
     }
   }
 
-  private def callInternal[T <: AnyRef]( obj: T, members: Seq[String], previous: Seq[String], context: Context ): (Option[Object], Option[ExitCode], Option[String]) = {
+  private def callInternal[T <: AnyRef]( obj: T, members: Seq[String], previous: Seq[String], context: Context ): Seq[(Option[Object], Option[ExitCode], Option[String])] = {
     members.headOption.map{ taskName =>
       logger.lib("Calling task " ++ taskName.toString)
       taskMethods(obj.getClass).get(taskName).map{ method =>
@@ -190,12 +187,12 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
           result match {
             case code if code.getClass.getSimpleName == "ExitCode" =>
               // FIXME: ExitCode needs to be part of the compatibility interfaces
-              (None, Some(ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])), None)
-            case Seq(bs @ _*) if bs.forall(_.isInstanceOf[BaseBuild]) =>
-              bs.map( b => callInternal(b.asInstanceOf[BaseBuild], members.tail, previous :+ taskName, context) ).head
+              Seq((None, Some(ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])), None))
+            case bs: Seq[_] if bs.size > 0 && bs.forall(_.isInstanceOf[BaseBuild]) =>
+              bs.flatMap( b => callInternal(b.asInstanceOf[BaseBuild], members.tail, previous :+ taskName, context) )
             case _ => callInternal(result, members.tail, previous :+ taskName, context)
           }
-        }.getOrElse( (None, None, None) )
+        }.getOrElse( Seq( (None, None, None) ) )
       }.getOrElse{
         val folder = NameTransformer.decode(taskName)
         if( context != null && (context.workingDirectory / folder).exists ){
@@ -209,11 +206,19 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
             newContext
           )
         } else {
-          ( Some(obj), None, Some("\nMethod not found: " ++ (previous :+ taskName).mkString(".") ++ "\n") )
+          Seq( ( Some(obj), None, Some("\nMethod not found: " ++ (previous :+ taskName).mkString(".") ++ "\n") ) )
         }
       }
     }.getOrElse{
-      ( Some(obj), None, None )
+      Seq((
+        Some(
+          obj.getClass.getMethods.find(m => m.getName == "apply" && m.getParameterCount == 0).map(
+            _.invoke(obj)
+          ).getOrElse( obj )
+        ),
+        None,
+        None
+      ))
     }
   }
 
@@ -280,10 +285,13 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
   def dirname(path: File): File = new File(realpath(path).string.stripSuffix("/").split("/").dropRight(1).mkString("/"))
   def nameAndContents(file: File) = basename(file) -> readAllBytes(file.toPath)
 
-  def sourceFiles( sources: Seq[File], sourceFileFilter: File => Boolean ): Seq[File] = {
+  /** Which file endings to consider being source files. */
+  def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
+
+  def sourceFiles( sources: Seq[File], sourceFileFilter: File => Boolean = sourceFileFilter ): Seq[File] = {
     for {
       base <- sources.filter(_.exists).map(lib.realpath)
-      file <- lib.listFilesRecursive(base) if file.isFile && sourceFileFilter(file)
+      file <- base.listRecursive if file.isFile && sourceFileFilter(file)
     } yield file
   }
 
@@ -309,7 +317,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       try{
         val names = for {
           base <- files.filter(_.exists).map(realpath)
-          file <- listFilesRecursive(base) if file.isFile
+          file <- base.listRecursive if file.isFile
         } yield {
             val strip = Some( base ).filter(_.isDirectory) ++ stripBaseCanonical
             val name = strip.foldLeft( file.getCanonicalPath )(

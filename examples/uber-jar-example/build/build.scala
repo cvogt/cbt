@@ -2,7 +2,7 @@ import cbt._
 
 class Build(val context: Context) extends BaseBuild with UberJar {
 
-  override def projectName: String = "uber-jar-example"
+  override def name: String = "uber-jar-example"
 
   override def dependencies = super.dependencies ++
     Resolver( mavenCentral ).bind(
@@ -11,6 +11,6 @@ class Build(val context: Context) extends BaseBuild with UberJar {
       ScalaDependency("org.typelevel", "cats", "0.6.0")
     )
 
-  override def uberJarName = projectName + "-0.0.1" + ".jar"
+  override def uberJarName = name + "-0.0.1" + ".jar"
 
 }

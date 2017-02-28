@@ -12,7 +12,10 @@ import java.util.{Set=>_,Map=>_,List=>_,_}
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
 // CLI interop
-case class ExitCode(integer: Int)
+case class ExitCode(integer: Int){
+  def ||( other: => ExitCode ) = if( this == ExitCode.Success ) this else other
+  def &&( other: => ExitCode ) = if( this != ExitCode.Success ) this else other
+}
 object ExitCode{
   val Success = ExitCode(0)
   val Failure = ExitCode(1)
@@ -71,7 +74,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
         try{
           Files.copy(stream, incomplete, StandardCopyOption.REPLACE_EXISTING)
         } finally {
-          stream.close()
+          stream.close
         }
         sha1.foreach{
           hash =>
@@ -86,17 +89,11 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     }
   }
 
-  def listFilesRecursive(f: File): Seq[File] = {
-    f +: (
-      if( f.isDirectory ) f.listFiles.flatMap(listFilesRecursive).toVector else Seq[File]()
-    )
-  }
-
   // ========== compilation / execution ==========
 
   def runMain( cls: String, args: Seq[String], classLoader: ClassLoader, fakeInstance: Boolean = false ): ExitCode = {
     import java.lang.reflect.Modifier
-    logger.lib(s"Running $cls.main($args) with classLoader: " ++ classLoader.toString)
+    logger.run(s"Running $cls.main($args) with classLoader: " ++ classLoader.toString)
     trapExitCode{
       val c = classLoader.loadClass(cls)
       val m = c.getMethod( "main", classOf[Array[String]] )
@@ -149,7 +146,8 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
   /** Given a directory corresponding to the root package, iterate
       the names of all classes derived from the class files found */
   def iterateClassNames( classesRootDirectory: File ): Seq[String] =
-    listFilesRecursive(classesRootDirectory)
+    classesRootDirectory
+      .listRecursive
       .filter(_.isFile)
       .map(_.getPath)
       .collect{
@@ -270,7 +268,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
                 _class,
                 dualArgs ++ singleArgs ++ (
                   if(cp.isEmpty) Nil else Seq("-cp", cp)
-                ) ++ sourceFiles.map(_.toString),
+                ) ++ sourceFiles.map(_.string),
                 zinc.classLoader
               )
             } catch {

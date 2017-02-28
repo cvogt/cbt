@@ -95,7 +95,7 @@ class ProjectBuilder(
     writeTemplate(
       templateDir / "build" / "build.scala",
       buildDir / "build.scala",
-      (name, s"""  override def projectName = "$name"$blankLine""", "##projectName##"),
+      (name, s"""  override def name = "$name"$blankLine""", "##name##"),
       (dependencyString, dependencies + blankLine, "##dependencies##"),
       (plugins, plugins, "##with##")
     )

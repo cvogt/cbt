@@ -10,6 +10,8 @@ class ToolsTasks(
   cbtHome: File,
   cbtLastModified: Long
 )(implicit classLoaderCache: ClassLoaderCache){
+  def apply: String = "Available methods: " ++ lib.taskNames(getClass).mkString("  ")
+
   private val paths = CbtPaths(cbtHome, cache)
   import paths._
   implicit val logger: Logger = lib.logger

@@ -1,4 +1,5 @@
 package cbt
+// TODO: maybe move this into stage2 to avoid having to call zinc separately for this as a plugin
 
 import cbt.sonatype.SonatypeLib
 

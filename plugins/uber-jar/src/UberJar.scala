@@ -15,7 +15,7 @@ trait UberJar extends BaseBuild {
 
   def uberJarMainClass: Option[String] = runClass
 
-  def uberJarName: String = projectName + ".jar"
+  def uberJarName: String = name + ".jar"
 
 }
 

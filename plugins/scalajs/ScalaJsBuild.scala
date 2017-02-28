@@ -2,6 +2,7 @@ package cbt
 import java.io.File
 import java.net.URL
 
+// TODO: maybe move this into stage2 to avoid having to call zinc separately for this as a plugin
 trait ScalaJsBuild extends DynamicOverrides{
   final protected val scalaJsLib = ScalaJsLib(
     scalaJsVersion, scalaVersion, context.cbtLastModified, context.paths.mavenCache
@@ -23,17 +24,17 @@ trait ScalaJsBuild extends DynamicOverrides{
   }
 
   override def compile = {
-    super.compile
-    scalaJsLib.link(
-      scalaJsTargetFile, scalaJsOptions, target +: dependencies.collect{case d: BoundMavenDependency => d.jar}
-    )
-    None // FIXME: we need to rethink the concept of a "compile" task I think. There is no time to return here.
+    val res = super.compile
+    scalaJsLib.link( scalaJsTargetFile, scalaJsOptions, target +: dependencyClasspath.files )
+    res
+    // FIXME: we need to rethink the concept of a "compile" task I think.
+    // An exit code would probably be more appropriate here.
   }
 
   def scalaJsOptions: Seq[String] = Seq()
 
   /** Where to put the generated js file */
-  def scalaJsTargetFile: File
+  def scalaJsTargetFile: File = target / "app.js"
 
   override def cleanFiles = super.cleanFiles :+ scalaJsTargetFile :+ (scalaJsTargetFile ++ ".map")
 

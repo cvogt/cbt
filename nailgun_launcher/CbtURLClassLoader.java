@@ -11,7 +11,7 @@ public class CbtURLClassLoader extends java.net.URLClassLoader{
       + "(\n  "
       + Arrays.toString(getURLs())
       + ",\n  "
-      + join("\n  ",(getParent() == null?"":getParent().toString()).split("\n"))
+      + mkString("\n  ",(getParent() == null?"":getParent().toString()).split("\n"))
       + "\n)"
     );
   }

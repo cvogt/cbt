@@ -32,7 +32,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     s"You need to extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" ++ lib.buildDirectoryName
   )
 
-  final def usage: String = lib.usage(this.getClass, show)
+  final def help: String = lib.usage(this.getClass, show)
 
   final def taskNames: String = lib.taskNames(this.getClass).sorted.mkString("\n")
 
@@ -41,7 +41,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def defaultScalaVersion: String = constants.scalaVersion
   final def scalaVersion = context.scalaVersion getOrElse defaultScalaVersion
   final def scalaMajorVersion: String = lib.libMajorVersion(scalaVersion)
-  def projectName = "default"
+  def name = projectDirectory.getName
 
   // TODO: get rid of this in favor of newBuild.
   // currently blocked on DynamicOverride being not parts
@@ -85,7 +85,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
 
   /** Which file endings to consider being source files. */
-  def sourceFileFilter(file: File): Boolean = file.toString.endsWith(".scala") || file.toString.endsWith(".java")
+  def sourceFileFilter(file: File) = lib.sourceFileFilter(file)
 
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
   final def sourceFiles: Seq[File] = lib.sourceFiles(sources, sourceFileFilter)
@@ -187,16 +187,22 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   }
 
   def run: ExitCode = run( context.args: _* )
-
-  def test: Any =
-    lib.callReflective(
-      DirectoryDependency(projectDirectory++"/test").dependency,
-      Some("run"),
-      context
-    )
-
-  def t = test
-  def rt = recursiveUnsafe(Some("test"))
+  def test: Dependency = {
+    val testDirectory = projectDirectory / "test"
+    if( (testDirectory / lib.buildDirectoryName / lib.buildFileName).exists ){
+      // FIYME: maybe we can make loadRoot(...).finalBuild an Option some
+      DirectoryDependency( testDirectory ).dependency
+    } else {
+      new BasicBuild( context.copy(workingDirectory = testDirectory) ){
+        override def dependencies = Seq(
+          DirectoryDependency(projectDirectory++"/..")
+        )
+        def apply = run
+      }
+    }
+  }
+  def t: Any = lib.callReflective( test, Some("run"), context )
+  def rt = recursiveUnsafe(Some("test.run"))
 
   def recursiveSafe(_run: BuildInterface => Any): ExitCode = {
     val builds = (this +: transitiveDependencies).collect{
@@ -265,6 +271,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   }
   override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
 
+  override def toString = show
   // a method that can be called only to trigger any side-effects
   final def `void` = ()
 

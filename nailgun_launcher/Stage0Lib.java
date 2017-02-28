@@ -45,7 +45,7 @@ public class Stage0Lib{
 
   public static String classpath( String... files ){
     Arrays.sort(files);
-    return join( pathSeparator, files );
+    return mkString( pathSeparator, files );
   }
 
   public static long lastModified( String... files ){
@@ -216,10 +216,10 @@ public class Stage0Lib{
     return (new HexBinaryAdapter()).marshal(sha1.digest()).toLowerCase();
   }
 
-  public static String join(String separator, String[] parts){
-    String result = parts[0];
+  public static String mkString(String separator, Object[] parts){
+    String result = parts[0].toString();
     for(int i = 1; i < parts.length; i++){
-      result += separator + parts[i];
+      result += separator + parts[i].toString();
     }
     return result;
   }
@@ -228,5 +228,11 @@ public class Stage0Lib{
     String[] copy = Arrays.copyOf(array, array.length + 1);
     copy[array.length] = item;
     return copy;
+  }
+
+  public static String[] concat( String[] left, String[] right ){
+    String[] result = Arrays.copyOf(left, left.length + right.length);
+    System.arraycopy(right, 0, result, left.length, right.length);
+    return result;
   }
 }

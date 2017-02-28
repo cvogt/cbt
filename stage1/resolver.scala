@@ -89,6 +89,10 @@ trait DependencyImplementation extends Dependency{
 
   def run( args: String* ): ExitCode = {
     runClass.map( runMain( _, args: _* ) ).getOrElse{
+      // FIXME: this just doing nothing when class is not found has been repeatedly
+      // surprising. Let's try to make this more visible than just logging an error.
+      // Currently blocked on task `recursive` trying every subbuild and would error
+      // for all that don't have a run class. Maybe that's ok actually.
       logger.task( "No main class found for " ++ show )
       ExitCode.Success
     }
@@ -205,13 +209,6 @@ object Classifier{
 abstract class DependenciesProxy{
 
 }
-class BoundMavenDependencies(
-  cbtLastModified: Long, mavenCache: File, urls: Seq[URL], mavenDependencies: Seq[MavenDependency]
-)(
-  implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache
-) extends Dependencies(
-  mavenDependencies.map( BoundMavenDependency(cbtLastModified,mavenCache,_,urls) )
-)
 case class MavenDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
 ){
@@ -229,6 +226,11 @@ case class BoundMavenDependency(
   implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache
 ) extends ArtifactInfo with DependencyImplementation{
   def moduleKey = this.getClass.getName ++ "(" ++ mavenDependency.serialize ++ ")"
+  override def hashCode = mavenDependency.hashCode
+  override def equals(other: Any) = other match{
+    case o: BoundMavenDependency => o.mavenDependency == mavenDependency && o.repositories == repositories
+    case _ => false
+  }
   val MavenDependency( groupId, artifactId, version, classifier ) = mavenDependency
   assert(
     Option(groupId).collect{
@@ -261,7 +263,7 @@ case class BoundMavenDependency(
   import scala.collection.JavaConversions._
 
   private def resolve(suffix: String, hash: Option[String], useClassifier: Boolean): File = {
-    logger.resolver("Resolving "+this)
+    logger.resolver(lib.blue("Resolving ")+this)
     val file = mavenCache ++ basePath(useClassifier) ++ "." ++ suffix
     val urls = repositories.map(_ ++ basePath(useClassifier) ++ "." ++ suffix)
     urls.find(
@@ -284,7 +286,10 @@ case class BoundMavenDependency(
   def jar: File = taskCache[BoundMavenDependency]("jar").memoize{ resolve("jar", Some(jarSha1), true) }
   def pom: File = taskCache[BoundMavenDependency]("pom").memoize{ resolve("pom", Some(pomSha1), false) }
 
-  private def pomXml = XML.loadFile(pom.string)
+  private def pomXml = {
+    logger.resolver( "Loading pom file: " ++ pom.string )
+    XML.loadFile(pom.string)
+  }
   // ========== pom traversal ==========
 
   private lazy val transitivePom: Seq[BoundMavenDependency] = {
