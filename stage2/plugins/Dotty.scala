@@ -50,7 +50,7 @@ trait Dotty extends BaseBuild{
     Some(min)
   }
 
-  def doc: ExitCode =
+  def dottydoc: ExitCode =
     dottyLib.doc(
       sourceFiles, compileClasspath, docTarget, dottyOptions
     )

@@ -153,6 +153,14 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     )
   }
 
+  def scaladoc = taskCache[BaseBuild]("scaladoc").memoize{
+    lib.scaladoc(
+      context.cbtLastModified,
+      scalaVersion, sourceFiles, compileClasspath, docTarget,
+      scalacOptions, context.paths.mavenCache
+    )
+  }
+
   def cleanFiles: Seq[File] = Seq( target )
 
   def clean: ExitCode = {

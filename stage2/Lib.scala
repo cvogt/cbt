@@ -56,44 +56,23 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     }
   }
 
-  def srcJar(
-    sourceFiles: Seq[File], artifactId: String, scalaMajorVersion: String, version: String, jarTarget: File,
-    filter: File => Boolean, stripBase: File
-  ): Option[File] = {
-    lib.jarFile(
-      jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-sources.jar"),
-      sourceFiles, filter=filter, stripBase=Some( stripBase )
-    )
-  }
-
-  def jar(artifactId: String, scalaMajorVersion: String, version: String, files: Seq[File], jarTarget: File): Option[File] = {
-    lib.jarFile(
-      jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++".jar"),
-      files
-    )
-  }
-
-  def docJar(
+  def scaladoc(
     cbtLastModified: Long,
     scalaVersion: String,
     sourceFiles: Seq[File],
     dependencyClasspath: ClassPath,
-    docTarget: File,
-    jarTarget: File,
-    artifactId: String,
-    scalaMajorVersion: String,
-    version: String,
+    scaladocTarget: File,
     compileArgs: Seq[String],
     mavenCache: File
   )(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache): Option[File] = {
     if(sourceFiles.isEmpty){
       None
     } else {
-      docTarget.mkdirs
+      scaladocTarget.mkdirs
       val args = Seq(
         // FIXME: can we use compiler dependency here?
         "-cp", dependencyClasspath.string, // FIXME: does this break for builds that don't have scalac dependencies?
-        "-d",  docTarget.toString
+        "-d",  scaladocTarget.toString
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
       redirectOutToErr{
@@ -103,10 +82,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
           new ScalaDependencies(cbtLastModified,mavenCache,scalaVersion).classLoader
         )
       }
-      lib.jarFile(
-        jarTarget ++ ("/"++artifactId++"_"++scalaMajorVersion++"-"++version++"-javadoc.jar"),
-        Vector(docTarget)
-      )
+      Some(scaladocTarget)
     }
   }
 
@@ -295,39 +271,44 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     } yield file
   }
 
-  // FIXME: for some reason it includes full path in docs
-  def jarFile(
-    jarFile: File, files: Seq[File], mainClass: Option[String] = None,
-    filter: File => Boolean = _ => true, stripBase: Option[File] = None
-  ): Option[File] = {
-    val stripBaseCanonical = stripBase
-    Files.deleteIfExists(jarFile.toPath)
+  private def createManifest( mainClass: Option[String] ) = {
+    val m = new Manifest()
+    m.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
+    m.getMainAttributes.putValue( "Created-By", "Scala CBT" )
+    mainClass.foreach(
+      m.getMainAttributes.put(Attributes.Name.MAIN_CLASS, _)
+    )
+    m
+  }
+
+  def createJar( jarFile: File, files: Seq[File], baseDirectory: Option[File] = None, mainClass: Option[String] = None ): Option[File] = {
+    deleteIfExists(jarFile.toPath)
     if( files.isEmpty ){
       None
     } else {
       jarFile.getParentFile.mkdirs
       logger.lib("Start packaging "++jarFile.string)
-      val manifest = new Manifest()
-      manifest.getMainAttributes.put( Attributes.Name.MANIFEST_VERSION, "1.0" )
-      manifest.getMainAttributes.putValue( "Created-By", "Chris' Build Tool" )
-      mainClass foreach { className =>
-        manifest.getMainAttributes.put(Attributes.Name.MAIN_CLASS, className)
-      }
-      val jar = new JarOutputStream(new FileOutputStream(jarFile), manifest)
+      val jar = new JarOutputStream(new FileOutputStream(jarFile), createManifest(mainClass))
       try{
+        assert( files.forall(_.exists) )
         val names = for {
-          base <- files.filter(_.exists).map(realpath)
+          base <- files.map(realpath)
           file <- base.listRecursive if file.isFile
         } yield {
-            val strip = Some( base ).filter(_.isDirectory) ++ stripBaseCanonical
-            val name = strip.foldLeft( file.getCanonicalPath )(
-              (f, prefix) => f.stripPrefix( prefix.getCanonicalPath ++ File.separator )
-            )
+            val name = {
+              Some(base).filter(_.isDirectory) orElse baseDirectory map (_.string) map (
+                file.string stripPrefix _ stripPrefix File.separator
+              ) getOrElse (
+                throw new Exception(
+                  "Trying to add absolute path to jar: " + file
+                )
+              )
+            }
             val entry = new JarEntry( name )
             entry.setTime(file.lastModified)
             jar.putNextEntry(entry)
             jar.write( readAllBytes( file.toPath ) )
-            jar.closeEntry()
+            jar.closeEntry
             name
         }
 
@@ -337,7 +318,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
           s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
         )
       } finally {
-        jar.close()
+        jar.close
       }
 
       logger.lib("Done packaging " ++ jarFile.toString)
@@ -459,9 +440,11 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     }
   }
 
-  def publishSigned( artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
+  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
     // TODO: make concurrency configurable here
-    publish( artifacts ++ artifacts.map(sign), url, credentials )
+    if(sourceFiles.nonEmpty){
+      publish( artifacts ++ artifacts.map(sign), url, credentials )
+    }
   }
 
   private def publish(artifacts: Seq[File], url: URL, credentials: Option[String]): Unit = {
@@ -477,7 +460,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
   }
 
   def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: Option[String] = None ): Unit =
-    nameAndContents.foreach { case (name, content) => upload(name, content, url, credentials ) }
+    nameAndContents.map{ case(name, content) => upload(name, content, url, credentials ) }
 
   def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: Option[String] = None): Unit = {
     import java.net._
@@ -485,19 +468,23 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     val url = baseUrl ++ "/" ++ fileName
     System.err.println(blue("uploading ") ++ url.toString)
     val httpCon = Stage0Lib.openConnectionConsideringProxy(url)
-    httpCon.setDoOutput(true)
-    httpCon.setRequestMethod("PUT")
-    credentials.foreach(
-      c => {
-        val encoding = new sun.misc.BASE64Encoder().encode(c.getBytes)
-        httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
-      }
-    )
-    httpCon.setRequestProperty("Content-Type", "application/binary")
-    httpCon.getOutputStream.write(
-      fileContents
-    )
-    httpCon.getInputStream
+    try{
+      httpCon.setDoOutput(true)
+      httpCon.setRequestMethod("PUT")
+      credentials.foreach(
+        c => {
+          val encoding = new sun.misc.BASE64Encoder().encode(c.getBytes)
+          httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
+        }
+      )
+      httpCon.setRequestProperty("Content-Type", "application/binary")
+      httpCon.getOutputStream.write(
+        fileContents
+      )
+      httpCon.getInputStream
+    } finally {
+      httpCon.disconnect
+    }
   }
 
 

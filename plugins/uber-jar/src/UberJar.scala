@@ -54,7 +54,7 @@ class UberJarLib(logger: Logger) {
 
     log("Writing jar file...")
     val uberJarPath = target.toPath.resolve(jarName)
-    val uberJar = lib.jarFile(uberJarPath.toFile, dirs :+ extractedJarsRoot, mainClass) getOrElse {
+    val uberJar = lib.createJar(uberJarPath.toFile, dirs :+ extractedJarsRoot, mainClass=mainClass) getOrElse {
         throw new Exception("Jar file wasn't created!")
       }
     log("Writing jar file - DONE")
