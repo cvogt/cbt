@@ -35,14 +35,13 @@ object `package`{
       assert( file == file.getCanonicalFile, "deleteRecursive requires previous .getCanonicalFile" )
       assert( file.isAbsolute, "deleteRecursive requires absolute path" )
       assert( file.string != "", "deleteRecursive requires non-empty file path" )
-      assert( s.split("/").size > 4, "deleteRecursive requires absolute path of at least depth 4" )
-      assert( s.split("\\").size > 4, "deleteRecursive requires absolute path of at least depth 4" )
+      assert( s.split(File.separator.replace("\\","\\\\")).size > 4, "deleteRecursive requires absolute path of at least depth 4" )
       assert( !listRecursive.exists(_.isHidden), "deleteRecursive requires no files to be hidden" )
       assert( listRecursive.forall(_.canWrite), "deleteRecursive requires all files to be writable" )
       if( file.isDirectory ){
         file.listFiles.map(_.deleteRecursive)
       }
-      //file.delete
+      file.delete
     }
 
     def listRecursive: Seq[File] = {

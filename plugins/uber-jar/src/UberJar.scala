@@ -2,123 +2,86 @@ package cbt
 
 import java.io.File
 import java.nio.file.{FileSystems, Files, Path}
+import java.nio.file.Files._
 import java.util.jar.JarFile
 
-trait UberJar extends BaseBuild {
+trait UberJar extends PackageJars {
+  lazy val uberJarLib = new UberJarLib(lib, logger.log("uberjar", _))
 
-  final def uberJar: ExitCode = {
-    System.err.println("Creating uber jar...")
-    new UberJarLib(logger).create(target, classpath, uberJarMainClass, uberJarName)
-    System.err.println(lib.green("Creating uber jar - DONE"))
-    ExitCode.Success
-  }
-
-  def uberJarMainClass: Option[String] = runClass
-
-  def uberJarName: String = name + ".jar"
-
+  def uberJarName: String = name ++ "-" ++ version ++ "-uberjar"
+  def uberJarMainClass: Option[String] = None // to avoid asking interactively
+  def uberJar: Option[File] =
+    uberJarLib.create( target / uberJarName ++ ".jar", classpath, uberJarMainClass )
 }
 
-class UberJarLib(logger: Logger) {
-  private val (jarFileMatcher, excludeFileMatcher) = {
-    val fs = FileSystems.getDefault
-    (fs.getPathMatcher("glob:**.jar"), fs.getPathMatcher("glob:**{.RSA,.DSA,.SF,.MF,META-INF}"))
-  }
-  private val log: String => Unit = logger.log("uber-jar", _)
-  private val lib = new cbt.Lib(logger)
-
+class UberJarLib(lib: cbt.Lib, log: String => Unit) {
   /**
-    * Creates uber jar for given build.
+    * Bundles the given classpath into a single jar (uber jar / fat jar).
     *
-    * @param target        build's target directory
-    * @param classpath     build's classpath
-    * @param mainClass     optional main class
-    * @param jarName       name of resulting jar file
+    * @param jarFile       name of jar to create
+    * @param classpath     class path to bundle into the jar
     */
-  def create(target: File,
-             classpath: ClassPath,
-             mainClass: Option[String],
-             jarName: String): Unit = {
-    log(s"Classpath is: $classpath")
-    log(s"Target directory is: $target")
-    log(s"Jar name is: $jarName")
-    mainClass foreach (c => log(s"Main class is is: $c"))
+  def create( jarFile: File, classpath: ClassPath, mainClass: Option[String] ): Option[File] = {
+    System.err.println("Creating uber jar...")
 
-    val (jars, dirs) = classpath.files partition (f => jarFileMatcher.matches(f.toPath))
-    log(s"Found ${jars.length} jar dependencies: \n ${jars mkString "\n"}")
-    log(s"Found ${dirs.length} directories in classpath: \n ${dirs mkString "\n"}")
+    log(s"Classpath: ${classpath.string}")
+    log( mainClass.map("Main class is: "+_).getOrElse("no Main class") )
 
-    log("Extracting jars...")
-    val extractedJarsRoot = extractJars(jars.distinct)(log).toFile
+    val (dirs, jars) = classpath.files.partition(_.isDirectory)
+    log(s"Found ${jars.length} jars in classpath: \n${jars mkString "\n"}")
+    log(s"Found ${dirs.length} directories in classpath: \n${dirs mkString "\n"}")
+
+    val extracted = Files.createTempDirectory("unjars").toFile.getCanonicalFile
+
+    log("Extracting jars to $extracted")
+    jars.foreach( extractJar(_, extracted.toPath) )
     log("Extracting jars - DONE")
 
     log("Writing jar file...")
-    val uberJarPath = target.toPath.resolve(jarName)
-    val uberJar = lib.createJar(uberJarPath.toFile, dirs :+ extractedJarsRoot, mainClass=mainClass) getOrElse {
-        throw new Exception("Jar file wasn't created!")
-      }
-    log("Writing jar file - DONE")
+    val uberJar = lib.createJar(jarFile, dirs :+ extracted, mainClass=mainClass)
+    log("Writing uber jar - DONE")
 
-    System.err.println(lib.green(s"Uber jar created. You can grab it at $uberJar"))
+    extracted.deleteRecursive
+
+    System.err.println(lib.green("Creating uber jar - DONE"))
+
+    uberJar
   }
 
-  /**
-    * Extracts jars, and writes them on disk. Returns root directory of extracted jars
-    * TODO: in future we probably should save extracted jars in target directory, to reuse them on second run
-    *
-    * @param jars list of *.jar files
-    * @param log  logger
-    * @return root directory of extracted jars
-    */
-  private def extractJars(jars: Seq[File])(log: String => Unit): Path = {
-    val destDir = {
-      val path = Files.createTempDirectory("unjars")
-      path.toFile.deleteOnExit()
-      log(s"Extracted jars directory: $path")
-      path
-    }
-    jars foreach { jar => extractJar(jar, destDir)(log) }
-    destDir
-  }
 
   /**
-    * Extracts content of single jar file to destination directory.
-    * When extracting jar, if same file already exists, we skip(don't write) this file.
-    * TODO: maybe skipping duplicates is not best strategy. Figure out duplicate strategy.
+    * Extracts contents of single jar file into a destination directory.
+    * When extracting the jar, if the same file already exists, skips the file.
+    * TODO: allow custom strategies to resolve duplicate files, not only skipping.
+    * TODO: do not hard code excluded files.
     *
     * @param jarFile jar file to extract
-    * @param destDir destination directory
-    * @param log     logger
     */
-  private def extractJar(jarFile: File, destDir: Path)(log: String => Unit): Unit = {
-    log(s"Extracting jar: $jarFile")
+  private def extractJar(jarFile: File, destination: Path): Unit = {
+    val excludeFilter: File => Boolean = {
+      f => f.getName == "META-INF" || Seq(".RSA",".DSA",".SF",".MF").exists(f.getName.endsWith)
+    }
+
+    log(s"Extracting $jarFile")
     val jar = new JarFile(jarFile)
-    val enumEntries = jar.entries
-    while (enumEntries.hasMoreElements) {
-      val entry = enumEntries.nextElement()
-      //        log(s"Entry name: ${entry.getName}")
-      val entryPath = destDir.resolve(entry.getName)
-      if (excludeFileMatcher.matches(entryPath)) {
-        log(s"Excluded file ${entryPath.getFileName} from jar: $jarFile")
-      } else {
-        val exists = Files.exists(entryPath)
-        if (entry.isDirectory) {
-          if (!exists) {
-            Files.createDirectory(entryPath)
-            //              log(s"Created directory: $entryPath")
-          }
+
+    import collection.JavaConverters._
+    val entries = jar.entries.asScala.filterNot(_.isDirectory).toVector
+    val paths = entries.map( e => destination.resolve(e.getName) ) // JarFile.entry is the full path, not just file name
+
+    paths.map( _.getParent ).distinct.foreach( createDirectories(_) )
+
+    (entries zip paths).foreach{
+      case( entry, path ) =>
+        if( excludeFilter(path.toFile) ){
+          log(s"Excluded $path")
+        } else if (exists(path)) {
+          log(s"Already exists, skipping $path")
         } else {
-          if (exists) {
-            log(s"File $entryPath already exists, skipping.")
-          } else {
-            val is = jar.getInputStream(entry)
-            Files.copy(is, entryPath)
-            is.close()
-            //              log(s"Wrote file: $entryPath")
-          }
+          val is = jar.getInputStream(entry)
+          try{ Files.copy(is, path) }
+          finally{ is.close }
         }
-      }
     }
   }
-
 }
