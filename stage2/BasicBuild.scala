@@ -12,6 +12,10 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   def moduleKey: String = "BaseBuild("+target.string+")"
   implicit def transientCache: java.util.Map[AnyRef,AnyRef] = context.transientCache
 
+  object libraries{
+    def eval = DirectoryDependency( context.cbtHome ++ "/libraries/eval" )
+  }
+
   // library available to builds
   implicit protected final val logger: Logger = context.logger
   implicit protected final val classLoaderCache: ClassLoaderCache = context.classLoaderCache
