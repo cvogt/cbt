@@ -14,6 +14,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   object libraries{
     def eval = DirectoryDependency( context.cbtHome ++ "/libraries/eval" )
+    def captureArgs = DirectoryDependency( context.cbtHome ++ "/libraries/capture_args" )
   }
 
   // library available to builds
