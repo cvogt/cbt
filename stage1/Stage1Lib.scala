@@ -56,8 +56,8 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
 
   def write(file: File, content: String, options: OpenOption*): File = Stage0Lib.write(file, content, options:_*)
 
-  def download(url: URL, target: File, sha1: Option[String]): Boolean = {
-    if( target.exists ){
+  def download(url: URL, target: File, sha1: Option[String], replace: Boolean = false): Boolean = {
+    if( target.exists && !replace ){
       logger.resolver(green("found ") ++ url.string)
       true
     } else {

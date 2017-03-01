@@ -21,6 +21,7 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
 
   object plugins{
     // TODO: move this out of the OO
+    final lazy val proguard = DirectoryDependency( context.cbtHome ++ "/plugins/proguard" )
     final lazy val scalaTest = DirectoryDependency( context.cbtHome ++ "/plugins/scalatest" )
     final lazy val sbtLayout = DirectoryDependency( context.cbtHome ++ "/plugins/sbt_layout" )
     final lazy val scalaJs   = DirectoryDependency( context.cbtHome ++ "/plugins/scalajs" )

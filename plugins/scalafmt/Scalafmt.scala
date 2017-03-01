@@ -61,8 +61,9 @@ object Scalafmt {
             write(tmpPath, formatted.getBytes)
             move(tmpPath, path, StandardCopyOption.REPLACE_EXISTING)
             Some(1)
+          } else {
+            Some(0)
           }
-          Some(0)
         case Formatted.Failure(e) =>
           System.err.println(s"Scalafmt failed for $path\nCause: $e\n")
           None
