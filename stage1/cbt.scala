@@ -18,6 +18,16 @@ object `package`{
   val sonatypeSnapshots = sonatypeBase ++ "snapshots"
 
   private val lib = new BaseLib
+
+  implicit class PathExtensionMethods( path: Path ){
+    def /(s: String): Path = path.resolve(s)
+    def ++( s: String ): Path = {
+      if(s endsWith "/") throw new Exception(
+        """Trying to append a String that ends in "/" to a Path would loose the trailing "/". Use .stripSuffix("/") if you need to."""
+      )
+      Paths.get( path.toString ++ s )
+    }
+  }
   implicit class FileExtensionMethods( file: File ){
     def ++( s: String ): File = {
       if(s endsWith "/") throw new Exception(
