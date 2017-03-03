@@ -11,7 +11,7 @@ class ToolsTasks(
   cbtLastModified: Long
 )(implicit classLoaderCache: ClassLoaderCache){
   def apply: String = "Available methods: " ++ lib.taskNames(getClass).mkString("  ")
-
+  override def toString = lib.usage(this.getClass, super.toString)
   private val paths = CbtPaths(cbtHome, cache)
   import paths._
   implicit val logger: Logger = lib.logger
@@ -20,6 +20,9 @@ class ToolsTasks(
   val scaffold = new Scaffold(logger)
   def createMain: Unit = scaffold.createMain( cwd )
   def createBuild: Unit = scaffold.createBuild( cwd )
+  def `search-class` = java.awt.Desktop.getDesktop().browse(new URI(
+    "http://search.maven.org/#search%7Cga%7C1%7Cc%3A%22" ++ URLEncoder.encode(args(1),"UTF-8") ++ "%22"
+  ))
   def gui = NailgunLauncher.main(Array(
     "0.0",
     (cbtHome / "tools" / "gui").getAbsolutePath,
