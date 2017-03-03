@@ -3,7 +3,8 @@ import java.io.File
 import java.net.URL
 import java.nio.file.Files.readAllBytes
 
-trait Publish extends PackageJars{
+trait Publish extends PublishMaven // FIXME: delete
+trait PublishMaven extends PackageJars{
   def description: String
   def url: URL
   def developers: Seq[Developer]
