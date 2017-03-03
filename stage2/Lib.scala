@@ -159,16 +159,15 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     members.headOption.map{ taskName =>
       logger.lib("Calling task " ++ taskName.toString)
       taskMethods(obj.getClass).get(taskName).map{ method =>
-        Option(method.invoke(obj) /* null in case of Unit */ ).map{ result => 
-          result match {
-            case code if code.getClass.getSimpleName == "ExitCode" =>
-              // FIXME: ExitCode needs to be part of the compatibility interfaces
-              Seq((None, Some(ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])), None))
-            case bs: Seq[_] if bs.size > 0 && bs.forall(_.isInstanceOf[BaseBuild]) =>
-              bs.flatMap( b => callInternal(b.asInstanceOf[BaseBuild], members.tail, previous :+ taskName, context) )
-            case _ => callInternal(result, members.tail, previous :+ taskName, context)
-          }
-        }.getOrElse( Seq( (None, None, None) ) )
+        Option(method.invoke(obj) /* null in case of Unit */ ).getOrElse(().asInstanceOf[AnyRef]) match {
+          case code if code.getClass.getSimpleName == "ExitCode" =>
+            // FIXME: ExitCode needs to be part of the compatibility interfaces
+            Seq((None, Some(ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])), None))
+          case bs: Seq[_] if bs.size > 0 && bs.forall(_.isInstanceOf[BaseBuild]) =>
+            bs.flatMap( b => callInternal(b.asInstanceOf[BaseBuild], members.tail, previous :+ taskName, context) )
+          case result =>
+            callInternal(result, members.tail, previous :+ taskName, context)
+        }
       }.getOrElse{
         val folder = NameTransformer.decode(taskName)
         if( context != null && (context.workingDirectory / folder).exists ){
@@ -182,7 +181,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
             newContext
           )
         } else {
-          Seq( ( Some(obj), None, Some("\nMethod not found: " ++ (previous :+ taskName).mkString(".") ++ "\n") ) )
+          Seq( ( Some(obj), None, Some("Object " ++ previous.mkString(".") ++ s" has no method $taskName\n") ) )
         }
       }
     }.getOrElse{
