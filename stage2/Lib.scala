@@ -98,12 +98,12 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
         c =>
           c
           .getDeclaredMethods
-          .filterNot( _.getName contains "$" )
           .filter{ m =>
             java.lang.reflect.Modifier.isPublic(m.getModifiers)
           }
           .filter( _.getParameterTypes.length == 0 )
           .map(m => NameTransformer.decode(m.getName) -> m)
+          .filterNot(_._1 contains "$")
       ).toMap
 
   def taskNames(cls: Class[_]): Seq[String] = taskMethods(cls).keys.toVector.sorted
@@ -157,8 +157,9 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
 
   private def callInternal[T <: AnyRef]( obj: T, members: Seq[String], previous: Seq[String], context: Context ): Seq[(Option[Object], Option[ExitCode], Option[String])] = {
     members.headOption.map{ taskName =>
+      val name = NameTransformer.decode(taskName)
       logger.lib("Calling task " ++ taskName.toString)
-      taskMethods(obj.getClass).get(taskName).map{ method =>
+      taskMethods(obj.getClass).get(name).map{ method =>
         Option(method.invoke(obj) /* null in case of Unit */ ).getOrElse(().asInstanceOf[AnyRef]) match {
           case code if code.getClass.getSimpleName == "ExitCode" =>
             // FIXME: ExitCode needs to be part of the compatibility interfaces
@@ -169,9 +170,8 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
             callInternal(result, members.tail, previous :+ taskName, context)
         }
       }.getOrElse{
-        val folder = NameTransformer.decode(taskName)
-        if( context != null && (context.workingDirectory / folder).exists ){
-          val newContext = context.copy( workingDirectory = context.workingDirectory / folder )
+        if( context != null && (context.workingDirectory / name).exists ){
+          val newContext = context.copy( workingDirectory = context.workingDirectory / name )
           callInternal(
             lib.loadRoot(
               newContext
@@ -181,7 +181,9 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
             newContext
           )
         } else {
-          Seq( ( Some(obj), None, Some("Object " ++ previous.mkString(".") ++ s" has no method $taskName\n") ) )
+          val p = previous.mkString(".")
+          val msg = (if(p.nonEmpty) p ++ s" has" else "")
+          Seq( ( Some(obj), None, Some( msg ++ s"no method $name\n") ) )
         }
       }
     }.getOrElse{
