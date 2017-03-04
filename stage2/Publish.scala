@@ -14,6 +14,14 @@ trait PublishMaven extends PackageJars{
   def inceptionYear: Int
   def organization: Option[Organization]
 
+  // ========== publish ==========
+  private val releaseFolder = s"/${groupId.replace(".","/")}/${artifactId}_$scalaMajorVersion/$version/"
+
+  def publishedArtifacts = `package` :+ pom
+
+  def publishLocal: Unit = lib.publishLocal(
+    sourceFiles, publishedArtifacts, context.paths.mavenCache, releaseFolder
+  )
   // ========== package ==========
 
   /** put additional xml that should go into the POM file in here */
@@ -35,11 +43,4 @@ trait PublishMaven extends PackageJars{
     jarTarget = jarTarget
   )
 
-  // ========== publish ==========
-  private val releaseFolder = s"/${groupId.replace(".","/")}/${artifactId}_$scalaMajorVersion/$version/"
-
-  def publishLocal: Unit =
-    lib.publishLocal( sourceFiles, `package` :+ pom, context.paths.mavenCache, releaseFolder )
-
-  def isSnapshot: Boolean = version.endsWith("-SNAPSHOT")
 }

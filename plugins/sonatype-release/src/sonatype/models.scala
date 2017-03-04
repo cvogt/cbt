@@ -7,7 +7,9 @@ case class StagingProfile(
   resourceURI: String
 )
 
-case class StagingRepositoryId(repositoryId: String)
+case class StagingRepositoryId( string: String ){
+  def repositoryId = string // deprecated
+}
 
 object RepositoryState {
   val fromString: String => RepositoryState  = {

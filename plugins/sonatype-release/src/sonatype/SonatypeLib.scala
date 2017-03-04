@@ -1,11 +1,10 @@
-package cbt.sonatype
+package cbt
+package sonatype
 
 import java.io.File
 import java.net.URL
 import java.nio.file.Files._
 import java.nio.file.Paths
-
-import cbt.{ ExitCode, Lib }
 
 /**
   * Sonatype release process is:
@@ -19,9 +18,9 @@ import cbt.{ ExitCode, Lib }
 
 object SonatypeLib {
 
-  val sonatypeServiceURI: String = "https://oss.sonatype.org/service/local"
+  val serviceURI: String = "https://oss.sonatype.org/service/local"
 
-  val sonatypeSnapshotsURI: String = "https://oss.sonatype.org/content/repositories/snapshots"
+  val snapshotsURI: String = "https://oss.sonatype.org/content/repositories/snapshots"
 
   /**
     * login:password for Sonatype access.
@@ -29,7 +28,7 @@ object SonatypeLib {
     * • environment variables SONATYPE_USERNAME and SONATYPE_PASSWORD
     * • ~/.cbt/sonatype-credentials
     */
-  def sonatypeCredentials: String = {
+  def credentials: String = {
     def fromEnv = for {
       username <- Option(System.getenv("SONATYPE_USERNAME"))
       password <- Option(System.getenv("SONATYPE_PASSWORD"))
@@ -51,55 +50,45 @@ object SonatypeLib {
   }
 }
 
-final class SonatypeLib(
-  sonatypeServiceURI: String,
-  sonatypeSnapshotsURI: String,
-  sonatypeCredentials: String,
-  profileName: String
-)( lib: Lib, log: String => Unit ) {
+final case class SonatypeLib(
+  profileName: String,
+  serviceURI: String = SonatypeLib.serviceURI,
+  snapshotsURI: String = SonatypeLib.snapshotsURI,
+  credentials: String = SonatypeLib.credentials
+)( implicit logger: Logger ){
+  private val lib: Lib = new Lib(logger)
+  private def log: String => Unit = logger.log("sonatype-release",_)
 
-  private val sonatypeApi = new SonatypeHttpApi(sonatypeServiceURI, sonatypeCredentials, profileName)(sonatypeLogger)
-
+  val api = new SonatypeHttpApi(serviceURI, credentials, profileName)(log)
   /*
    * Signed publish steps:
    * • create new staging repo
    * • create artifacts and sign them
    * • publish jars to created repo
   */
-  def sonatypePublishSigned(
-    sourceFiles: Seq[File],
-    artifacts: Seq[File],
-    groupId: String,
-    artifactId: String,
-    version: String,
-    isSnapshot: Boolean,
-    scalaMajorVersion: String
-  ): ExitCode = {
-    if(sourceFiles.nonEmpty) {
-      System.err.println(lib.blue("Staring publishing to Sonatype."))
+  def publishSigned( artifacts: Seq[File], releaseFolder: String ) = {
+    import api._
+    System.err.println(lib.blue("Publishing to Sonatype"))
 
-      val profile = getStagingProfile()
+    def publish(deployURI: String) = lib.publishSigned(
+      artifacts, new URL(deployURI ++ releaseFolder), Some(credentials)
+    )
 
-      val deployURI = (if (isSnapshot) {
-        sonatypeSnapshotsURI
-      } else {
-        val repoId = sonatypeApi.createStagingRepo(profile)
-        s"${sonatypeServiceURI}/staging/deployByRepositoryId/${repoId.repositoryId}"
-      }) + s"/${groupId.replace(".", "/")}/${artifactId}_${scalaMajorVersion}/${version}"
-
-      lib.publishSigned(
-        artifacts = artifacts,
-        url = new URL(deployURI),
-        credentials = Some(sonatypeCredentials)
-      )
-      System.err.println(lib.green("Successfully published artifacts to Sonatype."))
-      ExitCode.Success
+    if (releaseFolder.endsWith("-SNAPSHOT")){
+      publish(snapshotsURI)
     } else {
-      System.err.println(lib.red("Sources are empty, won't publish empty jar."))
-      ExitCode.Failure
+      val profile = getStagingProfile
+      val repoId = createStagingRepo(profile)
+      publish(
+        serviceURI ++ "/staging/deployByRepositoryId/" ++ repoId.string
+      )
+      finishRelease( getStagingRepoById(repoId), profile )
     }
+
+    System.err.println(lib.green("Successfully published to Sonatype!"))
   }
 
+  /*
   /**
     * Release is:
     * • find staging repo related to current profile;
@@ -107,28 +96,24 @@ final class SonatypeLib(
     * • wait until this repo is released;
     * • drop this repo.
     */
-  def sonatypeRelease(
-    groupId: String,
-    artifactId: String,
-    version: String
-  ): ExitCode = {
+  private def release: ExitCode = {
     val profile = getStagingProfile()
 
-    sonatypeApi.getStagingRepos(profile).toList match {
+    getStagingRepos(profile).toList match {
       case Nil =>
         System.err.println(lib.red("No staging repositories found, you need to publish artifacts first."))
         ExitCode.Failure
       case repo :: Nil =>
-        sonatypeApi.finishRelease(repo, profile)
-        System.err.println(lib.green(s"Successfully released ${groupId}/${artifactId} v:${version}"))
+        finishRelease(repo, profile)
+        log(lib.green(s"Successfully released artifact"))
         ExitCode.Success
       case repos =>
-        val showRepo = { r: StagingRepository => s"${r.repositoryId} in state: ${r.state}" }
-        val toRelease = lib.pickOne(lib.blue(s"More than one staging repo found. Select one of them:"), repos)(showRepo)
-
-        toRelease map { repo =>
-          sonatypeApi.finishRelease(repo, profile)
-          System.err.println(lib.green(s"Successfully released ${groupId}/${artifactId} v:${version}"))
+        lib.pickOne(
+          lib.blue(s"More than one staging repo found. Select one of them:"),
+          repos
+        ){ repo => s"${repo.repositoryId} in state: ${repo.state}" }.map{ repo =>
+          finishRelease(repo, profile)
+          log(lib.green(s"Successfully released artifact"))
           ExitCode.Success
         } getOrElse {
           System.err.println(lib.red("Wrong repository number, try again please."))
@@ -136,14 +121,5 @@ final class SonatypeLib(
         }
     }
   }
-
-  private def getStagingProfile() =
-    try {
-      sonatypeApi.getStagingProfile
-    } catch {
-      case e: Exception => throw new Exception(s"Failed to get info for profile: $profileName", e)
-    }
-
-  private def sonatypeLogger: String => Unit = lib.logger.log("Sonatype", _)
-
+  */
 }

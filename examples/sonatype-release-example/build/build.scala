@@ -5,7 +5,7 @@ import cbt._
 class Build(val context: Context) extends SonatypeRelease {
   def groupId: String = "com.github.rockjam"
   def version: String = "0.0.15"
-  def name: String = "cbt-sonatype"
+  override def name: String = "cbt-sonatype-release-example"
 
   def description: String = "Plugin for CBT to release artifacts to sonatype OSS"
   def developers: Seq[Developer] = Seq(

@@ -12,7 +12,7 @@ import scala.xml.XML
   * Publish proccess via HTTP API described here:
   * https://support.sonatype.com/hc/en-us/articles/213465868-Uploading-to-a-Staging-Repository-via-REST-API?page=1#comment_204178478
   */
-private final class SonatypeHttpApi(sonatypeURI: String, sonatypeCredentials: String, profileName: String)(log: String => Unit) {
+final class SonatypeHttpApi(sonatypeURI: String, sonatypeCredentials: String, profileName: String)(log: String => Unit) {
   import HttpUtils._
 
   private val base64Credentials = new String(Base64.getEncoder.encode(sonatypeCredentials.getBytes))
@@ -20,21 +20,25 @@ private final class SonatypeHttpApi(sonatypeURI: String, sonatypeCredentials: St
   // https://oss.sonatype.org/nexus-staging-plugin/default/docs/path__staging_profiles.html
   def getStagingProfile: StagingProfile = {
     log(s"Retrieving info for profile: $profileName")
-    val (_, response) = GET(
-      uri = s"$sonatypeURI/staging/profiles",
-      headers = Map("Authorization" -> s"Basic $base64Credentials")
-    )
+    try{
+      val (_, response) = GET(
+        uri = s"$sonatypeURI/staging/profiles",
+        headers = Map("Authorization" -> s"Basic $base64Credentials")
+      )
 
-    val currentProfile = (XML.loadString(response) \\ "stagingProfile" find { profile =>
-      (profile \ "name").headOption.exists(_.text == profileName)
-    }).getOrElse(throw new Exception(s"Failed to get profile with name: $profileName"))
+      val currentProfile = (XML.loadString(response) \\ "stagingProfile" find { profile =>
+        (profile \ "name").headOption.exists(_.text == profileName)
+      }).getOrElse(throw new Exception(s"Failed to get profile with name: $profileName"))
 
-    StagingProfile(
-      id = (currentProfile \ "id").head.text,
-      name = (currentProfile \ "name").head.text,
-      repositoryTargetId = (currentProfile \ "repositoryTargetId").head.text,
-      resourceURI = (currentProfile \ "resourceURI").head.text
-    )
+      StagingProfile(
+        id = (currentProfile \ "id").head.text,
+        name = (currentProfile \ "name").head.text,
+        repositoryTargetId = (currentProfile \ "repositoryTargetId").head.text,
+        resourceURI = (currentProfile \ "resourceURI").head.text
+      )
+    } catch {
+      case e: Exception => throw new Exception(s"Failed to get info for profile: $profileName", e)
+    }
   }
 
   // https://oss.sonatype.org/nexus-staging-plugin/default/docs/path__staging_profile_repositories_-profileIdKey-.html
@@ -51,7 +55,7 @@ private final class SonatypeHttpApi(sonatypeURI: String, sonatypeCredentials: St
   }
 
   // https://oss.sonatype.org/nexus-staging-plugin/default/docs/path__staging_repository_-repositoryIdKey-.html
-  private def getStagingRepoById(repoId: StagingRepositoryId): StagingRepository = {
+  def getStagingRepoById(repoId: StagingRepositoryId): StagingRepository = {
     log(s"Retrieving staging repo with id: ${repoId.repositoryId}")
     val (_, response) = GET(
       uri = s"$sonatypeURI/staging/repository/${repoId.repositoryId}",
@@ -68,7 +72,7 @@ private final class SonatypeHttpApi(sonatypeURI: String, sonatypeCredentials: St
     log(s"Creating staging repositories for profile: $profileName")
     val (responseCode, response) = POST(
       uri = profile.resourceURI + "/start",
-      body = createRequestBody("Create staging repository [CBT]").getBytes,
+      body = createRequestBody("CBT staging repository").getBytes,
       headers = Map(
         "Authorization" -> s"Basic $base64Credentials",
         "Content-Type" -> "application/xml"
