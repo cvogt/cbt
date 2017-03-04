@@ -39,10 +39,6 @@ trait SonatypeRelease extends Publish {
     )
   }
 
-  def sonatypePublishSignedSnapshot: ExitCode = {
-    copy(context.copy(version = Some(version + "-SNAPSHOT"))).sonatypePublishSigned
-  }
-
   def sonatypeRelease: ExitCode =
     sonatypeLib.sonatypeRelease(groupId, artifactId, version)
 
