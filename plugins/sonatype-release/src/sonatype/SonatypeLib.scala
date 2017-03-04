@@ -52,10 +52,11 @@ object SonatypeLib {
 }
 
 final class SonatypeLib(
-                         sonatypeServiceURI: String,
-                         sonatypeSnapshotsURI: String,
-                         sonatypeCredentials: String,
-                         profileName: String)(lib: Lib) {
+  sonatypeServiceURI: String,
+  sonatypeSnapshotsURI: String,
+  sonatypeCredentials: String,
+  profileName: String
+)( lib: Lib, log: String => Unit ) {
 
   private val sonatypeApi = new SonatypeHttpApi(sonatypeServiceURI, sonatypeCredentials, profileName)(sonatypeLogger)
 
@@ -66,14 +67,14 @@ final class SonatypeLib(
    * • publish jars to created repo
   */
   def sonatypePublishSigned(
-                             sourceFiles: Seq[File],
-                             artifacts: Seq[File],
-                             groupId: String,
-                             artifactId: String,
-                             version: String,
-                             isSnapshot: Boolean,
-                             scalaMajorVersion: String
-                                 ): ExitCode = {
+    sourceFiles: Seq[File],
+    artifacts: Seq[File],
+    groupId: String,
+    artifactId: String,
+    version: String,
+    isSnapshot: Boolean,
+    scalaMajorVersion: String
+  ): ExitCode = {
     if(sourceFiles.nonEmpty) {
       System.err.println(lib.blue("Staring publishing to Sonatype."))
 
@@ -107,10 +108,10 @@ final class SonatypeLib(
     * • drop this repo.
     */
   def sonatypeRelease(
-                     groupId: String,
-                     artifactId: String,
-                     version: String
-                     ): ExitCode = {
+    groupId: String,
+    artifactId: String,
+    version: String
+  ): ExitCode = {
     val profile = getStagingProfile()
 
     sonatypeApi.getStagingRepos(profile).toList match {

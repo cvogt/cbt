@@ -27,7 +27,7 @@ trait SonatypeRelease extends Publish {
 
   def sonatypeCredentials: String = SonatypeLib.sonatypeCredentials
 
-  def sonatypePublishSigned: ExitCode =
+  def sonatypePublishSigned: ExitCode = {
     sonatypeLib.sonatypePublishSigned(
       sourceFiles,
       `package` :+ pom,
@@ -37,6 +37,7 @@ trait SonatypeRelease extends Publish {
       isSnapshot,
       scalaMajorVersion
     )
+  }
 
   def sonatypePublishSignedSnapshot: ExitCode = {
     copy(context.copy(version = Some(version + "-SNAPSHOT"))).sonatypePublishSigned
@@ -46,5 +47,5 @@ trait SonatypeRelease extends Publish {
     sonatypeLib.sonatypeRelease(groupId, artifactId, version)
 
   private def sonatypeLib =
-    new SonatypeLib(sonatypeServiceURI, sonatypeSnapshotsURI, sonatypeCredentials, profileName)(lib)
+    new SonatypeLib(sonatypeServiceURI, sonatypeSnapshotsURI, sonatypeCredentials, profileName)(lib, logger.log("sonatype-release",_))
 }

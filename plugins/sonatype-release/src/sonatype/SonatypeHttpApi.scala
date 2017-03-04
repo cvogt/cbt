@@ -185,24 +185,24 @@ private final class SonatypeHttpApi(sonatypeURI: String, sonatypeCredentials: St
 
   private def promoteRequestBody(repoId: String, description: String, targetRepoId: String) =
     s"""
-       |<promoteRequest>
-       |  <data>
-       |    <stagedRepositoryId>$repoId</stagedRepositoryId>
-       |    <description>$description</description>
-       |    <targetRepositoryId>$targetRepoId</targetRepositoryId>
-       |  </data>
-       |</promoteRequest>
-    """.stripMargin
+      <promoteRequest>
+        <data>
+          <stagedRepositoryId>$repoId</stagedRepositoryId>
+          <description>$description</description>
+          <targetRepositoryId>$targetRepoId</targetRepositoryId>
+        </data>
+      </promoteRequest>
+    """
 
 
   private def createRequestBody(description: String) =
     s"""
-       |<promoteRequest>
-       |  <data>
-       |    <description>$description</description>
-       |  </data>
-       |</promoteRequest>
-    """.stripMargin
+      <promoteRequest>
+        <data>
+          <description>$description</description>
+        </data>
+      </promoteRequest>
+    """
 
   private def extractStagingRepository(repo: xml.Node): StagingRepository =
     StagingRepository(
