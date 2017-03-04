@@ -94,6 +94,10 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
   final def sourceFiles: Seq[File] = lib.sourceFiles(sources, sourceFileFilter)
+  final def nonEmptySourceFiles: Seq[File] =
+    if(sourceFiles.nonEmpty) {
+      throw new RuntimeException( "no source files found" )
+    } else sourceFiles
 
   protected def logEmptySourceDirectories(): Unit = {
     val nonExisting =

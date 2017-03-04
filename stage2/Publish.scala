@@ -15,12 +15,12 @@ trait PublishMaven extends PackageJars{
   def organization: Option[Organization]
 
   // ========== publish ==========
-  private val releaseFolder = s"/${groupId.replace(".","/")}/${artifactId}_$scalaMajorVersion/$version/"
+  protected def releaseFolder = s"/${groupId.replace(".","/")}/${artifactId}_$scalaMajorVersion/$version"
 
   def publishedArtifacts = `package` :+ pom
 
   def publishLocal: Unit = lib.publishLocal(
-    sourceFiles, publishedArtifacts, context.paths.mavenCache, releaseFolder
+    publishedArtifacts, context.paths.mavenCache, releaseFolder
   )
   // ========== package ==========
 
