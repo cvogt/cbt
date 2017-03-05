@@ -286,7 +286,7 @@ object Main{
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("eval",""" scalaVersion; 1 + 1 """))
       assert(res.exit0)
-      assert(res.out == "2\n", res.out ++ res.err)
+      assert(res.out == "2\n", res.out ++ "\n\n" ++ res.err)
     }
 
     {

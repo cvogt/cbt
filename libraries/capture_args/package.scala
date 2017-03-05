@@ -6,6 +6,7 @@ case class Argument( annotations: Seq[annotation.Annotation], name: String, valu
   def toSeqOption = values.map( name +: _ )
 }
 case class Signature( name: String, args: Seq[Argument] )
+
 object `package`{
   def captureArgsImplementation(c: Context): c.Tree = {
     import c.universe._

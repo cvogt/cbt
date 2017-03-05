@@ -286,7 +286,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   override def toString = show
   // a method that can be called only to trigger any side-effects
-  final def `void` = ()
+  final def void = ""
 
   final override def transitiveDependencies: Seq[Dependency] =
     taskCache[BaseBuild]( "transitiveDependencies" ).memoize{
@@ -308,4 +308,6 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   @deprecated("use the MultipleScalaVersions plugin instead","")
   final def crossScalaVersionsArray = Array(scalaVersion)
+
+  def publish: Unit = ()
 }

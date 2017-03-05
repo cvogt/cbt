@@ -13,10 +13,12 @@ trait DynamicOverrides extends BaseBuild{
   protected [cbt] def overrides: String = ""
 
   // TODO: add support for Build inner classes
-  def newBuild[T <: DynamicOverrides:scala.reflect.ClassTag]: T = newBuild[T](context)("")
-  def newBuild[T <: DynamicOverrides:scala.reflect.ClassTag](body: String): T = newBuild[T](context)(body)
-  def newBuild[T <: DynamicOverrides:scala.reflect.ClassTag](context: Context)(body: String): T = {
-    val mixinClass = scala.reflect.classTag[T].runtimeClass
+  import scala.reflect.runtime.universe._
+  def newBuild[T <: DynamicOverrides:TypeTag]: T = newBuild[T](context)("")
+  def newBuild[T <: DynamicOverrides:TypeTag](body: String): T = newBuild[T](context)(body)
+  def newBuild[T <: DynamicOverrides:TypeTag](context: Context)(body: String): T = {
+    val tag = typeTag[T]
+    val mixinClass = tag.mirror.runtimeClass(tag.tpe)
     assert(mixinClass.getTypeParameters.size == 0)
     val mixin = if(
       mixinClass == classOf[Nothing]
