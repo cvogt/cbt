@@ -58,12 +58,15 @@ class Build(val context: Context) extends Scalafmt with GeneratedSections{
   override def scalafmtConfig = {
     import org.scalafmt.config._
     ScalafmtConfig.defaultWithAlign.copy(
-      maxColumn = 120,
+      maxColumn = 110,
       continuationIndent = super.scalafmtConfig.continuationIndent.copy(
         defnSite = 2
       ),
       align = super.scalafmtConfig.align.copy(
-        tokens = AlignToken.default,
+        tokens = AlignToken.default ++ Set(
+          AlignToken( ":", "Param" ),
+          AlignToken( "=", "Param" )
+        ) + AlignToken.caseArrow,
         arrowEnumeratorGenerator = true,
         mixedOwners = true
       ),
@@ -140,12 +143,21 @@ class Build(val context: Context) extends Scalafmt with GeneratedSections{
       "params" -> params
     )
   }
+
   override def generate{
     super.generate
     compile
   }
+
+  private def whiteSpaceInParenthesis =
+    Seq(
+      "(\\(+)([^\\s\\)])".r.replaceAllIn(_:String, m => m.group(1).mkString(" ") ++ " " ++ m.group(2) ),
+      "([^\\s\\(])(\\)+)".r.replaceAllIn(_:String, m => m.group(1) ++ " " ++ m.group(2).mkString(" ") )
+    ).reduce(_ andThen _)
+
   override def compile = {
     scalafmt
+    lib.transformFiles( sourceFiles, whiteSpaceInParenthesis )
     super.compile
   }
 }

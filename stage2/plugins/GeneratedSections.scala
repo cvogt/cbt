@@ -26,14 +26,7 @@ trait GeneratedSections extends BaseBuild{
       }.getOrElse(subject)
     }
 
-    val updated = sourceFiles.flatMap{ file =>
-      val template = file.readAsString
-      val replaced = replaceSections( template, replacements )
-      if( template != replaced ) {
-        write( file.toPath, replaced.getBytes )
-        Some(file)
-      } else None
-    }
+    val updated = lib.transformFiles( sourceFiles, replaceSections( _, replacements ) )
 
     logger.log("generated-sections","Updated:" + updated.map(_ ++ "\n").mkString)
   }

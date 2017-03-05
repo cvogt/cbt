@@ -540,4 +540,15 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       ( directory.getParentFile ++ ("/" ++ lib.buildDirectoryName) ).exists
     ) findOuterMostModuleDirectory(directory.getParentFile) else directory
   }
+
+  def transformFiles( files: Seq[File], transform: String => String ): Seq[File] = {
+    files.flatMap{ file =>
+      val string = file.readAsString
+      val replaced = transform( string )
+      if( string != replaced ) {
+        write( file, replaced )
+        Some(file)
+      } else None
+    }
+  }
 }
