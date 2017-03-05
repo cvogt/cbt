@@ -1,6 +1,7 @@
 package cbt
 import java.io._
 import java.nio.file._
+import java.nio.file.Files._
 import java.net._
 
 object `package`{
@@ -59,6 +60,8 @@ object `package`{
         if( file.isDirectory ) file.listFiles.flatMap(_.listRecursive).toVector else Seq[File]()
       )
     }
+
+    def readAsString = new String( readAllBytes( file.toPath ) )
   }
   implicit class URLExtensionMethods( url: URL ){
     def ++( s: String ): URL = new URL( url.toString ++ s )

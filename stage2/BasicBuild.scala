@@ -13,8 +13,10 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   implicit def transientCache: java.util.Map[AnyRef,AnyRef] = context.transientCache
 
   object libraries{
-    def eval = DirectoryDependency( context.cbtHome ++ "/libraries/eval" )
-    def captureArgs = DirectoryDependency( context.cbtHome ++ "/libraries/capture_args" )
+    private def dep(name: String) = DirectoryDependency( context.cbtHome / "libraries" / name )
+    def captureArgs = dep( "capture_args" )
+    def eval = dep( "eval" )
+    def proguard = dep( "proguard" )
   }
 
   // library available to builds
@@ -86,8 +88,13 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   */
   def compileStatusFile: File = compileTarget ++ ".last-success"
 
+  def generatedSources: Seq[File] = Seq( projectDirectory / "src_generated" )
   /** Source directories and files. Defaults to .scala and .java files in src/ and top-level. */
-  def sources: Seq[File] = Seq(defaultSourceDirectory) ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
+  def sources: Seq[File] = (
+    Seq(defaultSourceDirectory)
+    ++ generatedSources
+    ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
+  )
 
   /** Which file endings to consider being source files. */
   def sourceFileFilter(file: File) = lib.sourceFileFilter(file)
