@@ -21,7 +21,7 @@ private[sonatype] object HttpUtils {
     conn.setReadTimeout(60000) // 1 minute
     conn.setConnectTimeout(30000) // 30 seconds
 
-    headers foreach { case (k,v) =>
+    (Map("User-Agent" -> "CBT build tool") ++ headers) foreach { case (k,v) =>
       conn.setRequestProperty(k, v)
     }
     conn.setRequestMethod(method)

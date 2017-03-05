@@ -429,23 +429,18 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     }
   }
 
-  def publishLocal( sourceFiles: Seq[File], artifacts: Seq[File], mavenCache: File, releaseFolder: String ): Unit = {
-    if(sourceFiles.nonEmpty){
-      val targetDir = mavenCache ++ releaseFolder.stripSuffix("/")
-      targetDir.mkdirs
-      artifacts.foreach{ a =>
-        val target = targetDir ++ ("/" ++ a.getName)
-        System.err.println(blue("publishing ") ++ target.getPath)
-        Files.copy( a.toPath, target.toPath, StandardCopyOption.REPLACE_EXISTING )
-      }
+  def publishLocal( artifacts: Seq[File], mavenCache: File, releaseFolder: String ): Unit = {
+    val targetDir = mavenCache ++ releaseFolder.stripSuffix("/")
+    targetDir.mkdirs
+    artifacts.foreach{ a =>
+      val target = targetDir ++ ("/" ++ a.getName)
+      System.err.println(blue("publishing ") ++ target.getPath)
+      Files.copy( a.toPath, target.toPath, StandardCopyOption.REPLACE_EXISTING )
     }
   }
 
-  def publishSigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
-    // TODO: make concurrency configurable here
-    if(sourceFiles.nonEmpty){
-      publish( artifacts ++ artifacts.map(sign), url, credentials )
-    }
+  def publishSigned( artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
+    publish( artifacts ++ artifacts.map(sign), url, credentials )
   }
 
   private def publish(artifacts: Seq[File], url: URL, credentials: Option[String]): Unit = {

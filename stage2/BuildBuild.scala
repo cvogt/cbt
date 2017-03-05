@@ -8,7 +8,27 @@ trait BuildBuild extends BuildBuildWithoutEssentials{
   override def dependencies =
     super.dependencies :+ plugins.essentials
 }
+class plugins(implicit context: Context){
+  // TODO: move this out of the OO
+  private def plugin(dir: String) = DirectoryDependency(
+    context.copy(
+      workingDirectory = context.cbtHome / "plugins" / dir
+    )
+  ).dependency
+  final lazy val essentials = plugin( "essentials" )
+  final lazy val proguard = plugin( "proguard" )
+  final lazy val sbtLayout = plugin( "sbt_layout" )
+  final lazy val scalafmt = plugin( "scalafmt" )
+  final lazy val scalaJs   = plugin( "scalajs" )
+  final lazy val scalariform = plugin( "scalariform" )
+  final lazy val scalaTest = plugin( "scalatest" )
+  final lazy val sonatypeRelease = plugin( "sonatype-release" )
+  final lazy val uberJar = plugin( "uber-jar" )
+  final lazy val wartremover = plugin( "wartremover" )
+}
 trait BuildBuildWithoutEssentials extends BaseBuild{
+  object plugins extends plugins
+
   assert(
     projectDirectory.getName === lib.buildDirectoryName,
     "You can't extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" + lib.buildDirectoryName
@@ -19,22 +39,9 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
     parentBuild=Some(this)
   )
 
-  object plugins{
-    // TODO: move this out of the OO
-    final lazy val proguard = DirectoryDependency( context.cbtHome ++ "/plugins/proguard" )
-    final lazy val scalaTest = DirectoryDependency( context.cbtHome ++ "/plugins/scalatest" )
-    final lazy val sbtLayout = DirectoryDependency( context.cbtHome ++ "/plugins/sbt_layout" )
-    final lazy val scalaJs   = DirectoryDependency( context.cbtHome ++ "/plugins/scalajs" )
-    final lazy val scalariform = DirectoryDependency( context.cbtHome ++ "/plugins/scalariform" )
-    final lazy val scalafmt = DirectoryDependency( context.cbtHome ++ "/plugins/scalafmt" )
-    final lazy val wartremover = DirectoryDependency( context.cbtHome ++ "/plugins/wartremover" )
-    final lazy val uberJar = DirectoryDependency( context.cbtHome ++ "/plugins/uber-jar" )
-    final lazy val sonatypeRelease = DirectoryDependency( context.cbtHome ++ "/plugins/sonatype-release" )
-    final lazy val essentials = DirectoryDependency( context.cbtHome ++ "/plugins/essentials" )
-  }
-
   override def dependencies =
     super.dependencies :+ context.cbtDependency
+
   def managedBuildDirectory: java.io.File = lib.realpath( projectDirectory.parent )
   def managedBuild = taskCache[BuildBuildWithoutEssentials]("managedBuild").memoize{
     val managedBuildFile = projectDirectory++("/"++lib.buildFileName)

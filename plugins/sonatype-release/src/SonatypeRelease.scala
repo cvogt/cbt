@@ -17,34 +17,10 @@ import cbt.sonatype.SonatypeLib
   *     - promotes staging repository to Central repository;
   *     - drops staging repository after release.
   */
-trait SonatypeRelease extends Publish {
+trait SonatypeRelease extends Publish{
+  protected def sonatypeLib = SonatypeLib(groupId)
 
-  def profileName: String = groupId
+  def publishSonatype = sonatypeLib.publishSigned( publishedArtifacts, releaseFolder )
 
-  def sonatypeServiceURI: String = SonatypeLib.sonatypeServiceURI
-
-  def sonatypeSnapshotsURI: String = SonatypeLib.sonatypeSnapshotsURI
-
-  def sonatypeCredentials: String = SonatypeLib.sonatypeCredentials
-
-  def sonatypePublishSigned: ExitCode =
-    sonatypeLib.sonatypePublishSigned(
-      sourceFiles,
-      `package` :+ pom,
-      groupId,
-      artifactId,
-      version,
-      isSnapshot,
-      scalaMajorVersion
-    )
-
-  def sonatypePublishSignedSnapshot: ExitCode = {
-    copy(context.copy(version = Some(version + "-SNAPSHOT"))).sonatypePublishSigned
-  }
-
-  def sonatypeRelease: ExitCode =
-    sonatypeLib.sonatypeRelease(groupId, artifactId, version)
-
-  private def sonatypeLib =
-    new SonatypeLib(sonatypeServiceURI, sonatypeSnapshotsURI, sonatypeCredentials, profileName)(lib)
+  override def publish = {super.publish; publishSonatype}
 }

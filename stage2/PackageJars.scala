@@ -10,7 +10,6 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
     Seq(() => jar, () => docJar, () => srcJar)
   )( _() ).flatten
 
-
   def jarFilePrefix = artifactId++"_"++scalaMajorVersion++"-"++version
 
   def jar: Option[File] = taskCache[PackageJars]("jar").memoize{
@@ -19,7 +18,7 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
 
   def srcJar: Option[File] = taskCache[PackageJars]("srcJar").memoize{
     lib.createJar(
-      jarTarget / jarFilePrefix++"-sources.jar", sourceFiles, Some(projectDirectory)
+      jarTarget / jarFilePrefix++"-sources.jar", nonEmptySourceFiles, Some(projectDirectory)
     )
   }
 
