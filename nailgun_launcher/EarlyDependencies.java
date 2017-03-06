@@ -117,7 +117,7 @@ class EarlyDependencies{
     ClassLoader zinc_0_3_13_ = loadDependency(
       mavenUrl + "/com/typesafe/zinc/zinc/0.3.13/zinc-0.3.13.jar",
       zinc_0_3_13_File,
-      "4a842dae12f554976ebbdfb24ac6e741f8780f10",
+      "ae0dcd6105d6e87ece2d181c5f0f7a79a966775a",
       classLoaderCache,
       incrementalCompiler_0_13_13_,
       zinc_0_3_13_ClasspathArray
