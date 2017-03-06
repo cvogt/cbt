@@ -42,7 +42,9 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   final def help: String = lib.usage(this.getClass, show)
 
-  final def taskNames: String = lib.taskNames(this.getClass).sorted.mkString("\n")
+  final def complete: String = {
+    lib.taskNames(this.getClass).sorted.mkString("\n")
+  }
 
   // ========== meta data ==========
 
