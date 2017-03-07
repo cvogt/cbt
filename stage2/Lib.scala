@@ -148,6 +148,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     obj match {
       case Some(s) => render(s)
       case None => ""
+      case url: URL => url.show // to remove credentials
       case d: Dependency => lib.usage(d.getClass, d.show())
       case c: ClassPath => c.string
       case ExitCode(int) => System.err.println(int); System.exit(int); ???
@@ -462,17 +463,12 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     import java.net._
     import java.io._
     val url = baseUrl ++ "/" ++ fileName
-    System.err.println(blue("uploading ") ++ url.toString)
+    System.err.println(blue("uploading ") ++ url.show)
     val httpCon = Stage0Lib.openConnectionConsideringProxy(url)
     try{
       httpCon.setDoOutput(true)
       httpCon.setRequestMethod("PUT")
-      credentials.foreach(
-        c => {
-          val encoding = new sun.misc.BASE64Encoder().encode(c.getBytes)
-          httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
-        }
-      )
+      (credentials orElse Option(baseUrl.getUserInfo)).foreach(addHttpCredentials(httpCon,_))
       httpCon.setRequestProperty("Content-Type", "application/binary")
       httpCon.getOutputStream.write(
         fileContents
