@@ -204,7 +204,7 @@ public class Stage0Lib{
       if(sha1 == null || sha1.toLowerCase().equals(checksum)) {
         Files.move(unverified, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
       } else {
-        System.err.println(target + " checksum does not match.\nExpected: |" + sha1 + "|\nFound:    |" + checksum + "|");
+        System.err.println(unverified + " checksum does not match.\nExpected: |" + sha1 + "|\nFound:    |" + checksum + "|");
         System.exit(1);
       }
     }
