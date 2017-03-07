@@ -226,7 +226,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
           zincDeps
             .collect{ case d @
               BoundMavenDependency(
-                _, _, MavenDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none), _
+                _, _, MavenDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none, _), _
               ) => d
             }
             .headOption
@@ -237,7 +237,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
           zincDeps
             .collect{ case d @
               BoundMavenDependency(
-                _, _, MavenDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources), _
+                _, _, MavenDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources, _), _
               ) => d
             }
             .headOption
@@ -358,10 +358,10 @@ ${sourceFiles.sorted.mkString(" \\\n")}
 
   def ScalaDependency(
     groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
-    scalaMajorVersion: String
+    scalaMajorVersion: String, verifyHash: Boolean = true
   ) =
     MavenDependency(
-      groupId, artifactId ++ "_" ++ scalaMajorVersion, version, classifier
+      groupId, artifactId ++ "_" ++ scalaMajorVersion, version, classifier, verifyHash
     )
 
   def cacheOnDisk[T]

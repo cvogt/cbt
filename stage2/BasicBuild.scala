@@ -119,8 +119,8 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   def ScalaDependency(
     groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
-    scalaVersion: String = scalaMajorVersion
-  ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
+    scalaVersion: String = scalaMajorVersion, verifyHash: Boolean = true
+  ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion, verifyHash )
 
   final def DirectoryDependency(path: File, pathToNestedBuild: String*) = cbt.DirectoryDependency(
     context.copy( workingDirectory = path ),

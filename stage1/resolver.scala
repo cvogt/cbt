@@ -210,7 +210,7 @@ abstract class DependenciesProxy{
 
 }
 case class MavenDependency(
-  groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none
+  groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none, verifyHash: Boolean = true
 ){
   private[cbt] def serialize = groupId ++ ":" ++ artifactId ++ ":"++ version ++ classifier.name.map(":" ++ _).getOrElse("")
 }
@@ -231,7 +231,7 @@ case class BoundMavenDependency(
     case o: BoundMavenDependency => o.mavenDependency == mavenDependency && o.repositories == repositories
     case _ => false
   }
-  val MavenDependency( groupId, artifactId, version, classifier ) = mavenDependency
+  val MavenDependency( groupId, artifactId, version, classifier, verifyHash ) = mavenDependency
   assert(
     Option(groupId).collect{
       case BoundMavenDependency.ValidIdentifier(_) =>
@@ -283,8 +283,8 @@ case class BoundMavenDependency(
 
   def jarSha1: String = taskCache[BoundMavenDependency]("jarSha1").memoize{ resolveHash("jar", true) }
   def pomSha1: String = taskCache[BoundMavenDependency]("pomSha1").memoize{ resolveHash("pom", false) }
-  def jar: File = taskCache[BoundMavenDependency]("jar").memoize{ resolve("jar", Some(jarSha1), true) }
-  def pom: File = taskCache[BoundMavenDependency]("pom").memoize{ resolve("pom", Some(pomSha1), false) }
+  def jar: File = taskCache[BoundMavenDependency]("jar").memoize{ resolve("jar", if(verifyHash) Some(jarSha1) else None, true) }
+  def pom: File = taskCache[BoundMavenDependency]("pom").memoize{ resolve("pom", if(verifyHash) Some(pomSha1) else None, false) }
 
   private def pomXml = {
     logger.resolver( "Loading pom file: " ++ pom.string )
