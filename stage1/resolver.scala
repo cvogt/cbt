@@ -154,8 +154,9 @@ class ScalaDependencies(cbtLastModified: Long, mavenCache: File, version: String
 
 case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   assert(paths.nonEmpty)
+  paths.foreach(p => assert(p.exists))
   def exportedClasspath = ClassPath(paths)
-  override def lastModified = paths.map(_.lastModified).maxOption.getOrElse(0) // FIXME: cache this
+  override def lastModified = paths.map(_.lastModifiedRecursive).max // FIXME: cache this
   def targetClasspath = exportedClasspath
   def moduleKey = this.getClass.getName ++ "(" ++ paths.mkString(", ") ++ ")"
 }

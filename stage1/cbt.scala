@@ -61,6 +61,8 @@ object `package`{
       )
     }
 
+    def lastModifiedRecursive = listRecursive.map(_.lastModified).max
+
     def readAsString = new String( readAllBytes( file.toPath ) )
   }
   implicit class URLExtensionMethods( url: URL ){
