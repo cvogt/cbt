@@ -56,18 +56,26 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
 
   def write(file: File, content: String, options: OpenOption*): File = Stage0Lib.write(file, content, options:_*)
 
+  def addHttpCredentials( connection: HttpURLConnection, credentials: String ): Unit = {
+    val encoding = new sun.misc.BASE64Encoder().encode(credentials.getBytes)
+    connection.setRequestProperty("Authorization", "Basic " ++ encoding)
+  }
+
   def download(url: URL, target: File, sha1: Option[String], replace: Boolean = false): Boolean = {
     if( target.exists && !replace ){
-      logger.resolver(green("found ") ++ url.string)
+      logger.resolver(green("found ") ++ url.show)
       true
     } else {
       val incomplete = ( target ++ ".incomplete" ).toPath;
       val connection = Stage0Lib.openConnectionConsideringProxy(url)
+      Option(url.getUserInfo).filter(_ != "").foreach(
+        addHttpCredentials(connection,_)
+      )
       if(connection.getResponseCode != HttpURLConnection.HTTP_OK){
-        logger.resolver(blue("not found: ") ++ url.string)
+        logger.resolver(blue("not found: ") ++ url.show)
         false
       } else {
-        System.err.println(blue("downloading ") ++ url.string)
+        System.err.println(blue("downloading ") ++ url.show)
         logger.resolver(blue("to ") ++ target.string)
         target.getParentFile.mkdirs
         val stream = connection.getInputStream
@@ -226,7 +234,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
           zincDeps
             .collect{ case d @
               BoundMavenDependency(
-                _, _, MavenDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none), _
+                _, _, MavenDependency( "com.typesafe.sbt", "sbt-interface", _, Classifier.none, _), _
               ) => d
             }
             .headOption
@@ -237,7 +245,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
           zincDeps
             .collect{ case d @
               BoundMavenDependency(
-                _, _, MavenDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources), _
+                _, _, MavenDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources, _), _
               ) => d
             }
             .headOption
@@ -358,10 +366,10 @@ ${sourceFiles.sorted.mkString(" \\\n")}
 
   def ScalaDependency(
     groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
-    scalaMajorVersion: String
+    scalaMajorVersion: String, verifyHash: Boolean = true
   ) =
     MavenDependency(
-      groupId, artifactId ++ "_" ++ scalaMajorVersion, version, classifier
+      groupId, artifactId ++ "_" ++ scalaMajorVersion, version, classifier, verifyHash
     )
 
   def cacheOnDisk[T]

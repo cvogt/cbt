@@ -65,7 +65,7 @@ object `package`{
   }
   implicit class URLExtensionMethods( url: URL ){
     def ++( s: String ): URL = new URL( url.toString ++ s )
-    def string = url.toString
+    def show = "/[^/@]+@".r.replaceFirstIn( url.toString, "/" ) // remove credentials when showing url for security reasons
   }
   implicit class SeqExtensions[T](seq: Seq[T]){
      def maxOption(implicit ev: Ordering[T]): Option[T] = try{ Some(seq.max) } catch {

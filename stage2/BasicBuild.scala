@@ -102,7 +102,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   /** Absolute path names for all individual files found in sources directly or contained in directories. */
   final def sourceFiles: Seq[File] = lib.sourceFiles(sources, sourceFileFilter)
   final def nonEmptySourceFiles: Seq[File] =
-    if(sourceFiles.nonEmpty) {
+    if(sourceFiles.isEmpty) {
       throw new RuntimeException( "no source files found" )
     } else sourceFiles
 
@@ -119,8 +119,8 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   def ScalaDependency(
     groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
-    scalaVersion: String = scalaMajorVersion
-  ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion )
+    scalaVersion: String = scalaMajorVersion, verifyHash: Boolean = true
+  ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion, verifyHash )
 
   final def DirectoryDependency(path: File, pathToNestedBuild: String*) = cbt.DirectoryDependency(
     context.copy( workingDirectory = path ),
@@ -320,5 +320,5 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   @deprecated("use the MultipleScalaVersions plugin instead","")
   final def crossScalaVersionsArray = Array(scalaVersion)
 
-  def publish: Unit = ()
+  def publish: Seq[URL] = Seq()
 }

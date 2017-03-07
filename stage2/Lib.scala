@@ -144,13 +144,15 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     }.reduceOption(_ && _).getOrElse( ExitCode.Failure )
   }
 
-  private def render[T]( obj: T ): String = {
+  private def render( obj: Any ): String = {
     obj match {
       case Some(s) => render(s)
       case None => ""
+      case url: URL => url.show // to remove credentials
       case d: Dependency => lib.usage(d.getClass, d.show())
       case c: ClassPath => c.string
       case ExitCode(int) => System.err.println(int); System.exit(int); ???
+      case s: Seq[_] => s.map(render).mkString("\n")
       case _ => obj.toString
     }
   }
@@ -423,27 +425,26 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     else items.map(projection)
   }
 
-  def publishUnsigned( sourceFiles: Seq[File], artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
-    if(sourceFiles.nonEmpty){
-      publish( artifacts, url, credentials )
-    }
+  def publishUnsigned( artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Seq[URL] = {
+    publish( artifacts, url, credentials )
   }
 
-  def publishLocal( artifacts: Seq[File], mavenCache: File, releaseFolder: String ): Unit = {
+  def publishLocal( artifacts: Seq[File], mavenCache: File, releaseFolder: String ): Seq[File] = {
     val targetDir = mavenCache ++ releaseFolder.stripSuffix("/")
     targetDir.mkdirs
-    artifacts.foreach{ a =>
+    artifacts.map{ a =>
       val target = targetDir ++ ("/" ++ a.getName)
       System.err.println(blue("publishing ") ++ target.getPath)
       Files.copy( a.toPath, target.toPath, StandardCopyOption.REPLACE_EXISTING )
+      target
     }
   }
 
-  def publishSigned( artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Unit = {
+  def publishSigned( artifacts: Seq[File], url: URL, credentials: Option[String] = None ): Seq[URL] = {
     publish( artifacts ++ artifacts.map(sign), url, credentials )
   }
 
-  private def publish(artifacts: Seq[File], url: URL, credentials: Option[String]): Unit = {
+  private def publish(artifacts: Seq[File], url: URL, credentials: Option[String]): Seq[URL] = {
     val files = artifacts.map(nameAndContents)
     lazy val checksums = files.flatMap{
       case (name, content) => Seq(
@@ -455,24 +456,19 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     uploadAll(url, all, credentials)
   }
 
-  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: Option[String] = None ): Unit =
+  def uploadAll(url: URL, nameAndContents: Seq[(String, Array[Byte])], credentials: Option[String] = None ): Seq[URL] =
     nameAndContents.map{ case(name, content) => upload(name, content, url, credentials ) }
 
-  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: Option[String] = None): Unit = {
+  def upload(fileName: String, fileContents: Array[Byte], baseUrl: URL, credentials: Option[String] = None): URL = {
     import java.net._
     import java.io._
     val url = baseUrl ++ "/" ++ fileName
-    System.err.println(blue("uploading ") ++ url.toString)
+    System.err.println(blue("uploading ") ++ url.show)
     val httpCon = Stage0Lib.openConnectionConsideringProxy(url)
     try{
       httpCon.setDoOutput(true)
       httpCon.setRequestMethod("PUT")
-      credentials.foreach(
-        c => {
-          val encoding = new sun.misc.BASE64Encoder().encode(c.getBytes)
-          httpCon.setRequestProperty("Authorization", "Basic " ++ encoding)
-        }
-      )
+      (credentials orElse Option(baseUrl.getUserInfo)).foreach(addHttpCredentials(httpCon,_))
       httpCon.setRequestProperty("Content-Type", "application/binary")
       httpCon.getOutputStream.write(
         fileContents
@@ -481,6 +477,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     } finally {
       httpCon.disconnect
     }
+    url
   }
 
 

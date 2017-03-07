@@ -22,5 +22,5 @@ trait SonatypeRelease extends Publish{
 
   def publishSonatype = sonatypeLib.publishSigned( publishedArtifacts, releaseFolder )
 
-  override def publish = {super.publish; publishSonatype}
+  override def publish = super.publish ++ publishSonatype
 }
