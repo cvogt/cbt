@@ -74,18 +74,20 @@ final case class SonatypeLib(
       artifacts, new URL(deployURI ++ releaseFolder), Some(credentials)
     )
 
-    if (releaseFolder.endsWith("-SNAPSHOT")){
+    val urls = if (releaseFolder.endsWith("-SNAPSHOT")){
       publish(snapshotsURI)
     } else {
       val profile = getStagingProfile
       val repoId = createStagingRepo(profile)
-      publish(
+      val urls = publish(
         serviceURI ++ "/staging/deployByRepositoryId/" ++ repoId.string
       )
       finishRelease( getStagingRepoById(repoId), profile )
+      urls 
     }
 
     System.err.println(lib.green("Successfully published to Sonatype!"))
+    urls
   }
 
   /*

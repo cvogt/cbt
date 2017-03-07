@@ -320,5 +320,5 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   @deprecated("use the MultipleScalaVersions plugin instead","")
   final def crossScalaVersionsArray = Array(scalaVersion)
 
-  def publish: Unit = ()
+  def publish: Seq[URL] = Seq()
 }
