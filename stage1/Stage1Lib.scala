@@ -98,7 +98,7 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
   }
 
   // ========== compilation / execution ==========
-
+  // TODO: move classLoader first
   def runMain( cls: String, args: Seq[String], classLoader: ClassLoader, fakeInstance: Boolean = false ): ExitCode = {
     import java.lang.reflect.Modifier
     logger.run(s"Running $cls.main($args) with classLoader: " ++ classLoader.toString)
