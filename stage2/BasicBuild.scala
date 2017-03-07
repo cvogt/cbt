@@ -106,14 +106,11 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
       throw new RuntimeException( "no source files found" )
     } else sourceFiles
 
-  protected def logEmptySourceDirectories(): Unit = {
-    val nonExisting =
-      sources
-        .filterNot( _.exists )
-        .diff( Seq(defaultSourceDirectory) )
-    if(!nonExisting.isEmpty) logger.stage2("Some sources do not exist: \n"++nonExisting.mkString("\n"))
+  {
+    val nonExisting = sources.filterNot( _.exists ).diff( Seq(defaultSourceDirectory) )
+    if( nonExisting.nonEmpty )
+      logger.stage2("Some sources do not exist: \n"++nonExisting.mkString("\n"))
   }
-  logEmptySourceDirectories()
 
   def Resolver( urls: URL* ) = MavenResolver( context.cbtLastModified, context.paths.mavenCache, urls: _* )
 
@@ -129,7 +126,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
 
-  def localJars           : Seq[File] =
+  def localJars: Seq[File] =
     Seq(projectDirectory ++ "/lib")
       .filter(_.exists)
       .flatMap(_.listFiles)
