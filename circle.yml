@@ -3,8 +3,8 @@ machine:
     version: oraclejdk8
 
 dependencies:
-  cache_directories:
-    - "cache"
+#  cache_directories:
+#    - "cache"
   override:
     - ./cbt compile
     - ./cbt direct

@@ -155,22 +155,17 @@ object Main{
     }
 
     (
-      (
-        if(System.getenv("CIRCLECI") == null){
-          // tenporarily disable on circleci as it seems to have trouble reliably
-          // downloading from bintray
-          Dependencies(
-            Resolver( bintray("tpolecat") ).bind(
-              lib.ScalaDependency("org.tpolecat","tut-core","0.4.2", scalaMajorVersion="2.11")
-            )
-          ).classpath.strings
-        } else Nil
-      ) ++
-     Dependencies(
-      Resolver( sonatypeReleases ).bind(
-        MavenDependency("org.cvogt","scala-extensions_2.11","0.5.1")
-      )
-    ).classpath.strings
+      Dependencies(
+        Resolver( bintray("tpolecat"), mavenCentral ).bind(
+          lib.ScalaDependency("org.tpolecat","tut-core","0.4.2", scalaMajorVersion="2.11", verifyHash = false)
+        )
+      ).classpath.strings
+      ++
+      Dependencies(
+        Resolver( sonatypeReleases ).bind(
+          MavenDependency("org.cvogt","scala-extensions_2.11","0.5.1")
+        )
+      ).classpath.strings
       ++
       Dependencies(
         Resolver( mavenCentral ).bind(
