@@ -5,7 +5,27 @@ import java.net._
 import java.io._
 import scala.xml._
 
-class Build(val context: Context) extends Scalafmt with GeneratedSections{
+class Build(val context: Context) extends Scalafmt{
+  def description: String = "Type-safe scala wrapper to interfaces with ProGuard.main runner"
+  def inceptionYear = 2017
+
+  def generate = {
+    lib.transformFiles( sourceFiles, replaceSections( _, replacements ) )
+    compile
+  }
+
+  override def scalafmt = super.scalafmt.copy(
+    config = super.scalafmt.lib.cbtRecommendedConfig,
+    whiteSpaceInParenthesis = true
+  )
+
+  override def compile = {
+    // currently suffers from non-deterministic formatting. Try a few times to reproduce commit state.
+    val formatted = scalafmt.apply.map(_.string).mkString("\n")
+    if( formatted.nonEmpty ) System.err.println( "Formatted:\n" ++ formatted ++ "\n---------------" )
+    super.compile
+  }
+
   def refcard = projectDirectory / "spec/refcard.html"
 
   /** downloads html proguard parameter specification */
@@ -53,39 +73,6 @@ class Build(val context: Context) extends Scalafmt with GeneratedSections{
       )
     )
     XmlNotDownloadingDTD.loadString( w.toString )
-  }
-
-  override def scalafmtConfig = {
-    import org.scalafmt.config._
-    ScalafmtConfig.defaultWithAlign.copy(
-      maxColumn = 110,
-      continuationIndent = super.scalafmtConfig.continuationIndent.copy(
-        defnSite = 2
-      ),
-      align = super.scalafmtConfig.align.copy(
-        tokens = AlignToken.default ++ Set(
-          AlignToken( ":", "Param" ),
-          AlignToken( "=", "Param" )
-        ) + AlignToken.caseArrow,
-        arrowEnumeratorGenerator = true,
-        mixedOwners = true
-      ),
-      binPack = super.scalafmtConfig.binPack.copy(
-        parentConstructors = true
-      ),
-      spaces = super.scalafmtConfig.spaces.copy(
-        inImportCurlyBraces = true
-      ),
-      lineEndings = LineEndings.unix,
-      newlines = super.scalafmtConfig.newlines.copy(
-        penalizeSingleSelectMultiArgList = false
-      ),
-      runner = super.scalafmtConfig.runner.copy(
-        optimizer = super.scalafmtConfig.runner.optimizer.copy(
-          forceConfigStyleOnOffset = -1
-        )
-      )
-    )
   }
 
   /** generates Scala code from parameter specification html */
@@ -142,22 +129,5 @@ class Build(val context: Context) extends Scalafmt with GeneratedSections{
       "args" -> args,
       "params" -> params
     )
-  }
-
-  override def generate{
-    super.generate
-    compile
-  }
-
-  private def whiteSpaceInParenthesis =
-    Seq(
-      "(\\(+)([^\\s\\)])".r.replaceAllIn(_:String, m => m.group(1).mkString(" ") ++ " " ++ m.group(2) ),
-      "([^\\s\\(])(\\)+)".r.replaceAllIn(_:String, m => m.group(1) ++ " " ++ m.group(2).mkString(" ") )
-    ).reduce(_ andThen _)
-
-  override def compile = {
-    scalafmt
-    lib.transformFiles( sourceFiles, whiteSpaceInParenthesis )
-    super.compile
   }
 }
