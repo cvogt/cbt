@@ -4,7 +4,7 @@ import java.io._
 import java.net._
 import java.lang.reflect.InvocationTargetException
 import java.nio.file.{Path =>_,_}
-import java.nio.file.Files.{readAllBytes, deleteIfExists, delete}
+import java.nio.file.Files._
 import java.security.MessageDigest
 import java.util.jar._
 import java.lang.reflect.Method
@@ -539,13 +539,26 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
   }
 
   def transformFiles( files: Seq[File], transform: String => String ): Seq[File] = {
-    files.flatMap{ file =>
+    transformFilesOrError( files, s => Right(transform(s)) )._1
+  }
+
+  def transformFilesOrError[T]( files: Seq[File], transform: String => Either[T,String] ): ( Seq[File], Seq[(File, T)] ) = {
+    val results = files.map{ file =>
       val string = file.readAsString
-      val replaced = transform( string )
-      if( string != replaced ) {
-        write( file, replaced )
-        Some(file)
-      } else None
+      transform( string ).left.map(
+        file -> _
+      ).right.map(
+        replaced =>
+          if( string != replaced ) {
+            val tmpFile = file ++ ".cbt-tmp"
+            assert( !tmpFile.exists )
+            write( tmpFile, replaced )
+            move( tmpFile.toPath, file.toPath, StandardCopyOption.REPLACE_EXISTING )
+            Some( file )
+          } else None
+      )
     }
+
+    ( results.map(_.right.toOption).flatten.flatten, results.map(_.left.toOption).flatten )
   }
 }
