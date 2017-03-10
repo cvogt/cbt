@@ -272,12 +272,11 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
           redirectOutToErr{
             System.err.println("Compiling to " ++ compileTarget.toString)
             try{
-              lib.runMain(
+              zinc.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ (
                   if(cp.isEmpty) Nil else Seq("-cp", cp)
-                ) ++ sourceFiles.map(_.string),
-                zinc.classLoader
+                ) ++ sourceFiles.map(_.string)
               )
             } catch {
               case scala.util.control.NonFatal(e) =>

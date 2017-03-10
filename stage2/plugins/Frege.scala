@@ -88,10 +88,9 @@ class FregeLib(
             System.err.println("Compiling with Frege to " ++ compileTarget.toString)
             compileTarget.mkdirs
             redirectOutToErr{
-              lib.runMain(
+              fregeDependency.runMain(
                 _class,
-                dualArgs ++ singleArgs ++ sourceFiles.map(_.toString),
-                fregeDependency.classLoader
+                dualArgs ++ singleArgs ++ sourceFiles.map(_.toString)
               )
             }
           } catch {
