@@ -88,7 +88,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   */
   def compileStatusFile: File = compileTarget ++ ".last-success"
 
-  def generatedSources: Seq[File] = Seq( projectDirectory / "src_generated" )
+  def generatedSources: Seq[File] = Seq( projectDirectory / "src_generated" ).filter( _.exists )
   /** Source directories and files. Defaults to .scala and .java files in src/ and top-level. */
   def sources: Seq[File] = (
     Seq(defaultSourceDirectory)
