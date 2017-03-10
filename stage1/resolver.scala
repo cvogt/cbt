@@ -79,7 +79,7 @@ trait DependencyImplementation extends Dependency{
   }
   */
 
-  def runMain( className: String, args: String* ) = lib.runMain( className, args, classLoader )
+  def runMain( className: String, args: Seq[String] ) = lib.runMain( className, args, classLoader )
 
   def flatClassLoader: Boolean = false
 
@@ -88,7 +88,7 @@ trait DependencyImplementation extends Dependency{
   def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
 
   def run( args: String* ): ExitCode = {
-    runClass.map( runMain( _, args: _* ) ).getOrElse{
+    runClass.map( runMain( _, args ) ).getOrElse{
       // FIXME: this just doing nothing when class is not found has been repeatedly
       // surprising. Let's try to make this more visible than just logging an error.
       // Currently blocked on task `recursive` trying every subbuild and would error

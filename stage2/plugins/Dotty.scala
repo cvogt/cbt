@@ -78,15 +78,14 @@ class DottyLib(
 
   def repl(args: Seq[String], classpath: ClassPath) = {
     consoleOrFail("Use `cbt direct repl` instead")
-    lib.runMain(
+    dottyCompiler.runMain(
       "dotty.tools.dotc.repl.Main",
       Seq(
         "-bootclasspath",
         dottyCompiler.classpath.string,
         "-classpath",
         classpath.string
-      ) ++ args,
-      dottyCompiler.classLoader
+      ) ++ args
     )
   }
 
@@ -144,27 +143,24 @@ class DottyLib(
             "-d", compileTarget.toString
           )
         val singleArgs = dottyOptions.map( "-S" ++ _ )
-        val urls = dottyCompiler.classpath.strings.map("file://"+_).map(new java.net.URL(_))
-        val cl = new java.net.URLClassLoader( urls.to )
         val code =
           try{
             System.err.println("Compiling with Dotty to " ++ compileTarget.toString)
             compileTarget.mkdirs
             redirectOutToErr{
-              lib.runMain(
+              dottyCompiler.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ Seq(
                   "-bootclasspath", dottyCompiler.classpath.string
                 ) ++ (
                   if(cp.isEmpty) Nil else Seq("-classpath", cp) // let's put cp last. It so long
-                ) ++ sourceFiles.map(_.toString),
-                cl
+                ) ++ sourceFiles.map(_.toString)
               )
             }
           } catch {
             case e: Exception =>
             System.err.println(red("Dotty crashed. See https://github.com/lampepfl/dotty/issues. To reproduce run:"))
-            System.err.println(cl)
+            System.err.println(dottyCompiler.classLoader)
             System.out.println(s"""
 java -cp \\
 ${dottyCompiler.classpath.strings.mkString(":\\\n")} \\

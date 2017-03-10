@@ -76,10 +76,8 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
       redirectOutToErr{
-        runMain(
-          "scala.tools.nsc.ScalaDoc",
-          args,
-          new ScalaDependencies(cbtLastModified,mavenCache,scalaVersion).classLoader
+        new ScalaDependencies(cbtLastModified,mavenCache,scalaVersion).runMain(
+          "scala.tools.nsc.ScalaDoc", args
         )
       }
       Some(scaladocTarget)

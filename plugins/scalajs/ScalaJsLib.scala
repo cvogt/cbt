@@ -15,14 +15,13 @@ case class ScalaJsLib(
     outputPath.getParentFile.mkdirs
     val scalaJsCliDep = dep( "scalajs-cli_"++lib.libMajorVersion(scalaVersion) )
     outputPath.getParentFile.mkdirs
-    lib.runMain(
+    scalaJsCliDep.runMain(
       "org.scalajs.cli.Scalajsld",
       Seq(
         "--sourceMap",
         "--stdlib", s"${scalaJsLibraryDependency.jar.getAbsolutePath}",
         "--output", outputPath.string
-      ) ++ scalaJsOptions ++ entriesToLink.map(_.getAbsolutePath),
-      scalaJsCliDep.classLoader
+      ) ++ scalaJsOptions ++ entriesToLink.map(_.getAbsolutePath)
     )
   }
 

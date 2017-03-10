@@ -196,15 +196,14 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     }
 
     val scalac = new ScalaCompilerDependency(context.cbtLastModified, context.paths.mavenCache, scalaVersion)
-    lib.runMain(
+    scalac.runMain(
       "scala.tools.nsc.MainGenericRunner",
       Seq(
         "-bootclasspath",
         scalac.classpath.string,
         "-classpath",
         classpath.string
-      ) ++ context.args ,
-      scalac.classLoader
+      ) ++ context.args
     )
   }
 
