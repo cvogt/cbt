@@ -4,9 +4,6 @@ class Build(val context: cbt.Context) extends BaseBuild{
   override def dependencies = (
     super.dependencies
     ++
-    Seq(
-      GitDependency("https://github.com/cvogt/cbt.git", "f11b8318b85f16843d8cfa0743f64c1576614ad6", Some("test/library-test"))
-    ) ++
     // FIXME: make the below less verbose
     Resolver( mavenCentral ).bind(
       ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
@@ -38,6 +35,6 @@ class Build(val context: cbt.Context) extends BaseBuild{
       "ai.x" %% "lens" % "1.0.0"
     )
   )
-  
+
   def printArgs = context.args.mkString(" ")
 }
