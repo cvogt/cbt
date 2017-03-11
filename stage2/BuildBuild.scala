@@ -32,7 +32,7 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
 
   assert(
     projectDirectory.getName === lib.buildDirectoryName,
-    "You can't extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" + lib.buildDirectoryName
+    s"You can't extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" + lib.buildDirectoryName
   )
 
   protected final val managedContext = context.copy(
