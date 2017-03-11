@@ -43,6 +43,11 @@ class Scaffold( logger: Logger ){
     )
   }
 
+  private[cbt] def buildPackageFromDirectory(directory: File) = {
+    val parts = packageFromDirectory(directory).split("\\.")
+    ((parts.head ++ "_build") +: parts.tail).mkString(".")
+  }
+
   def createMain(
     projectDirectory: File
   ): Unit = {
@@ -59,7 +64,7 @@ object Main{
   def createBuild(
     projectDirectory: File
   ): Unit = {
-    createFile(projectDirectory, lib.buildDirectoryName++"/"++lib.buildFileName, s"""package cbt_build.${packageFromDirectory(projectDirectory)}
+    createFile(projectDirectory, lib.buildDirectoryName++"/"++lib.buildFileName, s"""package ${buildPackageFromDirectory(projectDirectory)}
 import cbt._
 class Build(val context: Context) extends BaseBuild{
   override def dependencies = (

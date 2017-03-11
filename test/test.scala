@@ -15,10 +15,20 @@ object Main{
     val lib = new Lib(logger)
     val cbtHome = new File(System.getenv("CBT_HOME"))
     
+
+    val slow = (
+      System.getenv("CIRCLECI") != null // enable only on circle
+      || args.args.contains("slow")
+    )
+    val compat = !args.args.contains("no-compat")
+
+    if(!slow) System.err.println( "Skipping slow tests" )
+    if(!compat) System.err.println( "Skipping cbt version compatibility tests" )
+
     var successes = 0
     var failures = 0
     def assertException[T:scala.reflect.ClassTag](msg: String = "")(code: => Unit)(implicit logger: Logger) = {
-      try{ 
+      try{
         code
         assert(false, msg)
       }catch{ case _:AssertionError => }
@@ -187,9 +197,11 @@ object Main{
     usage("simple")
     compile("simple")
     clean("simple")
-    usage("simple-fixed")
-    compile("simple-fixed")
-    
+    if( compat ){
+      usage("simple-fixed")
+      compile("simple-fixed")
+    }
+
     compile("../plugins/sbt_layout")
     compile("../plugins/scalafmt")
     compile("../plugins/scalajs")
@@ -200,8 +212,12 @@ object Main{
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")
-    compile("../examples/scalajs-react-example/js")
-    compile("../examples/scalajs-react-example/jvm")
+    if(slow){
+      compile("../examples/scalajs-react-example/js")
+      compile("../examples/scalajs-react-example/jvm")
+      compile("../examples/scalajs-plain-example/js")
+      compile("../examples/scalajs-plain-example/jvm")
+    }
     compile("../examples/multi-standalone-example")
     compile("../examples/multi-combined-example")
     if(sys.props("java.version").startsWith("1.7")){
@@ -209,19 +225,23 @@ object Main{
     } else {
       compile("../examples/dotty-example")
       task("run","../examples/dotty-example")
-      task("dottydoc","../examples/dotty-example")
+      if(slow){
+        task("dottydoc","../examples/dotty-example")
+      }
     }
-    task("compile","../examples/scalajs-react-example/js")
-    task("fullOpt.compile","../examples/scalajs-react-example/js")
+    if(slow){
+      task("compile","../examples/scalajs-react-example/js")
+      task("fullOpt.compile","../examples/scalajs-react-example/js")
+    }
     compile("../examples/uber-jar-example")
-    
-    {
+
+    if( compat ){
       val res = task("docJar","simple-fixed-cbt")
       assert( res.out endsWith "simple-fixed-cbt_2.11-0.1-javadoc.jar\n", res.out )
       assert( res.err contains "model contains", res.err )
       assert( res.err endsWith "documentable templates\n", res.err )
     }
-    
+
     {
       val res = runCbt("simple", Seq("printArgs","1","2","3"))
       assert(res.exit0)

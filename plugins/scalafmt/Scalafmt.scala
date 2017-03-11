@@ -12,16 +12,15 @@ import java.nio.file._
 trait Scalafmt extends BaseBuild {
   /** Reformat scala source code according to `scalafmtConfig` rules */
   def scalafmt = {
-    val scalafmtLib = new ScalafmtLib(lib)
-    scalafmtLib.format( sourceFiles ).config(
-      scalafmtLib.loadConfig(
+    Scalafmt.apply( lib, sourceFiles.filter(_.string endsWith ".scala") ).config(
+      Scalafmt.loadConfig(
         projectDirectory.toPath
       ) getOrElse ScalafmtConfig.default
     )
   }
 }
 
-class ScalafmtLib(lib: Lib){ scalafmtLib =>
+object Scalafmt{
   def userHome = Option( System.getProperty("user.home") ).map(Paths.get(_))
 
   /** Tries to load config from .scalafmt.conf in given directory or fallback directory */
@@ -34,22 +33,18 @@ class ScalafmtLib(lib: Lib){ scalafmtLib =>
       .flatMap ( file => StyleCache.getStyleForFile(file.toString) )
   }
 
-  case class format(files: Seq[File]){
-    /**
-      * @param whiteSpaceInParenthesis more of a hack to make up for missing support in Scalafmt. Does not respect alignment and maxColumn.
-      */
+  case class apply( lib: Lib, files: Seq[File] ){
+    /** @param whiteSpaceInParenthesis more of a hack to make up for missing support in Scalafmt. Does not respect alignment and maxColumn. */
     case class config(
-      config: ScalafmtConfig,
-      whiteSpaceInParenthesis: Boolean = false
+      config: ScalafmtConfig, whiteSpaceInParenthesis: Boolean = false
     ) extends (() => Seq[File]){
-      def lib = scalafmtLib
       def apply = {
-        val (successes, errors) = scalafmtLib.lib.transformFilesOrError(
+        val (successes, errors) = lib.transformFilesOrError(
           files,
           org.scalafmt.Scalafmt.format(_, config) match {
             case Formatted.Success(formatted) => Right(
               if( whiteSpaceInParenthesis ){
-                scalafmtLib.whiteSpaceInParenthesis(formatted)
+                Scalafmt.whiteSpaceInParenthesis(formatted)
               } else formatted
             )
             case Formatted.Failure( e ) => Left( e )

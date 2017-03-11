@@ -15,7 +15,7 @@ class Build(val context: Context) extends Scalafmt{
   }
 
   override def scalafmt = super.scalafmt.copy(
-    config = super.scalafmt.lib.cbtRecommendedConfig,
+    config = Scalafmt.cbtRecommendedConfig,
     whiteSpaceInParenthesis = true
   )
 
