@@ -116,3 +116,10 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
     if( c == p ) this else managedBuild.finalBuild( current )
   }
 }
+
+trait CbtInternal extends BuildBuild{
+  protected object cbtInternal{
+    def shared = DirectoryDependency(context.cbtHome / "/internal/plugins/shared")
+    def library = DirectoryDependency(context.cbtHome / "/internal/plugins/library")
+  }
+}
