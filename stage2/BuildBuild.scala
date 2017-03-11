@@ -14,7 +14,7 @@ class plugins(implicit context: Context){
     context.copy(
       workingDirectory = context.cbtHome / "plugins" / dir
     )
-  ).dependency
+  )
   final lazy val essentials = plugin( "essentials" )
   final lazy val proguard = plugin( "proguard" )
   final lazy val sbtLayout = plugin( "sbt_layout" )
@@ -66,9 +66,9 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
               // otherwise we'd have to recursively build all versions since
               // the beginning. Instead CBT always needs to build the pure Java
               // Launcher in the checkout with itself and then run it via reflection.
-              val dep = new GitDependency(base, hash, Some("nailgun_launcher"))
-              val ctx = managedContext.copy( cbtHome = dep.checkout )
-              dep.classLoader
+              val build = GitDependency(base, hash, Some("nailgun_launcher")).asInstanceOf[BaseBuild]
+              val ctx = managedContext.copy( cbtHome = build.projectDirectory.getParentFile )
+              build.classLoader
                 .loadClass( "cbt.NailgunLauncher" )
                 .getMethod( "getBuild", classOf[AnyRef] )
                 .invoke( null, ctx )

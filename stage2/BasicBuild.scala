@@ -212,7 +212,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     val testDirectory = projectDirectory / "test"
     if( (testDirectory / lib.buildDirectoryName / lib.buildFileName).exists ){
       // FIYME: maybe we can make loadRoot(...).finalBuild an Option some
-      DirectoryDependency( testDirectory ).dependency
+      DirectoryDependency( testDirectory )
     } else {
       new BasicBuild( context.copy(workingDirectory = testDirectory) ){
         override def dependencies = Seq(

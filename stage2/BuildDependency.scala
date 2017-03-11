@@ -15,43 +15,39 @@ trait TriggerLoop extends DependencyImplementation{
   def triggerLoopFiles: Seq[File]
 }
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
-final case class DirectoryDependency(context: Context, pathToNestedBuild: String*) extends TriggerLoop{
-  def classLoaderCache = context.classLoaderCache
-  override def toString = show
-  override def show = this.getClass.getSimpleName ++ "(" ++ context.workingDirectory.string ++ ")"
-  def moduleKey = this.getClass.getName ++ "("+context.workingDirectory.string+")"
-  lazy val logger = context.logger
-  override lazy val lib: Lib = new Lib(logger)
-  def transientCache = context.transientCache
-  private lazy val root = lib.loadRoot( context )
-  lazy val dependency: Dependency = {
+object DirectoryDependency{
+  def apply(context: Context, pathToNestedBuild: String*): BuildInterface = {
+    val lib: Lib = new Lib(context.logger)
+
     // TODO: move this into finalBuild probably
-    def selectNestedBuild( build: Dependency, names: Seq[String], previous: Seq[String] ): Dependency = {
+    // TODO: unify this with lib.callReflective
+    def selectNestedBuild( build: BuildInterface, names: Seq[String], previous: Seq[String] ): BuildInterface = {
       names.headOption.map{ name =>
         if( lib.taskNames(build.getClass).contains(name) ){
           val method = build.getClass.getMethod(name)
           val returnType = method.getReturnType
-          if( classOf[Dependency] isAssignableFrom returnType ){
+          if( classOf[BuildInterface] isAssignableFrom returnType ){
             selectNestedBuild(
-              method.invoke(build).asInstanceOf[Dependency],
+              method.invoke(build).asInstanceOf[BuildInterface],
               names.tail,
               previous :+ name
             )
           } else {
-            throw new RuntimeException( s"Expected subtype of Dependency, found $returnType for  " + previous.mkString(".") + " in " + show )
+            throw new RuntimeException(
+              s"Expected subtype of BuildInterface, found $returnType for  " + previous.mkString(".") + " in " + build
+            )
           }
         } else {
-          throw new RuntimeException( (previous :+ name).mkString(".") + " not found in " + show )
+          throw new RuntimeException( (previous :+ name).mkString(".") + " not found in " + build )
         }
       }.getOrElse( build )
     }
-    selectNestedBuild( root.finalBuild(context.workingDirectory), pathToNestedBuild, Nil )
+    selectNestedBuild(
+      lib.loadRoot( context ).finalBuild(context.workingDirectory),
+      pathToNestedBuild,
+      Nil
+    )
   }
-  def exportedClasspath = ClassPath()
-  def dependencies = Seq(dependency)
-  def triggerLoopFiles = root.triggerLoopFiles
-  def lastModified = dependency.lastModified
-  def targetClasspath = ClassPath()
 }
 /*
 case class DependencyOr(first: DirectoryDependency, second: JavaDependency) extends ProjectProxy with DirectoryDependencyBase{
