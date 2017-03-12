@@ -173,7 +173,7 @@ object Stage1{
 
     val stage2Args = new Stage2Args(
       new File( args.args(0) ),
-      args.args.drop(1).dropWhile(_ == "direct").toVector,
+      args.args.drop(1).toVector,
       // launcher changes cause entire nailgun restart, so no need for them here
       stage2LastModified = stage2LastModified,
       cache,

@@ -155,7 +155,11 @@ else
 fi
 
 use_nailgun=0
-if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ] || [ "$2" = "publishSigned" ] || [ "$1" = "direct" ] || [ "$2" = "direct" ]; then
+if [  "$1" = "direct" ]; then
+	use_nailgun=1
+	shift
+fi
+if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ]; then
 	use_nailgun=1
 fi
 
