@@ -15,3 +15,4 @@ node_modules
 examples/dotty-example/_site
 examples/scalajs-plain-example/server/public/generated
 examples/scalajs-react-example/server/public/generated
+.cbt-loop.tmp

@@ -133,7 +133,8 @@ object Main{
         cbtHome,
         cbtHome,
         cbtHome ++ "/compatibilityTarget",
-        null
+        null,
+        Array()
       )
 
       val b = new BasicBuild(noContext){

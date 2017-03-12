@@ -160,7 +160,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       val name = NameTransformer.decode(taskName)
       logger.lib("Calling task " ++ taskName.toString)
       taskMethods(obj.getClass).get(name).map{ method =>
-        Option(method.invoke(obj) /* null in case of Unit */ ).getOrElse(().asInstanceOf[AnyRef]) match {
+        Option(trapExitCodeOrValue(method.invoke(obj)).merge /* null in case of Unit */ ).getOrElse(().asInstanceOf[AnyRef]) match {
           case code if code.getClass.getSimpleName == "ExitCode" =>
             // FIXME: ExitCode needs to be part of the compatibility interfaces
             Seq((None, Some(ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])), None))
@@ -480,49 +480,50 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
 
 
   // code for continuous compile
-  def watch(files: Seq[File])(action: PartialFunction[File, Unit]): Unit = {
+  def watch[T]( files: () => Set[File] )(
+    action: Seq[File] => Option[T] = (f: Seq[File]) => Some(f)
+  ): T = {
     import com.barbarysoftware.watchservice._
     import scala.collection.JavaConversions._
-    val watcher = WatchService.newWatchService
-
-    val realFiles = files.map(realpath)
-
-    realFiles.map{
-      // WatchService can only watch folders
-      case file if file.isFile => dirname(file)
-      case file => file
-    }.distinct.map{ file =>
-      val watchableFile = new WatchableFile(file)
-      val key = watchableFile.register(
-        watcher,
-        StandardWatchEventKind.ENTRY_CREATE,
-        StandardWatchEventKind.ENTRY_DELETE,
-        StandardWatchEventKind.ENTRY_MODIFY
-      )
-    }
-
-    scala.util.control.Breaks.breakable{
-      while(true){
-        logger.loop("Waiting for file changes...")
-        logger.loop("Waiting for file changes...2")
-        Option(watcher.take).map{
-          key =>
-          val changedFiles = key
-            .pollEvents
-            .toVector
-            .filterNot(_.kind == StandardWatchEventKind.OVERFLOW)
-            .map(_.context.toString)
-            // make sure we don't react on other files changed
-            // in the same folder like the files we care about
-            .filter{ name => realFiles.exists(name startsWith _.toString) }
-            .map(new File(_))
-
-          changedFiles.foreach( f => logger.loop( "Changed: " ++ f.toString ) )
-          changedFiles.collect(action)
-          key.reset
-        }
+    Iterator.continually{
+      val watcher = WatchService.newWatchService
+      val realFiles = files().map(realpath)
+      realFiles.map{
+        // WatchService can only watch folders
+        case file if file.isFile => dirname(file)
+        case file => file
+      }.map{ file =>
+        val watchableFile = new WatchableFile(file)
+        val key = watchableFile.register(
+          watcher,
+          StandardWatchEventKind.ENTRY_CREATE,
+          StandardWatchEventKind.ENTRY_DELETE,
+          StandardWatchEventKind.ENTRY_MODIFY
+        )
       }
-    }
+      Option( watcher.take ) -> realFiles
+    }.collect{
+      case (Some(key),f) => key -> f
+    }.map{ case (key, realFiles) =>
+      logger.loop("Waiting for file changes...")
+      val changedFiles = key
+        .pollEvents
+        .toVector
+        .filterNot(_.kind == StandardWatchEventKind.OVERFLOW)
+        .map(_.context.toString)
+        // make sure we don't react on other files changed
+        // in the same folder like the files we care about
+        .filter{ name => realFiles.exists(name startsWith _.toString) }
+        .map(new File(_))
+
+        changedFiles.foreach( f => logger.loop( "Changed: " ++ f.toString ) )
+      val res = action(changedFiles)
+      key.reset
+      res
+    }.filterNot(_.isEmpty)
+     .take(1)
+     .toList
+     .head.get
   }
 
   def findInnerMostModuleDirectory(directory: File): File = {
@@ -559,4 +560,6 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
 
     ( results.map(_.right.toOption).flatten.flatten, results.map(_.left.toOption).flatten )
   }
+
+  def clearScreen = System.err.println( (27.toChar +: "[2J").mkString )
 }

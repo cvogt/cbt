@@ -51,6 +51,10 @@ public class NailgunLauncher{
     ClassLoader.getSystemClassLoader().getParent()
   );
 
+  public static List<File> compatibilitySourceFiles;
+  public static List<File> nailgunLauncherSourceFiles;
+  public static List<File> stage1SourceFiles;
+
   public static void main( String[] args ) throws Throwable {
     long _start = System.currentTimeMillis();
     if(args[0].equals("check-alive")){
@@ -80,7 +84,6 @@ public class NailgunLauncher{
     }
     // ---------------------
 
-    _assert(System.getenv("CBT_HOME") != null, "environment variable CBT_HOME not defined");
     String CBT_HOME = System.getenv("CBT_HOME");
     String cache = CBT_HOME + "/cache/";
     String compatibilityTarget = CBT_HOME + "/compatibility/" + TARGET;
@@ -132,7 +135,8 @@ public class NailgunLauncher{
     final String compatibilityTarget, final ClassLoaderCache classLoaderCache
   ) throws Throwable {
     _assert(TARGET != null, "environment variable TARGET not defined");
-    String nailgunTarget = cbtHome + "/" + NAILGUN + TARGET;
+    String nailgunSources = cbtHome + "/" + NAILGUN;
+    String nailgunTarget = nailgunSources + TARGET;
     String stage1Sources = cbtHome + "/" + STAGE1;
     String stage1Target = stage1Sources + TARGET;
     File compatibilitySources = new File(cbtHome + "/compatibility");
@@ -142,13 +146,20 @@ public class NailgunLauncher{
     ClassLoader rootClassLoader = new CbtURLClassLoader( new URL[]{}, ClassLoader.getSystemClassLoader().getParent() ); // wrap for caching
     EarlyDependencies earlyDeps = new EarlyDependencies(mavenCache, mavenUrl, classLoaderCache, rootClassLoader);
 
+    nailgunLauncherSourceFiles = new ArrayList<File>();
+    for( File f: new File(nailgunSources).listFiles() ){
+      if( f.isFile() && f.toString().endsWith(".java") ){
+        nailgunLauncherSourceFiles.add(f);
+      }
+    }
+
     long nailgunLauncherLastModified = new File( nailgunTarget + "../classes.last-success" ).lastModified();
 
     long compatibilityLastModified;
     if(!compatibilityTarget.startsWith(cbtHome)){
       compatibilityLastModified = new File( compatibilityTarget + "../classes.last-success" ).lastModified();
     } else {
-      List<File> compatibilitySourceFiles = new ArrayList<File>();
+      compatibilitySourceFiles = new ArrayList<File>();
       for( File f: compatibilitySources.listFiles() ){
         if( f.isFile() && f.toString().endsWith(".java") ){
           compatibilitySourceFiles.add(f);
@@ -174,7 +185,7 @@ public class NailgunLauncher{
       append( append( nailgunClasspathArray, compatibilityTarget ), stage1Target );
     String stage1Classpath = classpath( stage1ClasspathArray );
 
-    List<File> stage1SourceFiles = new ArrayList<File>();
+    stage1SourceFiles = new ArrayList<File>();
     for( File f: new File(stage1Sources).listFiles() ){
       if( f.isFile() && f.toString().endsWith(".scala") ){
         stage1SourceFiles.add(f);

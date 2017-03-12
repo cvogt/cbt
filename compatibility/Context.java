@@ -32,6 +32,9 @@ public interface Context{
   public abstract File cbtRootHome(); // REMOVE
   public abstract File compatibilityTarget(); // maybe replace this with search in the classloader for it?
   public abstract BuildInterface parentBuildOrNull();
+  public default File[] triggerLoopFilesArray(){
+    return new File[0]; // REMOVE default value on next compatibility breaking release
+  }
 
   // deprecated methods
   @java.lang.Deprecated

@@ -42,7 +42,8 @@ class Stage2Args(
   val stage2LastModified: Long,
   val cache: File,
   val cbtHome: File,
-  val compatibilityTarget: File
+  val compatibilityTarget: File,
+  val stage2sourceFiles: Seq[File]
 )(
   implicit val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache, val logger: Logger
 ){
@@ -57,7 +58,7 @@ object Stage1{
   def getBuild( _context: java.lang.Object, buildStage1: BuildStage1Result ) = {
     val context = _context.asInstanceOf[Context]
     val logger = new Logger( context.enabledLoggers, buildStage1.start )
-    val (cbtLastModified, classLoader) = buildStage2(
+    val (_, cbtLastModified, classLoader) = buildStage2(
       buildStage1,
       context.cbtHome,
       context.cache
@@ -76,7 +77,9 @@ object Stage1{
 
   def buildStage2(
     buildStage1: BuildStage1Result, cbtHome: File, cache: File
-  )(implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache, logger: Logger): (Long, ClassLoader) = {
+  )(
+    implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache, logger: Logger
+  ): (Seq[File], Long, ClassLoader) = {
 
     import buildStage1._
 
@@ -149,7 +152,7 @@ object Stage1{
       )
     }
 
-    ( stage2LastModified, stage2ClassLoader )
+    ( stage2sourceFiles, stage2LastModified, stage2ClassLoader )
   }
 
   def run(
@@ -166,7 +169,7 @@ object Stage1{
     implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
     implicit val classLoaderCache = new ClassLoaderCache( persistentCache )
 
-    val (stage2LastModified, classLoader) = buildStage2( buildStage1, cbtHome, cache )
+    val (stage2sourceFiles, stage2LastModified, classLoader) = buildStage2( buildStage1, cbtHome, cache )
 
     val stage2Args = new Stage2Args(
       new File( args.args(0) ),
@@ -175,7 +178,8 @@ object Stage1{
       stage2LastModified = stage2LastModified,
       cache,
       cbtHome,
-      new File(buildStage1.compatibilityClasspath)
+      new File(buildStage1.compatibilityClasspath),
+      stage2sourceFiles
     )
 
     logger.stage1(s"Run Stage2")
@@ -193,7 +197,7 @@ object Stage1{
         case _ => ExitCode.Success
       }
     ).integer
-    logger.stage1(s"Stage1 end")
+    logger.stage1(s"Stage1 end with exit code " + exitCode)
     return exitCode;
   }
 }
