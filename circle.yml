@@ -6,6 +6,12 @@ dependencies:
 #  cache_directories:
 #    - "cache"
   override:
+    - sudo apt-add-repository "deb http://archive.ubuntu.com/ubuntu trusty-backports main restricted universe"
+    - sudo apt-get update
+    - sudo apt-get install -t trusty-backports shellcheck
+
+compile:
+  override:
     - ./cbt compile
     - ./cbt direct
     - ./cbt -Dlog=all

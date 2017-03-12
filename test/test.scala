@@ -14,16 +14,26 @@ object Main{
     implicit val logger: Logger = new Logger(args.enabledLoggers, System.currentTimeMillis)
     val lib = new Lib(logger)
     val cbtHome = new File(System.getenv("CBT_HOME"))
-    
 
     val slow = (
       System.getenv("CIRCLECI") != null // enable only on circle
       || args.args.contains("slow")
     )
     val compat = !args.args.contains("no-compat")
+    val shellcheck = !args.args.contains("no-shellcheck")
 
     if(!slow) System.err.println( "Skipping slow tests" )
     if(!compat) System.err.println( "Skipping cbt version compatibility tests" )
+
+    if(shellcheck){
+      val pb = new ProcessBuilder( "/usr/bin/env", "shellcheck", (cbtHome / "cbt").string )
+      val p = pb.start
+      val out = new java.io.InputStreamReader(p.getInputStream)
+      val errors = Iterator.continually(out.read).takeWhile(_ != -1).map(_.toChar).mkString
+      if( p.waitFor != 0 ){
+        throw new Exception("Linting error in ./cbt bash launcher script:\n" + errors)
+      }
+    } else System.err.println( "Skipping shellcheck" )
 
     var successes = 0
     var failures = 0

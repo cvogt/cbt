@@ -5,8 +5,7 @@ import java.util._
 
 import scala.collection.JavaConverters._
 
-final case class Stage1ArgsParser(__args: Seq[String]) {
-  val _args = __args.drop(1)
+final case class Stage1ArgsParser(_args: Seq[String]) {
   /**
    * Raw parameters including their `-D` flag.
   **/
@@ -162,7 +161,7 @@ object Stage1{
     buildStage1: BuildStage1Result,
     persistentCache: java.util.Map[AnyRef,AnyRef]
   ): Int = {
-    val args = Stage1ArgsParser(_args.toVector)
+    val args = Stage1ArgsParser(_args.toVector.drop(1))
     implicit val logger = new Logger(args.enabledLoggers, buildStage1.start)
     logger.stage1(s"Stage1 start")
 
@@ -173,7 +172,7 @@ object Stage1{
 
     val stage2Args = new Stage2Args(
       new File( args.args(0) ),
-      args.args.drop(1).dropWhile(_ == "direct").toVector,
+      args.args.drop(1).toVector,
       // launcher changes cause entire nailgun restart, so no need for them here
       stage2LastModified = stage2LastModified,
       cache,
