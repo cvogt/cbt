@@ -164,7 +164,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
 
   def compile: Option[Long] = taskCache[BaseBuild]("_compile").memoize{
     lib.compile(
-      context.cbtLastModified,
+      Math.max( context.cbtLastModified, context.parentBuild.map(_.lastModified).getOrElse(0L) ),
       sourceFiles, compileTarget, compileStatusFile, compileDependencies,
       context.paths.mavenCache, scalacOptions,
       zincVersion = zincVersion, scalaVersion = scalaVersion
