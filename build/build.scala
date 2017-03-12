@@ -1,9 +1,9 @@
 import cbt._
 import cbt_internal._
 
-class Build(val context: Context) extends Shared{
+class Build(val context: Context) extends Shared with PublishLocal{
   override def name: String = "cbt"
-  override def version: String = ???
+  override def version: String = "0.1"
   override def description: String = "Fast, intuitive Build Tool for Scala"
   override def inceptionYear: Int = 2015
 
