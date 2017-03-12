@@ -130,12 +130,16 @@ class DottyLib(
     val classpath = d.classpath
     val cp = classpath.string
 
+    def lastModified = (
+      cbtLastModified +: d.lastModified +: sourceFiles.map(_.lastModified)
+    ).max
+
     if( sourceFiles.isEmpty ){
       None
     }else{
       val start = System.currentTimeMillis
       val lastCompiled = statusFile.lastModified
-      if( d.lastModified > lastCompiled || sourceFiles.exists(_.lastModified > lastCompiled) ){
+      if( lastModified > lastCompiled ){
 
         val _class = "dotty.tools.dotc.Main"
         val dualArgs =

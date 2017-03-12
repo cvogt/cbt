@@ -66,12 +66,16 @@ class FregeLib(
     val classpath = d.classpath
     val cp = classpath.string
 
+    def lastModified = (
+      cbtLastModified +: d.lastModified +: sourceFiles.map(_.lastModified)
+    ).max
+
     if( sourceFiles.isEmpty ){
       None
     } else {
       val start = System.currentTimeMillis
       val lastCompiled = statusFile.lastModified
-      if( d.lastModified > lastCompiled || sourceFiles.exists(_.lastModified > lastCompiled) ){
+      if( lastModified > lastCompiled ){
 
         val _class = "frege.compiler.Main"
         val fp = (fregeDependency.classpath.strings ++ fregeDependencies.map(_.classpath.string))

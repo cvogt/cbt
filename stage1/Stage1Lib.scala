@@ -220,12 +220,16 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     val classpath = d.classpath
     val cp = classpath.string
 
+    def lastModified = (
+      cbtLastModified +: d.lastModified +: sourceFiles.map(_.lastModified)
+    ).max
+
     if( sourceFiles.isEmpty ){
       None
     }else{
       val start = System.currentTimeMillis
       val lastCompiled = statusFile.lastModified
-      if( d.lastModified > lastCompiled || sourceFiles.exists(_.lastModified > lastCompiled) ){
+      if( lastModified > lastCompiled ){
         def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
         val zinc = Resolver(mavenCentral).bindOne(MavenDependency("com.typesafe.zinc","zinc", zincVersion))
         val zincDeps = zinc.transitiveDependencies
