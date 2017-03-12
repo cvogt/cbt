@@ -55,6 +55,8 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
   def green(string: String) = scala.Console.GREEN++string++scala.Console.RESET
 
   def write(file: File, content: String, options: OpenOption*): File = Stage0Lib.write(file, content, options:_*)
+  def writeIfChanged(file: File, content: String, options: OpenOption*): File =
+    if( !file.exists || content != file.readAsString ) write(file, content, options:_*) else file
 
   def addHttpCredentials( connection: HttpURLConnection, credentials: String ): Unit = {
     val encoding = new sun.misc.BASE64Encoder().encode(credentials.getBytes)
