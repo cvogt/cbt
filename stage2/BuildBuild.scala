@@ -35,9 +35,10 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
     s"You can't extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" + lib.buildDirectoryName
   )
 
-  protected final val managedContext = context.copy(
+  protected def managedContext = context.copy(
     workingDirectory = managedBuildDirectory,
-    parentBuild=Some(this)
+    parentBuild=Some(this),
+    triggerLoopFiles = triggerLoopFiles
   )
 
   override def dependencies =
@@ -108,7 +109,7 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
         throw new Exception(s"Your ${lib.buildClassName} class needs to extend BaseBuild in: "+projectDirectory, e)
     }
   }
-  override def triggerLoopFiles = super.triggerLoopFiles ++ managedBuild.triggerLoopFiles
+
   @deprecated("use finalbuild(File)","")
   override def finalBuild: BuildInterface = finalBuild( context.cwd )
   override def finalBuild( current: File ): BuildInterface = {

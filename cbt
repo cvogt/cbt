@@ -199,6 +199,7 @@ stage1 () {
 			log "Running JVM directly" "$@"
 			# JVM options to improve startup time. See https://github.com/cvogt/cbt/pull/262
 			java $JAVA_OPTS $DEBUG -Xmx6072m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp $NAILGUN$TARGET cbt.NailgunLauncher $(time_taken) "$CWD" "$@"
+			exitCode=$?
 		else
 			log "Running via background process (nailgun)" "$@"
 			for i in 0 1 2 3 4 5 6 7 8 9; do
@@ -222,17 +223,52 @@ stage1 () {
 			done
 			log "Running CBT via Nailgun." "$@"
 			$NG cbt.NailgunLauncher $(time_taken) "$CWD" "$@"
+			exitCode=$?
 		fi
-		exitCode=$?
 		log "Done running CBT." "$@"
 	fi
 }
 
+
+loop=1
+case "$1" in
+	"loop") loop=0
+esac
+case "$2" in
+	"loop") loop=0
+esac
+
+CBT_SIGNALS_LOOPING=253
+USER_PRESSED_CTRL_C=130
+
+CBT_LOOP_FILE="$CWD/target/.cbt-loop.tmp"
 while true; do
 	stage1 "$@"
-	if [ ! "$1" = "loop" ]; then
+	if [ ! $loop -eq 0 ] || [ $exitCode -eq $USER_PRESSED_CTRL_C ]; then
+		log "not looping, exiting" "$@"
 		break
+	else
+		if [ ! $exitCode -eq $CBT_SIGNALS_LOOPING ]; then
+			log "exitCode $exitCode" "$@"
+			which fswatch >/dev/null 2>/dev/null
+			export fswatch_installed=$?
+			if [ -f "$CBT_LOOP_FILE" ]; then
+				if [ $fswatch_installed -eq 0 ]; then
+					# fswatch allows looping over CBT's sources itself
+					log "fswatch found. looping." "$@"
+					files=($(cat "$CBT_LOOP_FILE"))
+					fswatch --one-event "${files[@]}"
+				else
+					log "fswatch not installed, stopping cbt" "$@"
+					break
+				fi
+			else
+				log "no $CBT_LOOP_FILE file, stopping cbt" "$@"
+				break
+			fi
+		fi
 	fi
+
 	echo "======= Restarting CBT =======" 1>&2
 done
 

@@ -2,6 +2,7 @@ package cbt
 
 import java.io._
 import java.net._
+import java.nio.file._
 
 class BasicBuild(final val context: Context) extends BaseBuild
 trait BaseBuild extends BuildInterface with DependencyImplementation with TriggerLoop with SbtDependencyDsl{
@@ -124,7 +125,11 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     pathToNestedBuild: _*
   )
 
-  def triggerLoopFiles: Seq[File] = sources ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
+  def triggerLoopFiles: Set[File] = (
+    context.triggerLoopFiles
+    ++ sources
+    ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
+  )
 
   def localJars: Seq[File] =
     Seq(projectDirectory ++ "/lib")
@@ -318,4 +323,17 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   final def crossScalaVersionsArray = Array(scalaVersion)
 
   def publish: Seq[URL] = Seq()
+
+  def loop = {
+    lib.callReflective(this, context.args.headOption, context.copy(args=context.args.drop(1)))
+    val files = triggerLoopFiles
+    lib.watch{ () =>
+      logger.loop("Looping change detection over:\n - "++files.mkString("\n - "))
+      files
+    }()
+    context.loopFile.getParentFile.mkdirs
+    lib.write( context.loopFile, files.mkString("\n"), StandardOpenOption.CREATE )
+
+    ExitCode(253) // signal bash script to restart
+  }
 }

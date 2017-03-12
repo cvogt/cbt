@@ -349,19 +349,21 @@ ${sourceFiles.sorted.mkString(" \\\n")}
     res
   }
 
-  def trapExitCode( code: => ExitCode ): ExitCode = {
+  def trapExitCodeOrValue[T]( result: => T ): Either[ExitCode,T] = {
     val trapExitCodeBefore = TrapSecurityManager.trapExitCode().get
     try{
       TrapSecurityManager.trapExitCode().set(true)
-      code
+      Right( result )
     } catch {
       case CatchTrappedExitCode(exitCode) =>
         logger.stage1(s"caught exit code $exitCode")
-        exitCode
+        Left( exitCode )
     } finally {
       TrapSecurityManager.trapExitCode().set(trapExitCodeBefore)
     }
   }
+
+  def trapExitCode( code: => ExitCode ): ExitCode = trapExitCodeOrValue(code).merge
 
   def ScalaDependency(
     groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none,
