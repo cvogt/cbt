@@ -6,9 +6,10 @@ class Build(val context: Context) extends PackageJars{
   def groupId = "cbt.examples"
   override def defaultScalaVersion = "2.11.8"
   def version = "0.1"
-  override def compile = {
-    val file = (projectDirectory ++ "/BuildInfo.scala").toPath
-    val contents = s"""// generated file
+  override def compile = { buildInfo; super.compile }
+  def buildInfo = lib.writeIfChanged(
+    projectDirectory / "src_generated/BuildInfo.scala",
+    s"""// generated file
 import java.io._
 object BuildInfo{
 def artifactId   = "$artifactId"
@@ -17,11 +18,5 @@ def version      = "$version"
 def scalaVersion = "$scalaVersion"
 }
 """
-    if( exists(file) && contents != new String(readAllBytes(file)) )
-      write(
-        (projectDirectory ++ "/BuildInfo.scala").toPath,
-        contents.getBytes
-      )
-    super.compile
-  }
+  )
 }
