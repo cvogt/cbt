@@ -8,14 +8,32 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.eclipse.jgit.lib.Ref
 
 object GitDependency{
-  val GitUrl = "(git:|https:|file:/)//([^/]+)/(.+)".r
+  val GitUrl = "(git@|git://|https://|file:///)([^/:]+)[/:](.+)".r
   def apply(
     url: String, ref: String, subDirectory: Option[String] = None, // example: git://github.com/cvogt/cbt.git#<some-hash>
     pathToNestedBuild: Seq[String] = Seq()
   )(implicit context: Context ): BuildInterface = {
+    def moduleKey = (
+      this.getClass.getName
+      ++ "(" ++ url ++ subDirectory.map("/" ++ _).getOrElse("") ++ "#" ++ ref
+      ++ ", "
+      ++ pathToNestedBuild.mkString(", ")
+      ++ ")"
+    )
+
+    val taskCache = new PerClassCache(context.transientCache, moduleKey)(context.logger)
+
+    val c = taskCache[Dependency]("checkout").memoize{ checkout( url, ref ) }
+    DirectoryDependency(
+      context.copy(
+        workingDirectory = subDirectory.map(c / _).getOrElse(c)
+      ),
+      pathToNestedBuild: _*
+    )
+  }
+  def checkout(url: String, ref: String)(implicit context: Context): File = {
     // TODO: add support for authentication via ssh and/or https
     // See http://www.codeaffine.com/2014/12/09/jgit-authentication/
-    val GitUrl( _, domain, path ) = url
     val credentialsFile = context.workingDirectory ++ "/git.login"
     def authenticate(_git: CloneCommand) =
       if(!credentialsFile.exists){
@@ -30,52 +48,33 @@ object GitDependency{
       }
 
     val logger = context.logger
-
-    def moduleKey = (
-      this.getClass.getName
-      ++ "(" ++ url ++ subDirectory.map("/" ++ _).getOrElse("") ++ "#" ++ ref
-      ++ ", "
-      ++ pathToNestedBuild.mkString(", ")
-      ++ ")"
-    )
-
-    val taskCache = new PerClassCache(context.transientCache, moduleKey)(logger)
-
-    def checkout: File = taskCache[Dependency]("checkout").memoize{
-      val checkoutDirectory = context.cache ++ s"/git/$domain/$path/$ref"
-      val _git = if(checkoutDirectory.exists){
-        logger.git(s"Found existing checkout of $url#$ref in $checkoutDirectory")
-        val _git = new Git(new FileRepository(checkoutDirectory ++ "/.git"))
-        val actualRef = _git.getRepository.getBranch
-        if(actualRef != ref){
-          logger.git(s"actual ref '$actualRef' does not match expected ref '$ref' - fetching and checking out")
-          _git.fetch().call()
-          _git.checkout().setName(ref).call
-        }
-        _git
-      } else {
-        logger.git(s"Cloning $url into $checkoutDirectory")
-        val _git = authenticate(
-          Git
-            .cloneRepository()
-            .setURI(url)
-            .setDirectory(checkoutDirectory)
-        ).call()
-
-        logger.git(s"Checking out ref $ref")
-        _git.checkout().setName(ref).call()
-        _git
-      }
+    val GitUrl( _, domain, path ) = url
+    val checkoutDirectory = context.cache / s"git/$domain/${path.stripSuffix(".git")}/$ref"
+    val _git = if(checkoutDirectory.exists){
+      logger.git(s"Found existing checkout of $url#$ref in $checkoutDirectory")
+      val _git = new Git(new FileRepository(checkoutDirectory ++ "/.git"))
       val actualRef = _git.getRepository.getBranch
-      assert( actualRef == ref, s"actual ref '$actualRef' does not match expected ref '$ref'")
-      checkoutDirectory
-    }
+      if(actualRef != ref){
+        logger.git(s"actual ref '$actualRef' does not match expected ref '$ref' - fetching and checking out")
+        _git.fetch().call()
+        _git.checkout().setName(ref).call
+      }
+      _git
+    } else {
+      logger.git(s"Cloning $url into $checkoutDirectory")
+      val _git = authenticate(
+        Git
+          .cloneRepository()
+          .setURI(url)
+          .setDirectory(checkoutDirectory)
+      ).call()
 
-    DirectoryDependency(
-      context.copy(
-        workingDirectory = checkout ++ subDirectory.map("/" ++ _).getOrElse("")
-      ),
-      pathToNestedBuild: _*
-    )
+      logger.git(s"Checking out ref $ref")
+      _git.checkout().setName(ref).call()
+      _git
+    }
+    val actualRef = _git.getRepository.getBranch
+    assert( actualRef == ref, s"actual ref '$actualRef' does not match expected ref '$ref'")
+    checkoutDirectory
   }
 }
