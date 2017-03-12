@@ -42,10 +42,11 @@ log () {
 	msg=$1
 	enabled=1
 	while test $# -gt 0; do
-		case "$1" in
-			"-Dlog=time") enabled=0 ;;
-			"-Dlog=all") enabled=0 ;;
-		esac
+		if [[ "$1" == "-Dlog="* ]]; then
+			if [[ "$1" == *"time"* ]] || [[ "$1" == *"bash"* ]] || [[ "$1" == *"all"* ]]; then
+				enabled=0
+			fi
+		fi
 		shift
 	done
 	if [ $enabled -eq 0 ]; then
