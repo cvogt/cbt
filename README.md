@@ -203,7 +203,8 @@ As you can see it prints `asdf`. Adding tasks is that easy.
 
 ### Triggering tasks on file-changes
 
-When you call a task, you can prefix it with `loop`.
+When you call a task, you can prefix it with `loop`. You need to
+have fswatch install (e.g. via `brew install fswatch`).
 CBT then watches the source files, the build files and even CBT's own
 source code and re-runs the task when anything changes. If necessary,
 this forces CBT to re-build itself, the project's dependencies and the project itself.
@@ -219,6 +220,11 @@ CBT is fast. It may already be done re-compiling and re-running before
 you managed to change windows back from your editor to the shell.
 
 Try changing the build file and see how CBT reacts to it as well.
+
+To also clear the screen on each run use:
+```
+$ cbt loop clear run
+```
 
 ### Adding tests
 

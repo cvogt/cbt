@@ -84,13 +84,6 @@ object `package`{
       }
     }
   }
-  implicit class BuildInterfaceExtensions(build: BuildInterface){
-    import build._
-    // TODO: if every build has a method triggers a callback if files change
-    // then we wouldn't need this and could provide this method from a
-    // plugin rather than hard-coding trigger files stuff in cbt
-    def triggerLoopFiles: Set[File] = triggerLoopFilesArray.to
-  }
   implicit class ArtifactInfoExtensions(subject: ArtifactInfo){
     import subject._
     def str = s"$groupId:$artifactId:$version"
@@ -121,9 +114,6 @@ object `package`{
     def scalaVersion = Option(scalaVersionOrNull)
     def parentBuild = Option(parentBuildOrNull)
     def cbtLastModified: scala.Long = subject.cbtLastModified
-    def triggerLoopFiles: Set[File] = triggerLoopFilesArray.toSet[File]
-
-    private[cbt] def loopFile = cwd / "target/.cbt-loop.tmp"
 
     def copy(
       workingDirectory: File = workingDirectory,
@@ -133,7 +123,9 @@ object `package`{
       scalaVersion: Option[String] = scalaVersion,
       cbtHome: File = cbtHome,
       parentBuild: Option[BuildInterface] = None,
-      triggerLoopFiles: Set[File] = Set()
+      transientCache: java.util.Map[AnyRef,AnyRef] = transientCache,
+      persistentCache: java.util.Map[AnyRef,AnyRef] = persistentCache,
+      loop: Boolean = loop
     ): Context = new ContextImplementation(
       workingDirectory,
       cwd,
@@ -149,7 +141,7 @@ object `package`{
       cbtRootHome,
       compatibilityTarget,
       parentBuild.getOrElse(null),
-      (triggerLoopFiles ++ triggerLoopFilesArray.toSet[File]).toArray
+      loop
     )
   }
 }

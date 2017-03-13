@@ -5,7 +5,7 @@ import java.net._
 import java.nio.file._
 
 class BasicBuild(final val context: Context) extends BaseBuild
-trait BaseBuild extends BuildInterface with DependencyImplementation with TriggerLoop with SbtDependencyDsl{
+trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDependencyDsl{
   //* DO NOT OVERRIDE CONTEXT in non-idempotent ways, because .copy and new Build
   // will create new instances given the context, which means operations in the
   // overrides will happen multiple times and if they are not idempotent stuff likely breaks
@@ -127,12 +127,6 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
     pathToNestedBuild: _*
   )
 
-  def triggerLoopFiles: Set[File] = (
-    context.triggerLoopFiles
-    ++ sources
-    ++ transitiveDependencies.collect{ case b: TriggerLoop => b.triggerLoopFiles }.flatten
-  )
-
   def localJars: Seq[File] =
     Seq(projectDirectory ++ "/lib")
       .filter(_.exists)
@@ -163,6 +157,14 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   )
 
   final def lastModified: Long = compile.getOrElse(0L)
+
+  def triggerLoopFiles: Set[File] = sources.toSet
+
+  if(context.loop){
+    taskCache[BasicBuild]( "loop-file-cache" ).memoize{
+      lib.addLoopFiles( context.cwd, triggerLoopFiles )
+    }
+  }
 
   def compile: Option[Long] = taskCache[BaseBuild]("_compile").memoize{
     lib.compile(
@@ -325,17 +327,4 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with Trigge
   final def crossScalaVersionsArray = Array(scalaVersion)
 
   def publish: Seq[URL] = Seq()
-
-  def loop = {
-    lib.callReflective(this, context.args.headOption, context.copy(args=context.args.drop(1)))
-    val files = triggerLoopFiles
-    lib.watch{ () =>
-      logger.loop("Looping change detection over:\n - "++files.mkString("\n - "))
-      files
-    }()
-    context.loopFile.getParentFile.mkdirs
-    lib.write( context.loopFile, files.mkString("\n"), StandardOpenOption.CREATE )
-
-    ExitCode(253) // signal bash script to restart
-  }
 }

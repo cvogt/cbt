@@ -10,10 +10,6 @@ sealed abstract class ProjectProxy extends Ha{
   def dependencies = Seq(delegate)
 }
 */
-trait TriggerLoop extends DependencyImplementation{
-  final def triggerLoopFilesArray = triggerLoopFiles.toArray
-  def triggerLoopFiles: Set[File]
-}
 /** You likely want to use the factory method in the BasicBuild class instead of this. */
 object DirectoryDependency{
   def apply(context: Context, pathToNestedBuild: String*): BuildInterface = {
@@ -52,7 +48,6 @@ object DirectoryDependency{
 /*
 case class DependencyOr(first: DirectoryDependency, second: JavaDependency) extends ProjectProxy with DirectoryDependencyBase{
   val isFirst = new File(first.projectDirectory).exists
-  def triggerLoopFiles = if(isFirst) first.triggerLoopFiles else Set()
   protected val delegate = if(isFirst) first else second
 }
 */

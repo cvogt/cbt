@@ -32,40 +32,11 @@ object Stage2 extends Stage2Base{
       args.cbtHome,
       args.compatibilityTarget,
       null,
-      NailgunLauncher.compatibilitySourceFiles.asScala.toArray[File]
-        ++ NailgunLauncher.nailgunLauncherSourceFiles.asScala.toArray[File]
-        ++ NailgunLauncher.stage1SourceFiles.asScala.toArray[File]
-        ++ args.stage2sourceFiles.toArray[File]
+      args.loop
     )
-    def loop( code: ExitCode, files: () => Set[File] ): ExitCode = {
-      code match {
-        case c@ExitCode(253 | 130) => c // CBT signals loop | user pressed ctrl+C
-        case c if !task.contains("loop") => c
-        case c =>
-          // this allows looping over broken builds
-          lib.watch{ files }()
-          c
-      }
-    }
-    val code = lib.trapExitCode{
-      val first = lib.loadRoot( context )
-      val build = first.finalBuild( context.cwd )
-      val code = lib.callReflective(build, task, context)
-      if( !context.loopFile.exists ){
-        loop( code, () => build.triggerLoopFiles )
-      }
-      code
-    }
-    if( context.loopFile.exists ){
-      loop(
-        code,
-        () => {
-          val files = context.loopFile.readAsString.split("\n").map(new File(_)).toSet
-          logger.loop("Looping change detection over:\n - "++files.mkString("\n - "))
-          files
-        }
-      )
-    }
+    val first = lib.loadRoot( context )
+    val build = first.finalBuild( context.cwd )
+    val code = lib.callReflective(build, task, context)
     logger.stage2(s"Stage2 end with exit code "+code.integer)
     code
   }

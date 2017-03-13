@@ -6,6 +6,8 @@ import java.security.*;
 import java.util.*;
 import static cbt.Stage0Lib.*;
 import static java.io.File.pathSeparator;
+import java.nio.file.*;
+import static java.nio.file.Files.write;
 
 /**
  * This launcher allows to start the JVM without loading anything else permanently into its
@@ -33,7 +35,9 @@ public class NailgunLauncher{
       ((File) get(context, "compatibilityTarget")).toString() + "/",
       new ClassLoaderCache(
         (HashMap) get(context, "persistentCache")
-      )
+      ),
+      (File) get(context, "cwd"),
+      (Boolean) get(context, "loop")
     );
     return
       res
@@ -97,8 +101,11 @@ public class NailgunLauncher{
     String nailgunTarget = CBT_HOME + "/" + NAILGUN + TARGET;
     long nailgunLauncherLastModified = new File( nailgunTarget + "../classes.last-success" ).lastModified();
 
+    File cwd = new File(args[1]);
+    boolean loop = args[2].equals("0");
+
     BuildStage1Result res = buildStage1(
-      nailgunLauncherLastModified, start, cache, CBT_HOME, compatibilityTarget, classLoaderCache
+      nailgunLauncherLastModified, start, cache, CBT_HOME, compatibilityTarget, classLoaderCache, cwd, loop
     );
 
     try{
@@ -106,9 +113,9 @@ public class NailgunLauncher{
         .classLoader
         .loadClass("cbt.Stage1")
         .getMethod(
-          "run", String[].class, File.class, File.class, BuildStage1Result.class, Map.class
+          "run", String[].class, File.class, File.class, boolean.class, BuildStage1Result.class, Map.class
         ).invoke(
-          null, (Object) args, new File(cache), new File(CBT_HOME), res, classLoaderCache.hashMap
+          null, (Object) args, new File(cache), new File(CBT_HOME), loop, res, classLoaderCache.hashMap
         );
 
       System.exit( exitCode );
@@ -132,7 +139,7 @@ public class NailgunLauncher{
 
   public static BuildStage1Result buildStage1(
     final long lastModified, final long start, final String cache, final String cbtHome,
-    final String compatibilityTarget, final ClassLoaderCache classLoaderCache
+    final String compatibilityTarget, final ClassLoaderCache classLoaderCache, File cwd, boolean loop
   ) throws Throwable {
     _assert(TARGET != null, "environment variable TARGET not defined");
     String nailgunSources = cbtHome + "/" + NAILGUN;
@@ -142,6 +149,10 @@ public class NailgunLauncher{
     File compatibilitySources = new File(cbtHome + "/compatibility");
     String mavenCache = cache + "maven";
     String mavenUrl = "https://repo1.maven.org/maven2";
+    File loopFile = new File(cwd + "/target/.cbt-loop.tmp");
+    if(loop){
+      loopFile.getParentFile().mkdirs();
+    }
 
     ClassLoader rootClassLoader = new CbtURLClassLoader( new URL[]{}, ClassLoader.getSystemClassLoader().getParent() ); // wrap for caching
     EarlyDependencies earlyDeps = new EarlyDependencies(mavenCache, mavenUrl, classLoaderCache, rootClassLoader);
@@ -166,7 +177,16 @@ public class NailgunLauncher{
         }
       }
 
-      compatibilityLastModified = compile( 0L, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles);
+      if(loop){
+        File[] _compatibilitySourceFiles = new File[compatibilitySourceFiles.size()];
+        compatibilitySourceFiles.toArray(_compatibilitySourceFiles);
+        write(
+          loopFile.toPath(),
+          (mkString( "\n", _compatibilitySourceFiles ) + "\n").getBytes(),
+          StandardOpenOption.CREATE
+        );
+      }
+      compatibilityLastModified = compile( 0L, "", compatibilityTarget, earlyDeps, compatibilitySourceFiles) ;
 
       if( !classLoaderCache.containsKey( compatibilityTarget, compatibilityLastModified ) ){
         classLoaderCache.put( compatibilityTarget, classLoader(compatibilityTarget, rootClassLoader), compatibilityLastModified );
@@ -197,6 +217,17 @@ public class NailgunLauncher{
       lastModified,
       Math.max( lastModified, compatibilityLastModified )
     );
+
+    if(loop){
+      File[] _stage1SourceFiles = new File[stage1SourceFiles.size()];
+      stage1SourceFiles.toArray(_stage1SourceFiles);
+      write(
+        loopFile.toPath(),
+        (mkString( "\n", _stage1SourceFiles ) + "\n").getBytes(),
+        StandardOpenOption.APPEND
+      );
+    }
+
     final long stage1LastModified = compile(
       stage0LastModified, stage1Classpath, stage1Target, earlyDeps, stage1SourceFiles
     );

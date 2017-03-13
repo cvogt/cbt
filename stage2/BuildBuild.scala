@@ -37,8 +37,7 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
 
   protected def managedContext = context.copy(
     workingDirectory = managedBuildDirectory,
-    parentBuild=Some(this),
-    triggerLoopFiles = triggerLoopFiles
+    parentBuild=Some(this)
   )
 
   override def dependencies =

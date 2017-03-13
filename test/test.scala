@@ -144,7 +144,7 @@ object Main{
         cbtHome,
         cbtHome ++ "/compatibilityTarget",
         null,
-        Array()
+        false
       )
 
       val b = new BasicBuild(noContext){

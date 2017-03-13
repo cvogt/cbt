@@ -21,6 +21,9 @@ public interface Context{
   public default File workingDirectory(){
     return projectDirectory();
   };
+  public default boolean loop(){
+    return false;
+  };
 
   // methods that exist for longer which every CBT version in use should have by now, no default values needed
   public abstract File cwd(); // REPLACE by something that allows to run cbt on some other directly
@@ -32,9 +35,6 @@ public interface Context{
   public abstract File cbtRootHome(); // REMOVE
   public abstract File compatibilityTarget(); // maybe replace this with search in the classloader for it?
   public abstract BuildInterface parentBuildOrNull();
-  public default File[] triggerLoopFilesArray(){
-    return new File[0]; // REMOVE default value on next compatibility breaking release
-  }
 
   // deprecated methods
   @java.lang.Deprecated

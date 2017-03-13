@@ -26,7 +26,8 @@ object GitDependency{
     val c = taskCache[Dependency]("checkout").memoize{ checkout( url, ref ) }
     DirectoryDependency(
       context.copy(
-        workingDirectory = subDirectory.map(c / _).getOrElse(c)
+        workingDirectory = subDirectory.map(c / _).getOrElse(c),
+        loop = false
       ),
       pathToNestedBuild: _*
     )
