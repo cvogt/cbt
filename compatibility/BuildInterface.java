@@ -6,7 +6,10 @@ public interface BuildInterface extends Dependency{
   public default BuildInterface finalBuild(File current){
     return finalBuild(); // legacy forwarder
   }
-  public abstract File[] triggerLoopFilesArray(); // needed for watching files across composed builds
+  @Deprecated
+  public default File[] triggerLoopFilesArray(){
+    return new File[0];
+  };
 
   // deprecated methods, which clients are still allowed to implement, but not required
   public abstract BuildInterface finalBuild(); // needed to propagage through build builds. Maybe we can get rid of this.

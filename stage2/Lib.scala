@@ -151,6 +151,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       case c: ClassPath => c.string
       case ExitCode(int) => System.err.println(int); System.exit(int); ???
       case s: Seq[_] => s.map(render).mkString("\n")
+      case s: Set[_] => s.map(render).toSeq.sorted.mkString("\n")
       case _ => obj.toString
     }
   }
@@ -476,54 +477,6 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       httpCon.disconnect
     }
     url
-  }
-
-
-  // code for continuous compile
-  def watch[T]( files: () => Set[File] )(
-    action: Seq[File] => Option[T] = (f: Seq[File]) => Some(f)
-  ): T = {
-    import com.barbarysoftware.watchservice._
-    import scala.collection.JavaConversions._
-    Iterator.continually{
-      val watcher = WatchService.newWatchService
-      val realFiles = files().map(realpath)
-      realFiles.map{
-        // WatchService can only watch folders
-        case file if file.isFile => dirname(file)
-        case file => file
-      }.map{ file =>
-        val watchableFile = new WatchableFile(file)
-        val key = watchableFile.register(
-          watcher,
-          StandardWatchEventKind.ENTRY_CREATE,
-          StandardWatchEventKind.ENTRY_DELETE,
-          StandardWatchEventKind.ENTRY_MODIFY
-        )
-      }
-      Option( watcher.take ) -> realFiles
-    }.collect{
-      case (Some(key),f) => key -> f
-    }.map{ case (key, realFiles) =>
-      logger.loop("Waiting for file changes...")
-      val changedFiles = key
-        .pollEvents
-        .toVector
-        .filterNot(_.kind == StandardWatchEventKind.OVERFLOW)
-        .map(_.context.toString)
-        // make sure we don't react on other files changed
-        // in the same folder like the files we care about
-        .filter{ name => realFiles.exists(name startsWith _.toString) }
-        .map(new File(_))
-
-        changedFiles.foreach( f => logger.loop( "Changed: " ++ f.toString ) )
-      val res = action(changedFiles)
-      key.reset
-      res
-    }.filterNot(_.isEmpty)
-     .take(1)
-     .toList
-     .head.get
   }
 
   def findInnerMostModuleDirectory(directory: File): File = {

@@ -16,7 +16,7 @@ class ContextImplementation(
   override val cbtRootHome: File,
   override val compatibilityTarget: File,
   override val parentBuildOrNull: BuildInterface,
-  override val triggerLoopFilesArray: Array[File]
+  override val loop: Boolean
 ) extends Context{
   @deprecated("this method is replaced by workingDirectory","")
   def projectDirectory = workingDirectory

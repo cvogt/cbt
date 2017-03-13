@@ -25,6 +25,9 @@ However there are more things that can break compatibility when changed:
 - communication between versions via reflection in particular
   - how the TrapSecurityManager of each CBT version talks to the
     installed TrapSecurityManager via reflection
+- communication via the file system
+  - cache folder location any layout
+  - .cbt-loop.tmp file
 
 ## How to detect accidental breakages?
 

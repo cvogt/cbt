@@ -170,6 +170,17 @@ if [  "$1" = "direct" ]; then
 	use_nailgun=1
 	shift
 fi
+loop=1
+if [ "$1" == "loop" ]; then
+	loop=0
+	shift
+fi
+clearScreen=1
+if [ "$1" == "clear" ]; then
+	clearScreen=0
+	shift
+fi
+
 if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ]; then
 	use_nailgun=1
 fi
@@ -184,7 +195,8 @@ stage1 () {
 	log "Checking for changes in cbt/nailgun_launcher" "$@"
 	NAILGUN_INDICATOR=$NAILGUN$TARGET../classes.last-success
 	changed=1
-	for file in "$NAILGUN"/*.java; do
+	NAILGUN_SOURCES=("$NAILGUN"*.java)
+	for file in "${NAILGUN_SOURCES[@]}"; do
 		if [ "$file" -nt "$NAILGUN_INDICATOR" ]; then changed=0; fi
 	done
 	exitCode=0
@@ -194,7 +206,8 @@ stage1 () {
 		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
 		COMPILE_TIME=$(date +%YY%mm%dd%HH%MM.%SS|sed "s/[YmdHMS]//g")
-		javac -Xlint:deprecation -Xlint:unchecked -d "$NAILGUN$TARGET" "$NAILGUN"*.java
+		#echo javac -Xlint:deprecation -Xlint:unchecked -d "$NAILGUN$TARGET" "${NAILGUN_SOURCES[@]}"
+		javac -Xlint:deprecation -Xlint:unchecked -d "$NAILGUN$TARGET" "${NAILGUN_SOURCES[@]}"
 		exitCode=$?
 		if [ $exitCode -eq 0 ]; then
 			touch -t "$COMPILE_TIME" "$NAILGUN_INDICATOR"
@@ -214,7 +227,7 @@ stage1 () {
 			log "Running JVM directly" "$@"
 			options=($JAVA_OPTS)
 			# JVM options to improve startup time. See https://github.com/cvogt/cbt/pull/262
-			java "${options[@]}" $DEBUG -Xmx6072m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp "$NAILGUN$TARGET" cbt.NailgunLauncher "$(time_taken)" "$CWD" "$@"
+			java "${options[@]}" $DEBUG -Xmx6072m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp "$NAILGUN$TARGET" cbt.NailgunLauncher "$(time_taken)" "$CWD" "$loop" "$@"
 			exitCode=$?
 		else
 			log "Running via background process (nailgun)" "$@"
@@ -238,7 +251,7 @@ stage1 () {
 				sleep 0.3
 			done
 			log "Running CBT via Nailgun." "$@"
-			$NG cbt.NailgunLauncher "$(time_taken)" "$CWD" "$@"
+			$NG cbt.NailgunLauncher "$(time_taken)" "$CWD" "$loop" "$@"
 			exitCode=$?
 		fi
 		log "Done running CBT." "$@"
@@ -246,46 +259,39 @@ stage1 () {
 }
 
 
-loop=1
-case "$1" in
-	"loop") loop=0
-esac
-case "$2" in
-	"loop") loop=0
-esac
-
-CBT_SIGNALS_LOOPING=253
 USER_PRESSED_CTRL_C=130
 
 CBT_LOOP_FILE="$CWD/target/.cbt-loop.tmp"
+if [ $loop -eq 0 ]; then
+	which fswatch >/dev/null 2>/dev/null
+	export fswatch_installed=$?
+	if [ ! $fswatch_installed -eq 0 ]; then
+		echo "please install fswatch to use cbt loop, e.g. via brew install fswatch"
+		exit 1
+	fi
+fi
 while true; do
+	if [ $clearScreen -eq 0 ]; then
+		clear
+	fi
+	if [ -f "$CBT_LOOP_FILE" ]; then
+		rm "$CBT_LOOP_FILE"
+	fi
 	stage1 "$@"
 	if [ ! $loop -eq 0 ] || [ $exitCode -eq $USER_PRESSED_CTRL_C ]; then
 		log "not looping, exiting" "$@"
 		break
 	else
-		if [ ! $exitCode -eq $CBT_SIGNALS_LOOPING ]; then
-			log "exitCode $exitCode" "$@"
-			which fswatch >/dev/null 2>/dev/null
-			export fswatch_installed=$?
-			if [ -f "$CBT_LOOP_FILE" ]; then
-				if [ $fswatch_installed -eq 0 ]; then
-					# fswatch allows looping over CBT's sources itself
-					log "fswatch found. looping." "$@"
-					files=($(cat "$CBT_LOOP_FILE"))
-					fswatch --one-event "${files[@]}"
-				else
-					log "fswatch not installed, stopping cbt" "$@"
-					break
-				fi
-			else
-				log "no $CBT_LOOP_FILE file, stopping cbt" "$@"
-				break
-			fi
+		files=
+		if [ -f "$CBT_LOOP_FILE" ]; then
+			files=($(cat "$CBT_LOOP_FILE"))
+			#rm "$CBT_LOOP_FILE"
 		fi
+		echo ""
+		echo "Watching for file changes... (ctrl+c short press for loop, long press for abort)"
+		#echo fswatch --one-event "${NAILGUN_SOURCES[@]}" "${files[@]}"
+		fswatch --one-event "${NAILGUN_SOURCES[@]}" "${files[@]}"
 	fi
-
-	echo "======= Restarting CBT =======" 1>&2
 done
 
 log "Exiting CBT" "$@"

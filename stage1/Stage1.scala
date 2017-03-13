@@ -42,7 +42,8 @@ class Stage2Args(
   val cache: File,
   val cbtHome: File,
   val compatibilityTarget: File,
-  val stage2sourceFiles: Seq[File]
+  val stage2sourceFiles: Seq[File],
+  val loop: Boolean
 )(
   implicit val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache, val logger: Logger
 ){
@@ -60,7 +61,9 @@ object Stage1{
     val (_, cbtLastModified, classLoader) = buildStage2(
       buildStage1,
       context.cbtHome,
-      context.cache
+      context.cache,
+      context.cwd,
+      context.loop
     )(context.transientCache, new ClassLoaderCache( context.persistentCache ), logger)
 
     classLoader
@@ -75,7 +78,7 @@ object Stage1{
   }
 
   def buildStage2(
-    buildStage1: BuildStage1Result, cbtHome: File, cache: File
+    buildStage1: BuildStage1Result, cbtHome: File, cache: File, cwd: File, loop: Boolean
   )(
     implicit transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache, logger: Logger
   ): (Seq[File], Long, ClassLoader) = {
@@ -99,6 +102,8 @@ object Stage1{
     )
 
     logger.stage1("Compiling stage2 if necessary")
+    if(loop)
+      lib.addLoopFiles( cwd, stage2sourceFiles.toSet )
     val Some( stage2LastModified ) = compile(
       buildStage1.stage1LastModified,
       stage2sourceFiles, stage2Target, stage2StatusFile,
@@ -158,6 +163,7 @@ object Stage1{
     _args: Array[String],
     cache: File,
     cbtHome: File,
+    loop: Boolean,
     buildStage1: BuildStage1Result,
     persistentCache: java.util.Map[AnyRef,AnyRef]
   ): Int = {
@@ -168,17 +174,19 @@ object Stage1{
     implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
     implicit val classLoaderCache = new ClassLoaderCache( persistentCache )
 
-    val (stage2sourceFiles, stage2LastModified, classLoader) = buildStage2( buildStage1, cbtHome, cache )
+    val cwd = new File( args.args(0) )
+    val (stage2sourceFiles, stage2LastModified, classLoader) = buildStage2( buildStage1, cbtHome, cache, cwd, loop )
 
     val stage2Args = new Stage2Args(
-      new File( args.args(0) ),
-      args.args.drop(1).toVector,
+      cwd,
+      args.args.drop(2).toVector,
       // launcher changes cause entire nailgun restart, so no need for them here
       stage2LastModified = stage2LastModified,
       cache,
       cbtHome,
       new File(buildStage1.compatibilityClasspath),
-      stage2sourceFiles
+      stage2sourceFiles,
+      loop
     )
 
     logger.stage1(s"Run Stage2")

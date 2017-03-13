@@ -29,7 +29,6 @@ trait DependencyImplementation extends Dependency{
   @deprecated("this method was replaced by dependenciesArray","")
   def dependencyClasspathArray = dependencyClasspath.files.toArray
 
-
   /*
   //private type BuildCache = KeyLockedLazyCache[Dependency, Future[ClassPath]]
   def exportClasspathConcurrently: ClassPath = {
@@ -195,7 +194,6 @@ case class CbtDependencies(mavenCache: File, nailgunTarget: File, stage1Target: 
     stage2Target,
     stage1Dependency +:
     MavenResolver(cbtLastModified, mavenCache,mavenCentral).bind(
-      MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
       MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
     )
   )

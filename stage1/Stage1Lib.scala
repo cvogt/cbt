@@ -204,7 +204,6 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     }
   }
 
-
   def compile(
     cbtLastModified: Long,
     sourceFiles: Seq[File],
@@ -475,6 +474,13 @@ ${sourceFiles.sorted.mkString(" \\\n")}
     cache.get( cp, lastModified )
   }
 
+  def addLoopFiles(cwd: File, files: Set[File]) = {
+    lib.write(
+      cwd / "target/.cbt-loop.tmp",
+      files.map(_ + "\n").mkString,
+      StandardOpenOption.APPEND
+    )
+  }
 }
 
 import scala.reflect._
