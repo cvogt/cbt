@@ -363,27 +363,33 @@ case class BoundMavenDependency(
     }
   }
   def lookup( xml: Node, accessor: Node => NodeSeq ): Option[String] = {
-    //println("lookup in "++pomUrl)
+    // println("lookup in " + xml)
     val Substitution = "\\$\\{([^\\}]+)\\}".r
-    accessor(xml).headOption.map{v =>
-      //println("found: "++v.text)
+
+    def matcherFunc(matcher: scala.util.matching.Regex.Match): String = {
+      val path = matcher.group(1)
+      val ret = properties.get(path).orElse(
+        transitivePom.reverse.flatMap{ d =>
+          Some(path.split("\\.").toList).collect{
+            case "project" :: path =>
+              path.foldLeft(d.pomXml:NodeSeq){ case (xml,tag) => xml \ tag }.text
+          }.filter(_ != "")
+        }.headOption
+      )
+        .getOrElse(
+          throw new Exception(s"Can't find $path in \n$properties.\n\npomParents: $transitivePom\n\n pomXml:\n$pomXml" )
+        )
+
+      Substitution.replaceAllIn(
+        ret,
+        matcherFunc _
+      )
+    }
+
+    accessor(xml).headOption.map { v =>
       Substitution.replaceAllIn(
         v.text,
-        matcher => {
-          val path = matcher.group(1)
-          properties.get(path).orElse(
-            transitivePom.reverse.flatMap{ d =>
-              Some(path.split("\\.").toList).collect{
-                case "project" :: path =>
-                  path.foldLeft(d.pomXml:NodeSeq){ case (xml,tag) => xml \ tag }.text
-              }.filter(_ != "")
-            }.headOption
-          )
-          .getOrElse(
-            throw new Exception(s"Can't find $path in \n$properties.\n\npomParents: $transitivePom\n\n pomXml:\n$pomXml" )
-          )
-            //println("lookup "++path ++ ": "++(pomXml\path).text)          
-        }
+        matcherFunc _
       )
     }
   }
