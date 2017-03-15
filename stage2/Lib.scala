@@ -95,7 +95,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       .flatMap(
         c =>
           c
-          .getDeclaredMethods
+          .getMethods
           .filter{ m =>
             java.lang.reflect.Modifier.isPublic(m.getModifiers)
           }
