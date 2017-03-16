@@ -13,7 +13,9 @@ class Build(val context: cbt.Context) extends BaseBuild{
       // the below tests pom inheritance with variable substitution for pom xml tag contents
       MavenDependency("com.spotify", "missinglink-core", "0.1.1"),
       // the below tests pom inheritance with variable substitution being parts of strings
-      MavenDependency("cc.factorie","factorie_2.11","1.2")
+      MavenDependency("cc.factorie","factorie_2.11","1.2"),
+      // test recursive substitution. see https://github.com/cvogt/cbt/issues/434
+      MavenDependency("com.amazonaws", "aws-java-sdk-s3", "1.11.86")
       // the dependency below uses a maven version range. Currently not supported.
       // TODO: put in a proper error message for version range not supported
       //MavenDependency("com.github.nikita-volkov", "sext", "0.2.4")
