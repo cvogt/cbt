@@ -15,8 +15,9 @@ class libraries( context: Context, scalaVersion: String, scalaMajorVersion: Stri
     def file = dep( "file" )
     def interfaces = dep( "interfaces" )
     def proguard = dep( "proguard" )
-    def scalatestRunner = dep( "scalatest-runner" )
     def reflect = dep( "reflect" )
+    def scalatestRunner = dep( "scalatest-runner" )
+    def scalatex = dep( "scalatex" )
   }
   object scala {
     private def _maven = ( g: String, a: String, v: String ) => {

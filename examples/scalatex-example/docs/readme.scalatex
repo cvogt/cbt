@@ -1,0 +1,21 @@
+@import scalatags.Text.all._
+@h1("cbt.http.client")
+@p
+  @ul
+    @li
+      http client library
+    @li
+      super simple and easy to use
+    @li
+      type-safe and resource-leak-safe
+    @li
+       no dependencies besides JDK
+    @li
+      complete (offers everything @pre(`class`:="inline"){java.net.URLConnection} does)
+  @repl
+    cbt_example.scalatex.Foo.foo(1,2)
+
+@comment{
+  @h3
+    Usage example
+}
