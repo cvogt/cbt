@@ -92,6 +92,7 @@ object Main{
       assert(res.out contains usageString, usageString + " not found in " ++ res.toString)
     }
     def compile(path: String)(implicit logger: Logger) = task("compile", path)
+    def run(path: String)(implicit logger: Logger) = task("run", path)
     def task(name: String, path: String)(implicit logger: Logger) = {
       val res = runCbt(path, Seq(name))
       val debugToken = name ++ " " ++ path ++ " "
@@ -207,6 +208,7 @@ object Main{
     clean("multi-build")
     usage("simple")
     compile("simple")
+    run("simple")
     clean("simple")
     if( compat ){
       usage("simple-fixed")
