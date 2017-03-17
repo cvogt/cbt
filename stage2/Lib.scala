@@ -283,7 +283,35 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     m
   }
 
-  def createJar( jarFile: File, files: Seq[File], baseDirectory: Option[File] = None, mainClass: Option[String] = None ): Option[File] = {
+  def autoRelative( files: Seq[File], collector: PartialFunction[(File,String), String] = { case (_,r) => r }): Seq[(File, String)] = {
+    val map = files.sorted.flatMap{ base =>
+      val b = base.getCanonicalFile.string
+      if( base.isDirectory ){
+        base.listRecursive.map{ f =>
+          f -> f.getCanonicalFile.string.stripPrefix(b).stripPrefix(File.separator)
+        }
+      } else {
+        Seq( base -> base.getName )
+      }
+    }.collect{
+      case v@(file, _) if collector.isDefinedAt(v) => file -> collector(v)
+    }
+    val relatives = map.unzip._2
+    val duplicateFiles = (relatives diff relatives.distinct).distinct
+    assert(
+      duplicateFiles.isEmpty,
+      {
+        val rs = relatives.toSet
+        "Conflicting:\n\n" +
+        map.filter(rs contains _._2).groupBy(_._2).mapValues(_.map(_._1).sorted).toSeq.sortBy(_._1).map{
+          case (name, files) => s"$name:\n" ++ files.mkString("\n")
+        }.mkString("\n\n")
+      }
+    )
+    map
+  }
+
+  def createJar( jarFile: File, files: Seq[File], mainClass: Option[String] = None ): Option[File] = {
     deleteIfExists(jarFile.toPath)
     if( files.isEmpty ){
       None
@@ -293,32 +321,14 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       val jar = new JarOutputStream(new FileOutputStream(jarFile), createManifest(mainClass))
       try{
         assert( files.forall(_.exists) )
-        val names = for {
-          base <- files.map(realpath)
-          file <- base.listRecursive if file.isFile
-        } yield {
-            val name = {
-              Some(base).filter(_.isDirectory) orElse baseDirectory map (_.string) map (
-                file.string stripPrefix _ stripPrefix File.separator
-              ) getOrElse (
-                throw new Exception(
-                  "Trying to add absolute path to jar: " + file
-                )
-              )
-            }
-            val entry = new JarEntry( name )
+        autoRelative(files).collect{
+          case (file, relative) if file.isFile =>
+            val entry = new JarEntry( relative )
             entry.setTime(file.lastModified)
             jar.putNextEntry(entry)
             jar.write( readAllBytes( file.toPath ) )
             jar.closeEntry
-            name
         }
-
-        val duplicateFiles = (names diff names.distinct).distinct
-        assert(
-          duplicateFiles.isEmpty,
-          s"Conflicting file names when trying to create $jarFile: "++duplicateFiles.mkString(", ")
-        )
       } finally {
         jar.close
       }

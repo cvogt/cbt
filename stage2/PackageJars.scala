@@ -18,7 +18,7 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
 
   def srcJar: Option[File] = taskCache[PackageJars]("srcJar").memoize{
     lib.createJar(
-      jarTarget / jarFilePrefix++"-sources.jar", nonEmptySourceFiles, Some(projectDirectory)
+      jarTarget / jarFilePrefix++"-sources.jar", nonEmptySourceFiles
     )
   }
 

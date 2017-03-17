@@ -184,8 +184,9 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     val arrayClass = classOf[Array[String]]
     val unitClass = classOf[Unit]
 
-    iterateClasses( classesRootDirectory, classLoader, true ).filter(
-      _.getDeclaredMethods().exists( m =>
+    iterateClasses( classesRootDirectory, classLoader, true ).filter( c =>
+      !c.isInterface &&
+      c.getDeclaredMethods().exists( m =>
         m.getName == "main"
           && m.getParameterTypes.toList == List(arrayClass)
           && m.getReturnType == unitClass
@@ -479,6 +480,21 @@ ${sourceFiles.sorted.mkString(" \\\n")}
       cwd / "target/.cbt-loop.tmp",
       files.map(_ + "\n").mkString,
       StandardOpenOption.APPEND
+    )
+  }
+  def cached[T]( targetDirectory: File, inputLastModified: Long )( action: () => T ): (Option[T],Long) = {
+    val t = targetDirectory
+    val start = System.currentTimeMillis
+    def lastSucceeded = t.lastModified
+    def outputLastModified = t.listRecursive.diff(t :: Nil).map(_.lastModified).maxOption.getOrElse(0l)
+    def updateSucceeded(time: Long) = Files.setLastModifiedTime( t.toPath, FileTime.fromMillis(time) )
+    (
+      ( inputLastModified >= lastSucceeded ).option{
+        val result: T = action()
+        updateSucceeded( start )
+        result
+      },
+      outputLastModified
     )
   }
 }
