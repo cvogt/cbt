@@ -20,6 +20,9 @@ object `package`{
 
   private val lib = new BaseLib
 
+  implicit class CbtBooleanExtensions(condition: Boolean){
+    def option[T](value: =>T): Option[T] = if(condition) Some(value) else None
+  }
   implicit class CbtStringExtensions(string: String){
     def escape = string.replace("\\","\\\\").replace("\"","\\\"")
     def quote = s""""$escape""""
