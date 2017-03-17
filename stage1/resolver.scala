@@ -220,7 +220,8 @@ object MavenDependency{
 }
 // FIXME: take MavenResolver instead of mavenCache and repositories separately
 case class BoundMavenDependency(
-  cbtLastModified: Long, mavenCache: File, mavenDependency: MavenDependency, repositories: Seq[URL]
+  cbtLastModified: Long, mavenCache: File, mavenDependency: MavenDependency, repositories: Seq[URL],
+  replace: MavenDependency => Seq[MavenDependency] => Seq[MavenDependency] = _ => (identity _)
 )(
   implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache
 ) extends ArtifactInfo with DependencyImplementation{
@@ -302,8 +303,9 @@ case class BoundMavenDependency(
             (parent \ "artifactId").text,
             (parent \ "version").text
           ),
-          repositories
-        )
+          repositories,
+          replace
+        )(logger, transientCache, classLoaderCache)
     }.flatMap(_.transitivePom) :+ this
   }
 
@@ -330,37 +332,39 @@ case class BoundMavenDependency(
     ).toMap
 
   def dependencies: Seq[BoundMavenDependency] = {
-    if(classifier == Classifier.sources) Seq()
-    else {
-      lib.cacheOnDisk(
+    replace(mavenDependency)(
+      if(classifier == Classifier.sources) Seq()
+      else {
+        lib.cacheOnDisk(
         cbtLastModified, mavenCache ++ basePath(true) ++ ".pom.dependencies"
-      )( MavenDependency.deserialize )( _.serialize ){
-        (pomXml \ "dependencies" \ "dependency").collect{
+        )( MavenDependency.deserialize )( _.serialize ){
+          (pomXml \ "dependencies" \ "dependency").collect{
           case xml if ( (xml \ "scope").text == "" || (xml \ "scope").text == "compile" ) && (xml \ "optional").text != "true" =>
-            val artifactId = lookup(xml,_ \ "artifactId").get
-            val groupId =
-              lookup(xml,_ \ "groupId").getOrElse(
-                dependencyVersions
-                  .get(artifactId).map(_._1)
-                  .getOrElse(
-                    throw new Exception(s"$artifactId not found in \n$dependencyVersions")
-                  )
-              )
-            val version =
-              lookup(xml,_ \ "version").getOrElse(
-                dependencyVersions
-                  .get(artifactId).map(_._2)
-                  .getOrElse(
-                    throw new Exception(s"$artifactId not found in \n$dependencyVersions")
-                  )
-              )
-            val classifier = Classifier( Some( (xml \ "classifier").text ).filterNot(_ == "").filterNot(_ == null) )
-            MavenDependency( groupId, artifactId, version, classifier )
-        }.toVector
-      }.map(
-        BoundMavenDependency( cbtLastModified, mavenCache, _, repositories )
-      ).to
-    }
+              val artifactId = lookup(xml,_ \ "artifactId").get
+              val groupId =
+                lookup(xml,_ \ "groupId").getOrElse(
+                  dependencyVersions
+                    .get(artifactId).map(_._1)
+                    .getOrElse(
+                      throw new Exception(s"$artifactId not found in \n$dependencyVersions")
+                    )
+                )
+              val version =
+                lookup(xml,_ \ "version").getOrElse(
+                  dependencyVersions
+                    .get(artifactId).map(_._2)
+                    .getOrElse(
+                      throw new Exception(s"$artifactId not found in \n$dependencyVersions")
+                    )
+                )
+              val classifier = Classifier( Some( (xml \ "classifier").text ).filterNot(_ == "").filterNot(_ == null) )
+              MavenDependency( groupId, artifactId, version, classifier )
+          }.toVector
+        }
+      }
+    ).map(
+      BoundMavenDependency( cbtLastModified, mavenCache, _, repositories, replace )
+    ).to
   }
   def lookup( xml: Node, accessor: Node => NodeSeq ): Option[String] = {
     // println("lookup in " + xml)

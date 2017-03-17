@@ -15,7 +15,7 @@ class Build(val context: cbt.Context) extends BaseBuild{
       // the below tests pom inheritance with variable substitution being parts of strings
       MavenDependency("cc.factorie","factorie_2.11","1.2"),
       // test recursive substitution. see https://github.com/cvogt/cbt/issues/434
-      MavenDependency("com.amazonaws", "aws-java-sdk-s3", "1.11.86")
+      MavenDependency("com.amazonaws", "aws-java-sdk-s3", "1.11.86"),
       // the dependency below uses a maven version range. Currently not supported.
       // TODO: put in a proper error message for version range not supported
       //MavenDependency("com.github.nikita-volkov", "sext", "0.2.4")
@@ -23,6 +23,19 @@ class Build(val context: cbt.Context) extends BaseBuild{
       // org.apache.spark:spark-sql_2.11:1.6.1
       // currently fails, let's see if because of a bug
       // io.spray:spray-http:1.3.3
+      ScalaDependency( "com.lihaoyi", "scalatex-api", "0.3.6" ),
+      ScalaDependency( "com.lihaoyi", "scalatex-site", "0.3.6" )
+    ) ++
+    Resolver( mavenCentral, sonatypeReleases ).bind(
+      "org.scalameta" %% "scalameta" % "1.1.0"
+    ).map(
+      _.copy(
+        // without this .replace the ScalatexCrash will crash during macro expansion
+        replace = _ => _.map{
+          case MavenDependency("com.lihaoyi","scalaparse_2.11",_,_,_) => "com.lihaoyi" % "scalaparse_2.11" % "0.3.1"
+          case other => other
+        }
+      )
     ) ++
     Resolver( new java.net.URL("http://maven.spikemark.net/roundeights") ).bind(
       // Check that lower case checksums work
@@ -39,4 +52,17 @@ class Build(val context: cbt.Context) extends BaseBuild{
   )
 
   def printArgs = context.args.mkString(" ")
+
+  override def compile = {
+    val dummyScalatexFile = projectDirectory / "src_generated" / "ScalatexCrash.scalatex"
+    lib.write( dummyScalatexFile, "" )
+    lib.write(
+      projectDirectory / "src_generated" / "ScalatexCrash.scala",
+      s"""object ScalatexCrash{
+        import _root_.scalatags.Text.all._
+        val file = _root_.scalatex.twf("${dummyScalatexFile}")
+      }"""
+    )
+    super.compile
+  }
 }
