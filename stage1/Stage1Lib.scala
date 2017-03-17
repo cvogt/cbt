@@ -482,6 +482,21 @@ ${sourceFiles.sorted.mkString(" \\\n")}
       StandardOpenOption.APPEND
     )
   }
+  def cached[T]( targetDirectory: File, inputLastModified: Long )( action: () => T ): (Option[T],Long) = {
+    val t = targetDirectory
+    val start = System.currentTimeMillis
+    def lastSucceeded = t.lastModified
+    def outputLastModified = t.listRecursive.diff(t :: Nil).map(_.lastModified).maxOption.getOrElse(0l)
+    def updateSucceeded(time: Long) = Files.setLastModifiedTime( t.toPath, FileTime.fromMillis(time) )
+    (
+      ( inputLastModified >= lastSucceeded ).option{
+        val result: T = action()
+        updateSucceeded( start )
+        result
+      },
+      outputLastModified
+    )
+  }
 }
 
 import scala.reflect._
