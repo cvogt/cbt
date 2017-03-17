@@ -20,6 +20,10 @@ object `package`{
 
   private val lib = new BaseLib
 
+  implicit class CbtStringExtensions(string: String){
+    def escape = string.replace("\\","\\\\").replace("\"","\\\"")
+    def quote = s""""$escape""""
+  }
   implicit class PathExtensionMethods( path: Path ){
     def /(s: String): Path = path.resolve(s)
     def ++( s: String ): Path = {
@@ -64,6 +68,7 @@ object `package`{
     def lastModifiedRecursive = listRecursive.map(_.lastModified).max
 
     def readAsString = new String( readAllBytes( file.toPath ) )
+    def quote = s"new _root_.java.io.File(${string.quote})"
   }
   implicit class URLExtensionMethods( url: URL ){
     def ++( s: String ): URL = new URL( url.toString ++ s )
