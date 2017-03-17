@@ -184,8 +184,9 @@ class Stage1Lib( logger: Logger ) extends BaseLib{
     val arrayClass = classOf[Array[String]]
     val unitClass = classOf[Unit]
 
-    iterateClasses( classesRootDirectory, classLoader, true ).filter(
-      _.getDeclaredMethods().exists( m =>
+    iterateClasses( classesRootDirectory, classLoader, true ).filter( c =>
+      !c.isInterface &&
+      c.getDeclaredMethods().exists( m =>
         m.getName == "main"
           && m.getParameterTypes.toList == List(arrayClass)
           && m.getReturnType == unitClass
