@@ -172,6 +172,7 @@ case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Lo
 case class PostBuildDependency(target: File, _dependencies: Seq[DependencyImplementation])(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override final lazy val lastModified = (target++".last-success").lastModified
   def moduleKey = target.string
+  override def show = s"PostBuildDependency($target)"
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(target) )
   override def dependencies = _dependencies
