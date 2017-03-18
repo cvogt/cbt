@@ -15,9 +15,7 @@ trait Scalastyle extends BaseBuild {
   def scalastyle = {
       val dirList = List(projectDirectory) map (_.getAbsolutePath)
 
-      val config = ScalaStyle.checkConfigExists("scalastyle_config.xml") 
-
-	    val result = ScalaStyle(dirList, config) 
+	    val result = ScalaStyle(dirList, ScalaStyle.checkConfig(projectDirectory.getAbsolutePath)) 
       result match {
         case 1 => println("Error Scalastyle Checking")
         case 2 => println("Config file for ScalaStyle not found")
@@ -29,8 +27,25 @@ trait Scalastyle extends BaseBuild {
 
 object ScalaStyle {
 
-  def apply(directories: List[String], configFile: Option[String]) : Int = {
+  val defaultConfigName : String = "/scalastyle_config.xml"
+
+  def userHome = Option( System.getProperty("user.home") )
+
+  def checkConfig(directory: String, fallback: Option[String] = userHome) : Option[String] = {
     
+    def checkConfigExists(filename: String) : Option[String] = {
+      val file = new File(filename)
+      if (file.exists()) Some(filename) else None
+    }
+
+    checkConfigExists(directory + defaultConfigName) orElse (
+      fallback flatMap (fdir => checkConfigExists(fdir + defaultConfigName))
+    )
+  }
+
+
+
+  def apply(directories: List[String], configFile: Option[String]) : Int = {
     val exitVal = configFile match {
       case Some(_) => {
          val conf = MainConfig(false).copy(config = configFile, directories = directories)
@@ -48,10 +63,6 @@ object ScalaStyle {
     exitVal
   }
 
-  def checkConfigExists(filename: String) : Option[String] = {
-    val file = new File(filename)
-    if (file.exists()) Some(filename) else None
-  }
 
   private[this] def now(): Long = new Date().getTime()
 
