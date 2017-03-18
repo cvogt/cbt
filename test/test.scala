@@ -220,6 +220,7 @@ object Main{
     compile("../plugins/scalatest")
     compile("../plugins/wartremover")
     compile("../plugins/uber-jar")
+    compile("../plugins/scalafix")
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")
@@ -231,6 +232,7 @@ object Main{
     }
     compile("../examples/multi-standalone-example")
     compile("../examples/multi-combined-example")
+    compile("../examples/scalafix-example")
     if(sys.props("java.version").startsWith("1.7")){
       System.err.println("\nskipping dotty tests on Java 7")
     } else {
@@ -379,6 +381,19 @@ object Main{
       val res = runCbt("../examples/resources-example", Seq("runFlat"))
       assert(res.exit0)
       assert(res.out.contains("via parent.parent: true 2"), res.out)
+    }
+
+    {
+      val sourceFile = cbtHome / "examples" / "scalafix-example" / "Main.scala"
+      val sourceBefore = sourceFile.readAsString
+      val res = runCbt("../examples/scalafix-example", Seq("compile"))
+      assert(res.exit0)
+      val sourceAfter = sourceFile.readAsString
+      assert(sourceAfter contains "@volatile")
+      assert(sourceAfter contains ": Unit")
+      assert(sourceAfter contains ": String ")
+      assert(sourceAfter contains "import scala.collection.immutable")
+      lib.write(sourceFile, sourceBefore)
     }
 
     System.err.println(" DONE!")
