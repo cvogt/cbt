@@ -15,7 +15,9 @@ trait Scalastyle extends BaseBuild {
   def scalastyle = {
       val dirList = List(projectDirectory) map (_.getAbsolutePath)
 
-	    val result = ScalaStyle(dirList, ScalaStyle.checkConfig(projectDirectory.getAbsolutePath)) 
+      val pluginHome : String = context.cbtHome.getAbsolutePath + "/plugins/" + "scalastyle"
+
+	    val result = ScalaStyle(dirList, ScalaStyle.checkConfig(projectDirectory.getAbsolutePath, Some(pluginHome))) 
       result match {
         case 1 => println("Error Scalastyle Checking")
         case 2 => println("Config file for ScalaStyle not found")
