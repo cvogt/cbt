@@ -21,7 +21,7 @@ trait Scalastyle extends BaseBuild {
       result match {
         case 1 => println("Error Scalastyle Checking")
         case 2 => println("Config file for ScalaStyle not found")
-        case _ => print("")
+        case _ => ()
       }
   }
 }
