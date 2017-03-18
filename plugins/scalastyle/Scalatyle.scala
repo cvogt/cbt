@@ -13,9 +13,15 @@ import org.scalastyle.{XmlOutput, TextOutput}
 
 trait Scalastyle extends BaseBuild {
   def scalastyle = {
-	  ScalaStyle() match {
-          case 1 => println("Error Scalastyle Checking")
-          case 0 => println("Scalastyle haven't found any errors")
+      val dirList = List(projectDirectory) map (_.getAbsolutePath)
+
+      val config = ScalaStyle.checkConfigExists("scalastyle_config.xml") 
+
+	    val result = ScalaStyle(dirList, config) 
+      result match {
+        case 1 => println("Error Scalastyle Checking")
+        case 2 => println("Config file for ScalaStyle not found")
+        case _ => print("")
       }
   }
 }
@@ -23,21 +29,29 @@ trait Scalastyle extends BaseBuild {
 
 object ScalaStyle {
 
-  def apply() : Int = {
-    val conf = MainConfig(false).copy(config = Some("scalastyle_config.xml"), quiet = true)
-
-    val exitVal = 
-      if (conf.error) {
-        1
-      } else {
-        if (execute(conf)) 1 else 0
+  def apply(directories: List[String], configFile: Option[String]) : Int = {
+    
+    val exitVal = configFile match {
+      case Some(_) => {
+         val conf = MainConfig(false).copy(config = configFile, directories = directories)
+         if (conf.error) {
+            1
+         } else {
+            if (execute(conf)) 1 else 0
+         }
       }
-
+      case None => {
+        2
+      } 
+    }
+   
     exitVal
   }
 
-
-  private def isTrue(s: String) = "true" equalsIgnoreCase s
+  def checkConfigExists(filename: String) : Option[String] = {
+    val file = new File(filename)
+    if (file.exists()) Some(filename) else None
+  }
 
   private[this] def now(): Long = new Date().getTime()
 
