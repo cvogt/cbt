@@ -26,6 +26,8 @@ class plugins(implicit context: Context){
   final lazy val sonatypeRelease = plugin( "sonatype-release" )
   final lazy val uberJar = plugin( "uber-jar" )
   final lazy val wartremover = plugin( "wartremover" )
+  final lazy val scalastyle = plugin( "scalastyle" )
+
 }
 trait BuildBuildWithoutEssentials extends BaseBuild{
   object plugins extends plugins
