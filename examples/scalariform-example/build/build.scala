@@ -3,15 +3,16 @@ import scalariform.formatter.preferences._
 
 class Build(val context: Context) extends BaseBuild with Scalariform {
   override def compile = {
-    scalariformFormat
+    scalariform()
     super.compile
   }
 
-  override def scalariformPreferences =
-    FormattingPreferences()
+  override def scalariform = super.scalariform.copy(
+    preferences = FormattingPreferences()
       .setPreference(SpacesAroundMultiImports, true)
       .setPreference(DoubleIndentClassDeclaration, true)
       .setPreference(RewriteArrowSymbols, true)
+  )
 
   final def breakFormatting = {
     import java.nio.file._
