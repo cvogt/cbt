@@ -6,6 +6,13 @@ import java.nio.file._
 
 class BasicBuild(final val context: Context) extends BaseBuild
 trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDependencyDsl{
+  override def equals(other: Any) = {
+    other match {
+      case b: BaseBuild => projectDirectory === b.projectDirectory
+      case _ => false
+    }
+  }
+
   //* DO NOT OVERRIDE CONTEXT in non-idempotent ways, because .copy and new Build
   // will create new instances given the context, which means operations in the
   // overrides will happen multiple times and if they are not idempotent stuff likely breaks
