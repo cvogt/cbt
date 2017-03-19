@@ -202,7 +202,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     def depthFirstFileStream(file: File): Vector[File] = {
       (
         if (file.isDirectory) {
-          file.listFiles.toVector.flatMap(depthFirstFileStream(_))
+          file.listOrFail.toVector.flatMap(depthFirstFileStream(_))
         } else Vector()
       ) :+ file
     }

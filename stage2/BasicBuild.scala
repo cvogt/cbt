@@ -96,7 +96,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   def sources: Seq[File] = (
     Seq(defaultSourceDirectory)
     ++ generatedSources
-    ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
+    ++ projectDirectory.listOrFail.toVector.filter(sourceFileFilter)
   )
 
   /** Which file endings to consider being source files. */
@@ -130,7 +130,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   def localJars: Seq[File] =
     Seq(projectDirectory ++ "/lib")
       .filter(_.exists)
-      .flatMap(_.listFiles)
+      .flatMap(_.listOrFail)
       .filter(_.toString.endsWith(".jar"))
 
   override def dependencyClasspath : ClassPath = super.dependencyClasspath

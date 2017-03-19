@@ -17,5 +17,5 @@ class Build(val context: Context) extends Shared with PublishLocal{
 
   override def sources = Seq(
     "nailgun_launcher", "stage1", "stage2", "compatibility"
-  ).map( projectDirectory / _ ).flatMap( _.listFiles )
+  ).map( projectDirectory / _ ).flatMap( _.listOrFail )
 }
