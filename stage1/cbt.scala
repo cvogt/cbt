@@ -74,7 +74,7 @@ object `package`{
     def classLoaderCache: ClassLoaderCache = new ClassLoaderCache( persistentCache )
     def cbtDependencies = {
       import paths._
-      new CbtDependencies(mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)(logger, transientCache, classLoaderCache)
+      new CbtDependencies(cbtLastModified, mavenCache, nailgunTarget, stage1Target, stage2Target, compatibilityTarget)(logger, transientCache, classLoaderCache)
     }
     val cbtDependency = cbtDependencies.stage2Dependency
 

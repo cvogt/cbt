@@ -176,9 +176,8 @@ case class PostBuildDependency(target: File, _dependencies: Seq[DependencyImplem
   override def exportedClasspath = ClassPath( Seq(target) )
   override def dependencies = _dependencies
 }
-case class CbtDependencies(mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
+case class CbtDependencies(cbtLastModified: Long, mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
   val compatibilityDependency = PostBuildDependency(compatibilityTarget, Nil)
-  val cbtLastModified = (stage2Target++".last-success").lastModified
   val stage1Dependency = PostBuildDependency(
     stage1Target,
     Seq(
