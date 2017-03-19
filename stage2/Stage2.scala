@@ -3,9 +3,7 @@ import java.io._
 import java.util.{Set=>_,_}
 
 object Stage2 extends Stage2Base{
-  def getBuild(context: Context) = {
-    new Lib( context.logger ).loadRoot( context ).finalBuild( context.cwd )
-  }
+  def getBuild(context: Context): Dependency = DirectoryDependency( context, None )
 
   def run( args: Stage2Args ): ExitCode = {
     import args.logger
@@ -34,9 +32,10 @@ object Stage2 extends Stage2Base{
       null,
       args.loop
     )
-    val first = lib.loadRoot( context )
-    val build = first.finalBuild( context.cwd )
-    val code = lib.callReflective(build, task, context)
+    val code = lib.callReflective(
+      DirectoryDependency( context, None ),
+      task, context
+    )
     logger.stage2(s"Stage2 end with exit code "+code.integer)
     code
   }

@@ -11,25 +11,29 @@ object GitDependency{
   val GitUrl = "(git@|git://|https://|file:///)([^/:]+)[/:](.+)".r
   def apply(
     url: String, ref: String, subDirectory: Option[String] = None, // example: git://github.com/cvogt/cbt.git#<some-hash>
-    pathToNestedBuild: Seq[String] = Seq()
-  )(implicit context: Context ): BuildInterface = {
-    def moduleKey = (
+    subBuild: Option[String] = None
+  )(implicit context: Context ): LazyDependency = withCheckoutDirectory(url, ref, subDirectory, subBuild)._2
+  def withCheckoutDirectory(
+    url: String, ref: String, subDirectory: Option[String] = None, // example: git://github.com/cvogt/cbt.git#<some-hash>
+    subBuild: Option[String] = None
+  )(implicit context: Context ): ( File, LazyDependency ) = {
+    lazy val moduleKey = (
       this.getClass.getName
       ++ "(" ++ url ++ subDirectory.map("/" ++ _).getOrElse("") ++ "#" ++ ref
       ++ ", "
-      ++ pathToNestedBuild.mkString(", ")
+      ++ subBuild.mkString(", ")
       ++ ")"
     )
 
-    val taskCache = new PerClassCache(context.transientCache, moduleKey)(context.logger)
-
-    val c = taskCache[Dependency]("checkout").memoize{ checkout( url, ref ) }
-    DirectoryDependency(
+    val taskCache = new PerClassCache( context.transientCache, moduleKey )( context.logger )
+    val c = taskCache[Dependency]("checkout").memoize{ checkout(url, ref) }
+    val workingDirectory = subDirectory.map(c / _).getOrElse(c)
+    c -> DirectoryDependency(
       context.copy(
-        workingDirectory = subDirectory.map(c / _).getOrElse(c),
+        workingDirectory = workingDirectory,
         loop = false
       ),
-      pathToNestedBuild: _*
+      subBuild
     )
   }
   def checkout(url: String, ref: String)(implicit context: Context): File = {

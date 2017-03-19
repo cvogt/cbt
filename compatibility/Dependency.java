@@ -9,6 +9,9 @@ public interface Dependency{
   public default long lastModified(){
     throw new IncompatibleCbtVersionException("You need to define method lastModified.");
   };
+  public default ClassLoader classLoader(){
+    throw new IncompatibleCbtVersionException("You need to define method classLoader.");
+  };
 
   // methods that exist for longer which every CBT version in use should have by now, no default values needed
   public abstract String show();

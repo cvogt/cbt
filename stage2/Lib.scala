@@ -24,30 +24,6 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
   val buildClassName = "Build"
   val buildBuildClassName = "BuildBuild"
 
-  /**
-  Loads whatever Build needs to be executed first in order to eventually build the build for the given context.
-  This can either the Build itself, of if exists a BuildBuild or a BuildBuild for a BuildBuild and so on.
-  */
-  def loadRoot(context: Context): BuildInterface = {
-    val directory = context.workingDirectory
-
-    context.logger.composition( context.logger.showInvocation("Lib.loadRoot",directory) )
-
-    val start = lib.findInnerMostModuleDirectory(directory)
-
-    val useBasicBuild = directory == start && start.getName != buildDirectoryName
-
-    try{
-      if(useBasicBuild)
-        new BasicBuild( context.copy( workingDirectory = directory ) )
-      else
-        new cbt.ConcreteBuildBuild( context.copy( workingDirectory = start ) )
-    } catch {
-      case e:ClassNotFoundException if e.getMessage == buildClassName =>
-        throw new Exception(s"no class ${buildClassName} found in " ++ start.string)
-    }
-  }
-
   def scaladoc(
     cbtLastModified: Long,
     scalaVersion: String,
@@ -118,20 +94,31 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
   }
 
   def callReflective[T <: AnyRef]( obj: T, code: Option[String], context: Context ): ExitCode = {
-    callInternal( obj, code.toSeq.flatMap(_.split("\\.").map( NameTransformer.encode )), Nil, context ).map {
-      case (obj, code, None) =>
-        val s = render(obj)
-        if(s.nonEmpty)
-          System.out.println(s)
-        code getOrElse ExitCode.Success
-      case (obj, code, Some(msg)) =>
-        if(msg.nonEmpty)
-          System.err.println(msg)
-        val s = render(obj)
-        if(s.nonEmpty)
-          System.err.println(s)
-        code getOrElse ExitCode.Failure
-    }.reduceOption(_ && _).getOrElse( ExitCode.Failure )
+    val result = getReflective( obj, code, f => {
+      def g( a: AnyRef):  AnyRef = a match {
+        case bs: Seq[_] if bs.size > 0 && bs.forall(_.isInstanceOf[BaseBuild]) =>
+          bs.map(_.asInstanceOf[BaseBuild]).map(f)
+        case obj: LazyDependency => g(obj.dependency)
+        case obj => f(obj)
+      }
+      g(_)
+    } )( context )
+
+    val applied = result.getClass.getMethods.find(m => m.getName == "apply" && m.getParameterCount == 0).map(
+      _.invoke( result )
+    ).getOrElse( result )
+
+    applied match {
+      case e: ExitCode => e
+      case s: Seq[_] =>
+        val v = render(applied)
+        if(v.nonEmpty) System.out.println(v)
+        s.collect{ case e: ExitCode => e }.reduceOption(_ && _).getOrElse( ExitCode.Success )
+      case other =>
+        val s = render(applied)
+        if(s.nonEmpty) System.out.println(s)
+        ExitCode.Success
+    }
   }
 
   private def render( obj: Any ): String = {
@@ -141,55 +128,54 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       case url: URL => url.show // to remove credentials
       case d: Dependency => lib.usage(d.getClass, d.show())
       case c: ClassPath => c.string
-      case ExitCode(int) => System.err.println(int); System.exit(int); ???
+      //case e: ExitCode => System.err.println(e.integer); System.exit(e.integer); ???
       case s: Seq[_] => s.map(render).mkString("\n")
       case s: Set[_] => s.map(render).toSeq.sorted.mkString("\n")
       case _ => obj.toString
     }
   }
 
-  private def callInternal[T <: AnyRef]( obj: T, members: Seq[String], previous: Seq[String], context: Context ): Seq[(Option[Object], Option[ExitCode], Option[String])] = {
-    members.headOption.map{ taskName =>
-      val name = NameTransformer.decode(taskName)
-      logger.lib("Calling task " ++ taskName.toString)
-      taskMethods(obj.getClass).get(name).map{ method =>
-        Option(trapExitCodeOrValue(method.invoke(obj)).merge /* null in case of Unit */ ).getOrElse(().asInstanceOf[AnyRef]) match {
-          case code if code.getClass.getSimpleName == "ExitCode" =>
-            // FIXME: ExitCode needs to be part of the compatibility interfaces
-            Seq((None, Some(ExitCode(Stage0Lib.get(code,"integer").asInstanceOf[Int])), None))
-          case bs: Seq[_] if bs.size > 0 && bs.forall(_.isInstanceOf[BaseBuild]) =>
-            bs.flatMap( b => callInternal(b.asInstanceOf[BaseBuild], members.tail, previous :+ taskName, context) )
-          case result =>
-            callInternal(result, members.tail, previous :+ taskName, context)
-        }
-      }.getOrElse{
-        if( context != null && (context.workingDirectory / name).exists ){
-          val newContext = context.copy( workingDirectory = context.workingDirectory / name )
+  def getReflective[T <: AnyRef](
+    obj: T, code: Option[String], callback: (AnyRef => AnyRef) => AnyRef => AnyRef = f => f(_)
+  )( implicit context: Context ) =
+    callInternal( obj, code.toSeq.flatMap(_.split("\\.").map( NameTransformer.encode )), Nil, context, callback )
+
+  private def callInternal[T <: AnyRef](
+    _obj: T, members: Seq[String], previous: Seq[String], context: Context,
+    callback: (AnyRef => AnyRef) => AnyRef => AnyRef
+  ): Object = {
+    callback{ obj =>
+      members.headOption.map{ taskName =>
+        val name = NameTransformer.decode(taskName)
+        logger.lib("Calling task " ++ taskName.toString)
+        taskMethods(obj.getClass).get(name).map{ method =>
           callInternal(
-            lib.loadRoot(
-              newContext
-            ).finalBuild,
+            Option(trapExitCodeOrValue(method.invoke(obj)).merge /* null in case of Unit */ ).getOrElse(
+              ().asInstanceOf[AnyRef]
+            ),
             members.tail,
-            previous,
-            newContext
+            previous :+ taskName,
+            context,
+            callback
           )
-        } else {
-          val p = previous.mkString(".")
-          val msg = (if(p.nonEmpty) p ++ s" has" else "")
-          Seq( ( Some(obj), None, Some( msg ++ s"no method $name\n") ) )
+        }.getOrElse{
+          if( context =!= null && (context.workingDirectory / name).exists ){
+            val newContext = context.copy( workingDirectory = context.workingDirectory / name )
+            callInternal(
+              DirectoryDependency( newContext.cwd )( newContext ).dependency,
+              members.tail,
+              previous :+ taskName,
+              newContext,
+              callback
+            )
+          } else {
+            val p = previous.mkString(".")
+            val msg = (if(p.nonEmpty) p ++ s" has " else " ")
+            throw new RuntimeException( msg ++ lib.red(s"no method `$name` in\n") + render(obj) )
+          }
         }
-      }
-    }.getOrElse{
-      Seq((
-        Some(
-          obj.getClass.getMethods.find(m => m.getName == "apply" && m.getParameterCount == 0).map(
-            _.invoke(obj)
-          ).getOrElse( obj )
-        ),
-        None,
-        None
-      ))
-    }
+      }.getOrElse( obj )
+    }(_obj)
   }
 
   def consoleOrFail(msg: String) = {
@@ -481,11 +467,6 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     url
   }
 
-  def findInnerMostModuleDirectory(directory: File): File = {
-    val buildDir = realpath( directory ++ ("/" ++ lib.buildDirectoryName) )
-    // do not appent buildFileName here, so that we detect empty build folders
-    if(buildDir.exists) findInnerMostModuleDirectory(buildDir) else directory
-  }
   def findOuterMostModuleDirectory(directory: File): File = {
     if(
       ( directory.getParentFile ++ ("/" ++ lib.buildDirectoryName) ).exists

@@ -12,7 +12,9 @@ public interface BuildInterface extends Dependency{
   };
 
   // deprecated methods, which clients are still allowed to implement, but not required
-  public abstract BuildInterface finalBuild(); // needed to propagage through build builds. Maybe we can get rid of this.
+  public default BuildInterface finalBuild(){
+    throw new IncompatibleCbtVersionException("You need to define method classLoader.");
+  }; // needed to propagage through build builds. Maybe we can get rid of this.
   public abstract BuildInterface copy(Context context);
   public abstract String scalaVersion();
   public abstract String[] crossScalaVersionsArray();

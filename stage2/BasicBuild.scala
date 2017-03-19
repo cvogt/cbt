@@ -122,11 +122,6 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
     scalaVersion: String = scalaMajorVersion, verifyHash: Boolean = true
   ) = lib.ScalaDependency( groupId, artifactId, version, classifier, scalaVersion, verifyHash )
 
-  final def DirectoryDependency(path: File, pathToNestedBuild: String*) = cbt.DirectoryDependency(
-    context.copy( workingDirectory = path ),
-    pathToNestedBuild: _*
-  )
-
   def localJars: Seq[File] =
     Seq(projectDirectory ++ "/lib")
       .filter(_.exists)
@@ -220,8 +215,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   def test: Dependency = {
     val testDirectory = projectDirectory / "test"
     if( (testDirectory / lib.buildDirectoryName / lib.buildFileName).exists ){
-      // FIYME: maybe we can make loadRoot(...).finalBuild an Option some
-      DirectoryDependency( testDirectory )
+      DirectoryDependency( testDirectory ).dependency
     } else {
       new BasicBuild( context.copy(workingDirectory = testDirectory) ){
         override def dependencies = Seq(
@@ -292,13 +286,6 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   context.logger.composition("<"*80)
   */
 
-  // ========== cbt internals ==========
-  @deprecated("use finalbuild(File)","")
-  def finalBuild: BuildInterface = this
-  override def finalBuild( current: File ): BuildInterface = {
-    //assert( current.getCanonicalFile == projectDirectory.getCanonicalFile, s"$current == $projectDirectory" )
-    this
-  }
   override def show = this.getClass.getSimpleName ++ "(" ++ projectDirectory.string ++ ")"
 
   override def toString = show
