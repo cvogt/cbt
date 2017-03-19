@@ -187,6 +187,13 @@ object Main{
       assert(cp.strings.distinct == cp.strings, "duplicates in classpath: " ++ cp.string)
     }
 
+    {
+      def d = Resolver(mavenCentral).bindOne(
+        MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0")
+      )
+      assert(d === d)
+    }
+
     // test that messed up artifacts crash with an assertion (which should tell the user what's up)
     assertException[AssertionError](){
       Resolver(mavenCentral).bindOne( MavenDependency("com.jcraft", "jsch", " 0.1.53") ).classpath
