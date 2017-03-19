@@ -61,10 +61,10 @@ object `package`{
   implicit class DependencyExtensions(subject: Dependency){
     import subject._
     def dependencyClasspath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache): ClassPath
-      = Dependencies(dependenciesArray.to).classpath
-    def exportedClasspath: ClassPath = ClassPath(exportedClasspathArray.to)
+      = Dependencies(dependenciesArray.toVector).classpath
+    def exportedClasspath: ClassPath = ClassPath(exportedClasspathArray.toVector)
     def classpath(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache) = exportedClasspath ++ dependencyClasspath
-    def dependencies: Seq[Dependency] = dependenciesArray.to
+    def dependencies: Seq[Dependency] = dependenciesArray.toVector
   }
   implicit class ContextExtensions(subject: Context){
     import subject._
@@ -78,8 +78,8 @@ object `package`{
     }
     val cbtDependency = cbtDependencies.stage2Dependency
 
-    def args: Seq[String] = argsArray.to
-    def enabledLoggers: Set[String] = enabledLoggersArray.to
+    def args: Seq[String] = argsArray.toVector
+    def enabledLoggers: Set[String] = enabledLoggersArray.toSet
     def scalaVersion = Option(scalaVersionOrNull)
     def parentBuild = Option(parentBuildOrNull)
     def cbtLastModified: scala.Long = subject.cbtLastModified

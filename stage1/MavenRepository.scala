@@ -7,7 +7,7 @@ case class MavenResolver(
   implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache
 ){
   def bind( dependencies: MavenDependency* ): Seq[BoundMavenDependency]
-    = dependencies.map( BoundMavenDependency(cbtLastModified,mavenCache,_,urls.to) ).to
+    = dependencies.map( BoundMavenDependency(cbtLastModified,mavenCache,_,urls.toVector) ).toVector
   def bindOne( dependency: MavenDependency ): BoundMavenDependency
-    = BoundMavenDependency( cbtLastModified, mavenCache, dependency, urls.to )
+    = BoundMavenDependency( cbtLastModified, mavenCache, dependency, urls.toVector )
 }

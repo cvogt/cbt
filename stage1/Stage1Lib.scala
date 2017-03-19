@@ -375,7 +375,7 @@ ${sourceFiles.sorted.mkString(" \\\n")}
 
   def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency])(implicit transientCache: java.util.Map[AnyRef,AnyRef], cache: ClassLoaderCache): ClassLoader = {
     // FIXME: shouldn't we be using KeyLockedLazyCache instead of hashmap directly here?
-    val dependencies = dependency.dependencies
+    val dependencies = dependency.dependencies.toVector
     val dependencyClassLoader: ClassLoader = {
       if( dependency.dependencies.isEmpty ){
         NailgunLauncher.jdkClassLoader

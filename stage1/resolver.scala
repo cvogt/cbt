@@ -365,7 +365,7 @@ case class BoundMavenDependency(
       }
     ).map(
       BoundMavenDependency( cbtLastModified, mavenCache, _, repositories, replace )
-    ).to
+    ).toVector
   }
   def lookup( xml: Node, accessor: Node => NodeSeq ): Option[String] = {
     // println("lookup in " + xml)

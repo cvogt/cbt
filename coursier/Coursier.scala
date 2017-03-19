@@ -40,7 +40,7 @@ object Coursier{
         case Right(file) => file
       })
 
-      resolution.dependencies.map( d => cbt.JavaDependency(d.module.organization,d.module.name, d.version)).to[collection.immutable.Seq]
+      resolution.dependencies.map( d => cbt.JavaDependency(d.module.organization,d.module.name, d.version)).toVector
     }
   }
 }
