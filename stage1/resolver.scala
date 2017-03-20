@@ -158,13 +158,13 @@ case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(i
   def exportedClasspath = ClassPath(paths)
   override def lastModified = paths.map(_.lastModifiedRecursive).max // FIXME: cache this
   def targetClasspath = exportedClasspath
-  def moduleKey = this.getClass.getName ++ "(" ++ paths.mkString(", ") ++ ")"
+  lazy val moduleKey = this.getClass.getName + "(" + paths.mkString(", ") + ")" // PERFORMANCE HOTSPOT
 }
 
 /** Allows to easily assemble a bunch of dependencies */
 case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override def lastModified = dependencies.map(_.lastModified).maxOption.getOrElse(0)
-  def moduleKey = this.getClass.getName ++ "(" ++ dependencies.map(_.moduleKey).mkString(", ") ++ ")"
+  lazy val moduleKey = this.getClass.getName + "(" + dependencies.map(_.moduleKey).mkString(", ") + ")" // PERFORMANCE HOTSPOT
   def targetClasspath = ClassPath() 
   def exportedClasspath = ClassPath() 
   override def show: String = this.getClass.getSimpleName + "( " + dependencies.map(_.show).mkString(", ") + " )"
@@ -172,7 +172,7 @@ case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Lo
 
 case class PostBuildDependency(target: File, _dependencies: Seq[DependencyImplementation])(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override final lazy val lastModified = (target++".last-success").lastModified
-  def moduleKey = target.string
+  lazy val moduleKey = target.string
   override def show = s"PostBuildDependency($target)"
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(target) )
@@ -234,7 +234,7 @@ case class BoundMavenDependency(
 )(
   implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache
 ) extends ArtifactInfo with DependencyImplementation{
-  def moduleKey = this.getClass.getName ++ "(" ++ mavenDependency.serialize ++ ")"
+  lazy val moduleKey = this.getClass.getName + "(" + mavenDependency.serialize + ")" // PERFORMANCE HOTSPOT
   override def hashCode = mavenDependency.hashCode
   override def equals(other: Any) = other match{
     case o: BoundMavenDependency => o.mavenDependency == mavenDependency && o.repositories == repositories
