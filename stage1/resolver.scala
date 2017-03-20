@@ -263,8 +263,9 @@ case class BoundMavenDependency(
     classpath.strings.map(new File(_).lastModified).max
   }
 
-  private val groupPath = groupId.split("\\.").mkString("/")
-  protected[cbt] def basePath(useClassifier: Boolean) = s"/$groupPath/$artifactId/$version/$artifactId-$version" ++ (if (useClassifier) classifier.name.map("-"++_).getOrElse("") else "")
+  private lazy val base = "/" + groupId.split("\\.").mkString("/") + "/" + artifactId + "/" + version + "/" + artifactId + "-" + version
+  protected[cbt] def basePath(useClassifier: Boolean) = // PERFORMANCE HOTSPOT
+    base + (if (useClassifier && classifier.name.nonEmpty) "-" + classifier.name.get else "")
 
   //private def coursierJarFile = userHome++"/.coursier/cache/v1/https/repo1.maven.org/maven2"++basePath++".jar"
 
