@@ -119,11 +119,13 @@ trait DependencyImplementation extends Dependency{
 
   // FIXME: these probably need to update outdated as well
   def classpath           : ClassPath = exportedClasspath ++ dependencyClasspath
-  def dependencyClasspath : ClassPath = ClassPath(
-    transitiveDependencies
-    .flatMap(_.exportedClasspath.files)
-    .distinct // <- currently needed here to handle diamond dependencies on builds (duplicate in classpath)
-  )
+  def dependencyClasspath : ClassPath = taskCache[DependencyImplementation]( "dependencyClasspath" ).memoize{
+    ClassPath(
+      transitiveDependencies
+      .flatMap(_.exportedClasspath.files)
+      .distinct // <- currently needed here to handle diamond dependencies on builds (duplicate in classpath)
+    )
+  }
   def dependencies: Seq[Dependency]
 
   /** return dependencies in order of linearized dependence. this is a bit tricky. */
