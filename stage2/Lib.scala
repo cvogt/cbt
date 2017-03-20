@@ -10,6 +10,7 @@ import java.util.jar._
 import java.lang.reflect.Method
 
 import scala.util._
+import scala.reflect.NameTransformer
 
 // pom model
 case class Developer(id: String, name: String, timezone: String, url: URL)

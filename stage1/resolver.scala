@@ -195,7 +195,8 @@ case class CbtDependencies(mavenCache: File, nailgunTarget: File, stage1Target: 
     stage2Target,
     stage1Dependency +:
     MavenResolver(cbtLastModified, mavenCache,mavenCentral).bind(
-      MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r")
+      MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
+      MavenDependency("org.scala-lang","scala-compiler",constants.scalaVersion)
     )
   )
 }
