@@ -416,7 +416,7 @@ case class BoundMavenDependency(
   }
 }
 object BoundMavenDependency{
-  def ValidIdentifier = "^([A-Za-z0-9_\\-.]+)$".r // according to maven's DefaultModelValidator.java
+  val ValidIdentifier = "^([A-Za-z0-9_\\-.]+)$".r // according to maven's DefaultModelValidator.java
   def semanticVersionLessThan(left: Array[Either[Int,String]], right: Array[Either[Int,String]]) = {
     // FIXME: this ignores ends when different size
     val zipped = left zip right
