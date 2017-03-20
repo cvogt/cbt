@@ -96,7 +96,7 @@ trait DependencyImplementation extends Dependency{
   )
   def mainMethods = classes.flatMap( lib.discoverMain )
 
-  def classLoader: ClassLoader = {
+  def classLoader: ClassLoader = taskCache[DependencyImplementation]( "classLoader" ).memoize{
     if( flatClassLoader ){
       new java.net.URLClassLoader(classpath.strings.map(f => new URL("file://" ++ f)).toArray)
     } else {
