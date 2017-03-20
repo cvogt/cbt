@@ -234,7 +234,6 @@ object Main{
     }
     compile("../examples/multi-standalone-example")
     compile("../examples/multi-combined-example")
-    compile("../examples/scalafix-example")
     if(sys.props("java.version").startsWith("1.7")){
       System.err.println("\nskipping dotty tests on Java 7")
     } else {
@@ -316,7 +315,7 @@ object Main{
     {
       val res = runCbt("../examples/dynamic-overrides-example", Seq("eval",""" scalaVersion; 1 + 1 """))
       assert(res.exit0)
-      assert(res.out == "2\n", res.out ++ "\n\n" ++ res.err)
+      assert(res.out == "2\n", res.out ++ "\n--\n" ++ res.err)
     }
 
     {
@@ -391,6 +390,10 @@ object Main{
       val res = runCbt("../examples/scalafix-example", Seq("compile"))
       assert(res.exit0)
       val sourceAfter = sourceFile.readAsString
+      assert(!(sourceBefore contains "@volatile"))
+      assert(!(sourceBefore contains ": Unit"))
+      assert(!(sourceBefore contains ": String "))
+      assert(!(sourceBefore contains "import scala.collection.immutable"))
       assert(sourceAfter contains "@volatile")
       assert(sourceAfter contains ": Unit")
       assert(sourceAfter contains ": String ")

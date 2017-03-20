@@ -440,3 +440,9 @@ object BoundMavenDependency{
     }
   }
 }
+/*
+case class DependencyOr(first: DirectoryDependency, second: JavaDependency) extends ProjectProxy with DirectoryDependencyBase{
+  val isFirst = new File(first.projectDirectory).exists
+  protected val delegate = if(isFirst) first else second
+}
+*/

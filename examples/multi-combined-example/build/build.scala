@@ -32,7 +32,7 @@ class Sub3(val context: Context) extends SharedBuild{
   override def projectDirectory = context.workingDirectory / "sub3"
   override def dependencies = Seq(
     // Embed another sub build reflectively. Convenient for simple dependencies
-    DirectoryDependency(context.workingDirectory / "sub4", "sub41", "sub42")
+    DirectoryDependency(context.workingDirectory / "sub4", "sub41.sub42")
   )
 }
 

@@ -1,7 +1,7 @@
 import cbt._
 import cbt_internal._
 
-class Build(val context: Context) extends Shared with PublishLocal{
+class Build(val context: Context) extends Shared with Scalariform with PublishLocal{
   override def name: String = "cbt"
   override def version: String = "0.1"
   override def description: String = "Fast, intuitive Build Tool for Scala"
@@ -18,4 +18,16 @@ class Build(val context: Context) extends Shared with PublishLocal{
   override def sources = Seq(
     "nailgun_launcher", "stage1", "stage2", "compatibility"
   ).map( projectDirectory / _ ).flatMap( _.listOrFail )
+
+  override def scalariform = super.scalariform.copy(
+    Seq(
+      context.cbtHome / "stage2" / "DirectoryDependency.scala",
+      context.cbtHome / "stage2" / "LazyDependency.scala"
+    )
+  )
+
+  override def compile = {
+    scalariform()
+    super.compile
+  }
 }

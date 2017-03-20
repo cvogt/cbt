@@ -22,6 +22,7 @@ minimize the risk.
 However there are more things that can break compatibility when changed:
 - the format of the `// cbt: ` version string
 - the name and format of Build classes (or files) that CBT looks for
+- looking for `build/` directories
 - communication between versions via reflection in particular
   - how the TrapSecurityManager of each CBT version talks to the
     installed TrapSecurityManager via reflection
