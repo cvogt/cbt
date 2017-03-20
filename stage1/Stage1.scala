@@ -91,8 +91,10 @@ object Stage1{
     import paths._
 
     val stage2sourceFiles = (
-      stage2.listFiles ++ (stage2 ++ "/plugins").listFiles
-    ).toVector.filter(_.isFile).filter(_.toString.endsWith(".scala"))
+      stage2.listFiles
+      ++ (stage2 / "plugins").listFiles
+      ++ (cbtHome / "libraries" / "eval").listFiles
+    ).filter(_.isFile).filter(_.toString.endsWith(".scala"))
 
     val cls = this.getClass.getClassLoader.loadClass("cbt.NailgunLauncher")
 

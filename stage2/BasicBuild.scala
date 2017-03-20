@@ -32,10 +32,10 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   def projectDirectory: File = lib.realpath(context.workingDirectory)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   assert(
-    projectDirectory.getName =!= lib.buildDirectoryName ||
-    {
+    projectDirectory.getName =!= lib.buildDirectoryName
+    || {
       def transitiveInterfaces(cls: Class[_]): Vector[Class[_]] = cls.getInterfaces.toVector.flatMap(i => i +: transitiveInterfaces(i))
-      transitiveInterfaces(this.getClass).contains(classOf[BuildBuildWithoutEssentials])
+      transitiveInterfaces(this.getClass).contains(classOf[BuildBuild])
     },
     s"You need to extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" ++ lib.buildDirectoryName
   )

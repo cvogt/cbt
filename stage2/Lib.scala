@@ -38,17 +38,8 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     val useBasicBuild = directory == start && start.getName != buildDirectoryName
 
     try{
-      if(useBasicBuild) {
+      if(useBasicBuild)
         new BasicBuild( context.copy( workingDirectory = directory ) )
-      } else if(
-        // essentials depends on eval, which has a build that depends on scalatest
-        // this means in these we can't depend on essentials
-        // hopefully we find a better way that this pretty hacky exclusion rule
-        directory == (context.cbtHome ++ "/plugins/essentials")
-        || directory == (context.cbtHome ++ "/libraries/eval")
-        || directory == (context.cbtHome ++ "/plugins/scalatest")
-      )
-        new cbt.ConcreteBuildBuildWithoutEssentials( context.copy( workingDirectory = start ) )
       else
         new cbt.ConcreteBuildBuild( context.copy( workingDirectory = start ) )
     } catch {
