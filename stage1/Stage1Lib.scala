@@ -310,23 +310,39 @@ ${sourceFiles.sorted.mkString(" \\\n")}
       groupId, artifactId ++ "_" ++ scalaMajorVersion, version, classifier, verifyHash
     )
 
-  def cacheOnDisk[T]
-    ( cbtLastModified: Long, cacheFile: File )
+  def cacheOnDisk[T,J <: AnyRef : scala.reflect.ClassTag]
+    ( cbtLastModified: Long, cacheFile: File, persistentCache: java.util.Map[AnyRef,AnyRef] )
     ( deserialize: String => T )
     ( serialize: T => String )
-    ( compute: => Seq[T] ) = {
-    if(cacheFile.exists && cacheFile.lastModified > cbtLastModified ){
-      import collection.JavaConversions._
-      Files
-        .readAllLines( cacheFile.toPath, StandardCharsets.UTF_8 )
-        .toStream
-        .map(deserialize)
-    } else {
-      val result = compute
-      val string = result.map(serialize).mkString("\n")
-      write(cacheFile, string)
-      result
-    }
+    ( dejavafy: J => Seq[T] )
+    ( javafy: Seq[T] => J )
+    ( compute: => Seq[T] ): Seq[T] = {
+      val key = "cacheOnDisk:" + cacheFile
+      Option( persistentCache.get(key) ).map(
+        _.asInstanceOf[Array[AnyRef]]
+      ).map{
+        case Array(time: java.lang.Long, javafied: J) => (time, javafied)
+      }.filter( _._1 > cbtLastModified )
+       .map( _._2 )
+       .map( dejavafy )
+       .orElse{
+        (cacheFile.exists && cacheFile.lastModified > cbtLastModified).option{
+          import collection.JavaConversions._
+          val v = Files
+            .readAllLines( cacheFile.toPath, StandardCharsets.UTF_8 )
+            .toStream
+            .map( deserialize )
+          persistentCache.put(key, Array(System.currentTimeMillis:java.lang.Long, javafy(v)))
+          v
+        }
+      }.getOrElse{
+        val result = compute
+        val strings = result.map(serialize)
+        val string = strings.mkString("\n")
+        write(cacheFile, string)
+        persistentCache.put(key, Array(System.currentTimeMillis:java.lang.Long, javafy(result)))
+        result
+      }
   }
 
   def dependencyTreeRecursion(root: Dependency, indent: Int = 0): String = (

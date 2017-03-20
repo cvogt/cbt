@@ -213,12 +213,19 @@ abstract class DependenciesProxy{
 case class MavenDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none, verifyHash: Boolean = true
 ){
-  private[cbt] def serialize = groupId ++ ":" ++ artifactId ++ ":"++ version ++ classifier.name.map(":" ++ _).getOrElse("")
+  private[cbt] def serialize = // PERFORMANCE HOTSPOT
+    groupId + ":" + artifactId + ":" + version + ( if(classifier.name.nonEmpty) ":" + classifier.name.get else "" )
+  private[cbt] def javafy: Array[String] =
+    Array(groupId,artifactId,version) ++ classifier.name
 }
 object MavenDependency{
   private[cbt] def deserialize = (_:String).split(":") match {
     case col => MavenDependency( col(0), col(1), col(2), Classifier(col.lift(3)) )
   }
+  private[cbt] def dejavafy =
+    ( cols:Array[Array[String]] ) => cols.map(
+      col => MavenDependency( col(0), col(1), col(2), Classifier(col.lift(3)) )
+    ).toSeq
 }
 // FIXME: take MavenResolver instead of mavenCache and repositories separately
 case class BoundMavenDependency(
@@ -338,8 +345,8 @@ case class BoundMavenDependency(
       if(classifier == Classifier.sources) Seq()
       else {
         lib.cacheOnDisk(
-        cbtLastModified, mavenCache ++ basePath(true) ++ ".pom.dependencies"
-        )( MavenDependency.deserialize )( _.serialize ){
+          cbtLastModified, mavenCache ++ basePath(true) ++ ".pom.dependencies", classLoaderCache.hashMap
+        )( MavenDependency.deserialize )( _.serialize )( MavenDependency.dejavafy )( _.map(_.javafy).toArray ){
           (pomXml \ "dependencies" \ "dependency").collect{
           case xml if ( (xml \ "scope").text == "" || (xml \ "scope").text == "compile" ) && (xml \ "optional").text != "true" =>
               val artifactId = lookup(xml,_ \ "artifactId").get
