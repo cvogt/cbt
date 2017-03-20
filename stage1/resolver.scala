@@ -259,7 +259,9 @@ case class BoundMavenDependency(
   )
   override def show: String = this.getClass.getSimpleName ++ "(" ++ mavenDependency.serialize ++ ")"
 
-  override final lazy val lastModified = classpath.strings.map(new File(_).lastModified).max
+  override final lazy val lastModified: Long = taskCache[BoundMavenDependency]( "lastModified" ).memoize[java.lang.Long]{
+    classpath.strings.map(new File(_).lastModified).max
+  }
 
   private val groupPath = groupId.split("\\.").mkString("/")
   protected[cbt] def basePath(useClassifier: Boolean) = s"/$groupPath/$artifactId/$version/$artifactId-$version" ++ (if (useClassifier) classifier.name.map("-"++_).getOrElse("") else "")
