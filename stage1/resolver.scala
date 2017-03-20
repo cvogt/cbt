@@ -286,10 +286,15 @@ case class BoundMavenDependency(
   }
 
   private def resolveHash(suffix: String, useClassifier: Boolean) = {
-    Files.readAllLines(
-      resolve( suffix ++ ".sha1", None, useClassifier ).toPath,
-      StandardCharsets.UTF_8
-    ).mkString("\n").split(" ").head.trim
+    val path = resolve( suffix ++ ".sha1", None, useClassifier ).toPath
+    Option( classLoaderCache.hashMap.get("hash:"+path) ).map(_.asInstanceOf[String]).getOrElse{
+      val result = Files.readAllLines(
+        path,
+        StandardCharsets.UTF_8
+      ).mkString("\n").split(" ").head.trim
+      classLoaderCache.hashMap.put("hash:"+path, result)
+      result
+    }
   }
 
   def jarSha1: String = taskCache[BoundMavenDependency]("jarSha1").memoize{ resolveHash("jar", true) }
