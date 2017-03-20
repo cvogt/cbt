@@ -13,6 +13,7 @@ dependencies:
 compile:
   override:
     - ./cbt compile
+    - git diff --exit-code
     - ./cbt direct
     - ./cbt -Dlog=all
 
@@ -23,3 +24,4 @@ test:
         timeout: 1800
     - ./cbt test.run slow:
         timeout: 1800
+    - git diff --exit-code
