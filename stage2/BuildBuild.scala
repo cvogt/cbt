@@ -3,19 +3,13 @@ import java.nio.file._
 import java.io.File
 
 class ConcreteBuildBuild(val context: Context) extends BuildBuild
-class ConcreteBuildBuildWithoutEssentials(val context: Context) extends BuildBuildWithoutEssentials
-trait BuildBuild extends BuildBuildWithoutEssentials{
-  override def dependencies =
-    super.dependencies :+ plugins.essentials
-}
 class plugins(implicit context: Context){
   // TODO: move this out of the OO
-  private def plugin(dir: String) = DirectoryDependency(
+  private def plugin(dir: String) = cbt.DirectoryDependency(
     context.copy(
       workingDirectory = context.cbtHome / "plugins" / dir
     )
   )
-  final lazy val essentials = plugin( "essentials" )
   final lazy val googleJavaFormat = plugin( "google-java-format" )
   final lazy val proguard = plugin( "proguard" )
   final lazy val sbtLayout = plugin( "sbt_layout" )
@@ -28,7 +22,8 @@ class plugins(implicit context: Context){
   final lazy val wartremover = plugin( "wartremover" )
   final lazy val scalafix = plugin( "scalafix" )
 }
-trait BuildBuildWithoutEssentials extends BaseBuild{
+
+trait BuildBuild extends BaseBuild{
   object plugins extends plugins
 
   assert(
@@ -45,7 +40,7 @@ trait BuildBuildWithoutEssentials extends BaseBuild{
     super.dependencies :+ context.cbtDependency
 
   def managedBuildDirectory: java.io.File = lib.realpath( projectDirectory.parent )
-  def managedBuild = taskCache[BuildBuildWithoutEssentials]("managedBuild").memoize{
+  def managedBuild = taskCache[BuildBuild]("managedBuild").memoize{
     val managedBuildFile = projectDirectory++("/"++lib.buildFileName)
     logger.composition("Loading build at " ++ managedBuildDirectory.toString)
     val build = (

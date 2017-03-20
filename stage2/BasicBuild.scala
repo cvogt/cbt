@@ -32,10 +32,10 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   def projectDirectory: File = lib.realpath(context.workingDirectory)
   assert( projectDirectory.exists, "projectDirectory does not exist: " ++ projectDirectory.string )
   assert(
-    projectDirectory.getName =!= lib.buildDirectoryName ||
-    {
+    projectDirectory.getName =!= lib.buildDirectoryName
+    || {
       def transitiveInterfaces(cls: Class[_]): Vector[Class[_]] = cls.getInterfaces.toVector.flatMap(i => i +: transitiveInterfaces(i))
-      transitiveInterfaces(this.getClass).contains(classOf[BuildBuildWithoutEssentials])
+      transitiveInterfaces(this.getClass).contains(classOf[BuildBuild])
     },
     s"You need to extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" ++ lib.buildDirectoryName
   )
@@ -96,7 +96,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   def sources: Seq[File] = (
     Seq(defaultSourceDirectory)
     ++ generatedSources
-    ++ projectDirectory.listFiles.toVector.filter(sourceFileFilter)
+    ++ projectDirectory.listOrFail.toVector.filter(sourceFileFilter)
   )
 
   /** Which file endings to consider being source files. */
@@ -130,7 +130,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   def localJars: Seq[File] =
     Seq(projectDirectory ++ "/lib")
       .filter(_.exists)
-      .flatMap(_.listFiles)
+      .flatMap(_.listOrFail)
       .filter(_.toString.endsWith(".jar"))
 
   override def dependencyClasspath : ClassPath = super.dependencyClasspath

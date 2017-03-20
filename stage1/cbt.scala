@@ -62,6 +62,7 @@ object `package`{
       file.delete
     }
 
+    def listOrFail: Seq[File] = Option( file.listFiles ).getOrElse( throw new Exception( "no such file: " + file ) ).toVector
     def listRecursive: Seq[File] = {
       file +: (
         if( file.isDirectory ) file.listFiles.flatMap(_.listRecursive).toVector else Seq[File]()

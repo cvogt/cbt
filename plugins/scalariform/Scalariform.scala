@@ -9,16 +9,10 @@ import scalariform.formatter.preferences.FormattingPreferences
 import scalariform.parser.ScalaParserException
 
 trait Scalariform extends BaseBuild {
-  final def scalariformFormat: ExitCode = {
-    Scalariform.format(sourceFiles, scalariformPreferences, scalaVersion)
-    ExitCode.Success
-  }
-
-  def scalariformPreferences: FormattingPreferences = Scalariform.defaultPreferences
+  def scalariform = Scalariform.apply(lib, sourceFiles.filter(_.string endsWith ".scala"), scalaVersion).config()
 }
 
-object Scalariform {
-
+object Scalariform{
   val defaultPreferences: FormattingPreferences = {
     import scalariform.formatter.preferences._
     FormattingPreferences()
@@ -32,30 +26,27 @@ object Scalariform {
       .setPreference(DoubleIndentClassDeclaration, false)
   }
 
-  private val scalaFileMatcher = FileSystems.getDefault.getPathMatcher("glob:**.scala")
-
-  def format(files: Seq[File], preferences: FormattingPreferences, scalaVersion: String): Unit = {
-    var reformattedCount: Int = 0
-    for (file <- files if file.exists) {
-      val path = file.toPath
-      if(scalaFileMatcher.matches(path)) {
-        try {
-          val sourceCode = new String(readAllBytes(path))
-          val formatted = ScalaFormatter.format(
-            sourceCode,
-            preferences,
-            Some(scalaVersion)
-          )
-          if (sourceCode != formatted) {
-            write(path, formatted.getBytes)
-            reformattedCount += 1
+  case class apply( lib: Lib, files: Seq[File], scalaVersion: String ){
+    case class config(
+      preferences: FormattingPreferences = Scalariform.defaultPreferences
+    ) extends (() => Seq[File]){
+      def apply = {
+        val (successes, errors) = lib.transformFilesOrError( files, in =>
+          try{
+            Right( ScalaFormatter.format( in, preferences, Some(scalaVersion) ) )
+          } catch {
+            case e: ScalaParserException => Left( e )
           }
-        } catch {
-          case e: ScalaParserException => System.err.println(s"Scalariform parser error: ${e.getMessage} when formatting: $file")
-        }
+        )
+        if(errors.nonEmpty)
+          throw new RuntimeException(
+            "Scalariform failed to parse some files:\n" ++ errors.map{
+              case (file, error) => file.string ++ ": " ++ error.getMessage
+            }.mkString("\n"),
+            errors.head._2
+          )
+        successes
       }
     }
-    if (reformattedCount > 0) System.err.println(s"Formatted $reformattedCount Scala sources")
   }
-
 }
