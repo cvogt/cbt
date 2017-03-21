@@ -96,7 +96,7 @@ object DirectoryDependency {
         )
       } else {
         val buildClass = buildClasses.head
-        buildClass.getConstructors.find( _.getParameterTypes.toList === List( classOf[Context] ) ).map {
+        buildClass.constructors.find( _.parameterTypes.toList === List( classOf[Context] ) ).map {
           _.newInstance( managedContext ).asInstanceOf[AnyRef]
         }.getOrElse {
           throw new Exception(

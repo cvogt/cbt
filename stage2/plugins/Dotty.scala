@@ -107,11 +107,9 @@ class DottyLib(
       ) ++ compileArgs ++ sourceFiles.map(_.toString)
       logger.lib("creating docs for source files "+args.mkString(", "))
       val exitCode = redirectOutToErr{
-        runMain(
+        dottyCompiler.runMain(
           "dotty.tools.dottydoc.DocDriver",
-          args,
-          dottyCompiler.classLoader,
-          fakeInstance = true // this is a hack as Dottydoc's main method is not static
+          args
         )
       }
       System.err.println("done")

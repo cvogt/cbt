@@ -83,6 +83,40 @@ class Build(val context: Context) extends SomePlugin{
 Such a simple replacement of `b` while keeping all other arguments would
 not be easily possible if doSomething was a def not a case class.
 
+## Why do the libraries have ops packages and Module traits?
+
+Java's and Scala's package system does allow importing things,
+but not exporting things. Everything has to be imported
+explicitly anywhere it is supposed to be used. It's just a
+package system, not a module system. This leads to a lot of
+import boiler plate. CBT tries to minimize the imports
+necessary for it's use however. So how to we do this while
+at the same time allowing modularization? In particular, how
+do we do this with stand-alone methods and implicit classes
+that have to be in an object, e.g. the package object?
+
+Scala's traits can be used as a module system that supports exports.
+This means we can take several modules (traits) and merge them into
+something that exports everything defined in any of them. Basically
+inheriting a trait means importing names into the scope of the
+inheriting class and exporting those names to the class's users.
+
+CBT's libraries define Module traits, which their package objects inherit.
+This makes it easy to use the libraries by itself. CBT's core however
+also inherits all of the library Module traits in it's package object,
+meaning that by a simple `import cbt._` you get everything from all
+libraries. This solves the import boiler plate.
+
+For implicit classes it is a little bit trickier as those should
+extend AnyVal for performance reasons, but that's only allowed in
+an object, not a trait. So what we do instead is put Universal traits
+(see http://docs.scala-lang.org/overviews/core/value-classes.html)
+containing all the logic into a helper package `ops`. The package
+objects that want to offer the implicit classes now define them
+extending the Universal traits. This means a little boiler plate
+where the package object is define, but also solves the import
+boiler plate everywhere else.
+
 ## What is newBuild and why do we need it?
 
 Methods in a class can call each other and thereby effectively form a graph.
@@ -137,3 +171,4 @@ trait CrossVersionPlugin{
 
 Problem solved. In fact this allows for a very, very flexible way of
 creating differents variants of your build.
+

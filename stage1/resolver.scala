@@ -77,25 +77,24 @@ trait DependencyImplementation extends Dependency{
     )
   }
   */
-
-  def runMain( className: String, args: Seq[String] ) = lib.runMain( className, args, classLoader )
-
   def flatClassLoader: Boolean = false
 
-  def mainClasses: Seq[Class[_]] = exportedClasspath.files.flatMap( lib.mainClasses( _, classLoader ) )
-
-  def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
-
-  def run( args: String* ): ExitCode = {
-    runClass.map( runMain( _, args ) ).getOrElse{
-      // FIXME: this just doing nothing when class is not found has been repeatedly
-      // surprising. Let's try to make this more visible than just logging an error.
-      // Currently blocked on task `recursive` trying every subbuild and would error
-      // for all that don't have a run class. Maybe that's ok actually.
-      logger.task( "No main class found for " ++ show )
-      ExitCode.Success
-    }
+  def runMain( className: String, args: Seq[String] ): ExitCode = lib.trapExitCode{
+    lib.runMain( classLoader.loadClass( className ), args )
   }
+
+  def runMain( args: Seq[String] ): ExitCode = lib.trapExitCode{
+    mainMethod.getOrElse(
+      throw new RuntimeException( "No main class found in " + this )
+    )( args )
+  }
+
+  def mainMethod = lib.pickOne( "Which one do you want to run?", mainMethods )( _.name )
+
+  def classes = exportedClasspath.files.flatMap(
+    lib.iterateClasses( _, classLoader, false )
+  )
+  def mainMethods = classes.flatMap( lib.discoverMain )
 
   def classLoader: ClassLoader = {
     if( flatClassLoader ){

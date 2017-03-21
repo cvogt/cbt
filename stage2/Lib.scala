@@ -64,10 +64,8 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
         c =>
           c
           .getMethods
-          .filter{ m =>
-            java.lang.reflect.Modifier.isPublic(m.getModifiers)
-          }
-          .filter( _.getParameterTypes.length == 0 )
+          .filter( _.isPublic )
+          .filter( _.parameterTypes.length == 0 )
           .map(m => NameTransformer.decode(m.getName) -> m)
           .filterNot(_._1 contains "$")
       ).toMap
@@ -261,34 +259,6 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     m
   }
 
-  def autoRelative( files: Seq[File], collector: PartialFunction[(File,String), String] = { case (_,r) => r }): Seq[(File, String)] = {
-    val map = files.sorted.flatMap{ base =>
-      val b = base.getCanonicalFile.string
-      if( base.isDirectory ){
-        base.listRecursive.map{ f =>
-          f -> f.getCanonicalFile.string.stripPrefix(b).stripPrefix(File.separator)
-        }
-      } else {
-        Seq( base -> base.getName )
-      }
-    }.collect{
-      case v@(file, _) if collector.isDefinedAt(v) => file -> collector(v)
-    }
-    val relatives = map.unzip._2
-    val duplicateFiles = (relatives diff relatives.distinct).distinct
-    assert(
-      duplicateFiles.isEmpty,
-      {
-        val rs = relatives.toSet
-        "Conflicting:\n\n" +
-        map.filter(rs contains _._2).groupBy(_._2).mapValues(_.map(_._1).sorted).toSeq.sortBy(_._1).map{
-          case (name, files) => s"$name:\n" ++ files.mkString("\n")
-        }.mkString("\n\n")
-      }
-    )
-    map
-  }
-
   def createJar( jarFile: File, files: Seq[File], mainClass: Option[String] = None ): Option[File] = {
     deleteIfExists(jarFile.toPath)
     if( files.isEmpty ){
@@ -471,30 +441,6 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     if(
       ( directory.getParentFile ++ ("/" ++ lib.buildDirectoryName) ).exists
     ) findOuterMostModuleDirectory(directory.getParentFile) else directory
-  }
-
-  def transformFiles( files: Seq[File], transform: String => String ): Seq[File] = {
-    transformFilesOrError( files, s => Right(transform(s)) )._1
-  }
-
-  def transformFilesOrError[T]( files: Seq[File], transform: String => Either[T,String] ): ( Seq[File], Seq[(File, T)] ) = {
-    val results = files.map{ file =>
-      val string = file.readAsString
-      transform( string ).left.map(
-        file -> _
-      ).right.map(
-        replaced =>
-          if( string != replaced ) {
-            val tmpFile = file ++ ".cbt-tmp"
-            assert( !tmpFile.exists )
-            write( tmpFile, replaced )
-            move( tmpFile.toPath, file.toPath, StandardCopyOption.REPLACE_EXISTING )
-            Some( file )
-          } else None
-      )
-    }
-
-    ( results.map(_.right.toOption).flatten.flatten, results.map(_.left.toOption).flatten )
   }
 
   def clearScreen = System.err.println( (27.toChar +: "[2J").mkString )
