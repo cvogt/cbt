@@ -295,10 +295,12 @@ ${sourceFiles.sorted.mkString(" \\\n")}
   def redirectOutToErr[T](code: => T): T = {
     val ( out, err ) = getOutErr
     val oldOut: PrintStream = out.get
-    out.set( err.get: PrintStream )
-    val res = code
-    out.set( oldOut )
-    res
+    try{
+      out.set( err.get: PrintStream )
+      code
+    } finally {
+      out.set( oldOut )
+    }
   }
 
 

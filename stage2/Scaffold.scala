@@ -71,7 +71,7 @@ class Build(val context: Context) extends BaseBuild{
     super.dependencies ++ // don't forget super.dependencies here for scala-library, etc.
     Seq(
       // source dependency
-      // DirectoryDependency( projectDirectory ++ "/subProject" )
+      // DirectoryDependency( projectDirectory / "subProject" )
     ) ++
     // pick resolvers explicitly for individual dependencies (and their transitive dependencies)
     Resolver( mavenCentral, sonatypeReleases ).bind(
