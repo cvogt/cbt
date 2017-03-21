@@ -29,8 +29,8 @@ object ProGuard {
 }
 case class ProGuard[T](
   main: Seq[String] => Int,
-  T:    Seq[File]   => T,
-  log:  String      => Unit = _ => ()
+  T:    Seq[File] => T,
+  log:  String => Unit = _ => ()
 ) {
 
   /**
@@ -160,9 +160,9 @@ case class ProGuard[T](
     private object argsFor {
       def apply[T: argsFor]( value: T ) = implicitly[argsFor[T]].apply( value )
       implicit object SeqFile extends argsFor[Seq[File]]( v => Some( Seq( v.map( _.getPath ).mkString( ":" ) ) ) )
-      implicit object File    extends argsFor[File]( v      => Some( Seq( v.getPath ) ) )
-      implicit object String  extends argsFor[String]( v    => Some( Seq( v ) ) )
-      implicit object Int     extends argsFor[Int]( i       => Some( Seq( i.toString ) ) )
+      implicit object File    extends argsFor[File]( v => Some( Seq( v.getPath ) ) )
+      implicit object String  extends argsFor[String]( v => Some( Seq( v ) ) )
+      implicit object Int     extends argsFor[Int]( i => Some( Seq( i.toString ) ) )
       implicit object Boolean
           extends argsFor[Boolean]( {
             case false => None

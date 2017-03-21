@@ -3,13 +3,19 @@ import java.io._
 import java.nio.file._
 import java.nio.file.Files._
 import java.net._
+import java.lang.reflect._
 
 object `package`{
-  implicit class TypeInferenceSafeEquals[T](value: T){
-    /** if you don't manually upcast, this will catch comparing different types */
-    def ===(other: T) = value == other
-    def =!=(other: T) = value != other // =!= instead of !==, because it has better precedence
-  }
+  implicit class CbtExitCodeOps( val exitCode: ExitCode ) extends AnyVal with common_1.ops.CbtExitCodeOps
+  implicit class TypeInferenceSafeEquals[T]( val value: T ) extends AnyVal with common_1.ops.TypeInferenceSafeEquals[T]
+  implicit class CbtBooleanOps( val condition: Boolean ) extends AnyVal with common_1.ops.CbtBooleanOps
+  implicit class CbtStringOps( val string: String ) extends AnyVal with common_1.ops.CbtStringOps
+
+  implicit class CbtFileOps( val file: File ) extends file.ops.CbtFileOps
+
+  implicit class CbtClassOps( val c: Class[_] ) extends AnyVal with reflect.ops.CbtClassOps
+  implicit class CbtConstructorOps( val c: Constructor[_] ) extends AnyVal with reflect.ops.CbtConstructorOps
+  implicit class CbtMethodOps( val m: Method ) extends AnyVal with reflect.ops.CbtMethodOps
 
   val mavenCentral = new URL("https://repo1.maven.org/maven2")
   val jcenter = new URL("https://jcenter.bintray.com")
@@ -18,15 +24,6 @@ object `package`{
   val sonatypeReleases = sonatypeBase ++ "releases"
   val sonatypeSnapshots = sonatypeBase ++ "snapshots"
 
-  private val lib = new BaseLib
-
-  implicit class CbtBooleanExtensions(condition: Boolean){
-    def option[T](value: =>T): Option[T] = if(condition) Some(value) else None
-  }
-  implicit class CbtStringExtensions(string: String){
-    def escape = string.replace("\\","\\\\").replace("\"","\\\"")
-    def quote = s""""$escape""""
-  }
   implicit class PathExtensionMethods( path: Path ){
     def /(s: String): Path = path.resolve(s)
     def ++( s: String ): Path = {
@@ -36,44 +33,7 @@ object `package`{
       Paths.get( path.toString ++ s )
     }
   }
-  implicit class FileExtensionMethods( file: File ){
-    def ++( s: String ): File = {
-      if(s endsWith "/") throw new Exception(
-        """Trying to append a String that ends in "/" to a File would loose the trailing "/". Use .stripSuffix("/") if you need to."""
-      )
-      new File( file.toString ++ s )
-    }
-    def /(s: String): File = new File( file, s )
-    def parent = lib.realpath(file ++ "/..")
-    def string = file.toString
-    /* recursively deletes folders*/
-    def deleteRecursive: Unit = {
-      val s = file.string
-      // some desperate attempts to keep people from accidentally deleting their hard drive
-      assert( file == file.getCanonicalFile, "deleteRecursive requires previous .getCanonicalFile" )
-      assert( file.isAbsolute, "deleteRecursive requires absolute path" )
-      assert( file.string != "", "deleteRecursive requires non-empty file path" )
-      assert( s.split(File.separator.replace("\\","\\\\")).size > 4, "deleteRecursive requires absolute path of at least depth 4" )
-      assert( !listRecursive.exists(_.isHidden), "deleteRecursive requires no files to be hidden" )
-      assert( listRecursive.forall(_.canWrite), "deleteRecursive requires all files to be writable" )
-      if( file.isDirectory ){
-        file.listFiles.map(_.deleteRecursive)
-      }
-      file.delete
-    }
 
-    def listOrFail: Seq[File] = Option( file.listFiles ).getOrElse( throw new Exception( "no such file: " + file ) ).toVector
-    def listRecursive: Seq[File] = {
-      file +: (
-        if( file.isDirectory ) file.listFiles.flatMap(_.listRecursive).toVector else Seq[File]()
-      )
-    }
-
-    def lastModifiedRecursive = listRecursive.map(_.lastModified).max
-
-    def readAsString = new String( readAllBytes( file.toPath ) )
-    def quote = s"new _root_.java.io.File(${string.quote})"
-  }
   implicit class URLExtensionMethods( url: URL ){
     def ++( s: String ): URL = new URL( url.toString ++ s )
     def show = "/[^/@]+@".r.replaceFirstIn( url.toString, "/" ) // remove credentials when showing url for security reasons

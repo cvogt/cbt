@@ -41,7 +41,7 @@ class UberJarLib(lib: cbt.Lib, log: String => Unit) {
     val uberJar = lib.createJar(jarFile, dirs :+ extracted, mainClass=mainClass)
     log("Writing uber jar - DONE")
 
-    extracted.deleteRecursive
+    lib.deleteRecursive( extracted )
 
     System.err.println(lib.green("Creating uber jar - DONE"))
 

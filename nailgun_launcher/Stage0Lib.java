@@ -12,6 +12,7 @@ import static cbt.NailgunLauncher.*;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import static java.lang.Math.min;
+import cbt.reflect.TrapSystemExit;
 
 public class Stage0Lib{
   public static void _assert(boolean condition, Object msg){
@@ -21,22 +22,21 @@ public class Stage0Lib{
   }
 
   public static int runMain(String cls, String[] args, ClassLoader cl) throws Throwable{
-    boolean trapExitCodeBefore = TrapSecurityManager.trapExitCode().get();
-    try{
-      TrapSecurityManager.trapExitCode().set(true);
-      cl.loadClass(cls)
-        .getMethod("main", String[].class)
-        .invoke( null, (Object) args);
-      return 0;
-    }catch( InvocationTargetException exception ){
-      Throwable cause = exception.getCause();
-      if(TrapSecurityManager.isTrappedExit(cause)){
-        return TrapSecurityManager.exitCode(cause);
+    return TrapSystemExit.run(
+      new TrapSystemExit<Integer>(){
+        @Override
+        public Integer run() throws Throwable{
+          cl.loadClass(cls)
+            .getMethod("main", String[].class)
+            .invoke( null, (Object) args);
+          return 0;
+        }
+        @Override
+        public Integer wrap(int exitCode){
+          return exitCode;
+        }
       }
-      throw exception;
-    } finally {
-      TrapSecurityManager.trapExitCode().set(trapExitCodeBefore);
-    }
+    );
   }
 
   public static Object get(Object object, String method) throws Throwable{
@@ -111,7 +111,8 @@ public class Stage0Lib{
             "-d", target,
             "-S-deprecation",
             "-S-feature",
-            "-S-unchecked"
+            "-S-unchecked",
+            "-S-language:existentials"
           }
         )
       );

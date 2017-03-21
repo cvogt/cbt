@@ -13,12 +13,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   def moduleKey: String = "BaseBuild("+target.string+")"
   implicit def transientCache: java.util.Map[AnyRef,AnyRef] = context.transientCache
 
-  object libraries{
-    private def dep(name: String) = DirectoryDependency( context.cbtHome / "libraries" / name )
-    def captureArgs = dep( "capture_args" )
-    def eval = dep( "eval" )
-    def proguard = dep( "proguard" )
-  }
+  implicit def libraries(implicit context: Context): libraries = new libraries(context)
 
   // library available to builds
   implicit protected final val logger: Logger = context.logger
@@ -211,7 +206,8 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
     )
   }
 
-  def run: ExitCode = run( context.args: _* )
+  def run: ExitCode = runMain( context.args )
+
   def test: Dependency = {
     val testDirectory = projectDirectory / "test"
     if( (testDirectory / lib.buildDirectoryName / lib.buildFileName).exists ){
@@ -225,6 +221,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
       }
     }
   }
+
   def t: Any = lib.callReflective( test, Some("run"), context )
   def rt = recursiveUnsafe(Some("test.run"))
 
