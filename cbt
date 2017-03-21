@@ -76,8 +76,18 @@ fi
 # 	exit 1
 # fi
 
-NG_EXECUTABLE=$(which ng || which ng-nailgun)
-NG_SERVER=$(which ng-server || find /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar 2>/dev/null | awk '{print "java -jar " $0}')
+# ng on osx, install via brew install nailgun
+# ng-nailgun on unbuntu, install via apt-get install nailgun
+NG_EXECUTABLE=$(which ng || env which ng-nailgun )
+
+# ng-server on osx, install via brew install nailgun
+# /usr/share/java/nailgun.jar on unbuntu, install via apt-get install nailgun
+NG_SERVER=$( \
+	which ng-server \
+	|| find /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar 2>/dev/null \
+	|| find /usr/share/java/nailgun.jar 2>/dev/null \
+	| awk '{print "java -jar " $0}' \
+)
 nailgun_installed=0
 if [ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER" == "" ]; then
 	nailgun_installed=1
