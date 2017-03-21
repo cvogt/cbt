@@ -8,12 +8,13 @@ import scala.concurrent._
 import scala.concurrent.duration._
 // micro framework
 object Main{
-  def main(_args: Array[String]): Unit = {
-    val start = System.currentTimeMillis
+  def cbtMain(context: Context): ExitCode = {
+    import context._
+    val _args = context.args
     val args = new Stage1ArgsParser(_args.toVector)
     implicit val logger: Logger = new Logger(args.enabledLoggers, System.currentTimeMillis)
     val lib = new Lib(logger)
-    val cbtHome = new File(System.getenv("CBT_HOME"))
+    val mavenCache = cache ++ "/maven"
 
     val slow = (
       System.getenv("CIRCLECI") != null // enable only on circle
@@ -21,9 +22,13 @@ object Main{
     )
     val compat = !args.args.contains("no-compat")
     val shellcheck = !args.args.contains("no-shellcheck")
+    val fork = args.args.contains("fork")
+    val direct = args.args.contains("direct")
 
     if(!slow) System.err.println( "Skipping slow tests" )
     if(!compat) System.err.println( "Skipping cbt version compatibility tests" )
+    if(fork) System.err.println( "Forking tests" )
+    if(direct) System.err.println( "Running tests in direct mode" )
 
     if(shellcheck){
       val pb = new ProcessBuilder( "/usr/bin/env", "shellcheck", (cbtHome / "cbt").string )
@@ -59,22 +64,66 @@ object Main{
 
     def runCbt(path: String, _args: Seq[String])(implicit logger: Logger): Result = {
       import java.io._
-      val allArgs: Seq[String] = ((cbtHome.string ++ "/cbt") +: "direct" +: (_args ++ args.propsRaw))
-      logger.test(allArgs.toString)
-      val pb = new ProcessBuilder( allArgs :_* )
-      pb.directory(cbtHome ++ ("/test/" ++ path))
-      val p = pb.start
-      val serr = new InputStreamReader(p.getErrorStream);
-      val sout = new InputStreamReader(p.getInputStream);
-      import scala.concurrent.ExecutionContext.Implicits.global
-      val err = Future(blocking(Iterator.continually(serr.read).takeWhile(_ != -1).map(_.toChar).mkString))
-      val out = Future(blocking(Iterator.continually(sout.read).takeWhile(_ != -1).map(_.toChar).mkString))
-      p.waitFor
-      Result(
-        p.exitValue == 0,
-        Await.result( out, Duration.Inf ),
-        Await.result( err, Duration.Inf )
-      )
+      val workingDirectory = cbtHome / "test" / path
+      if( fork ){
+        val allArgs = Seq((cbtHome / "cbt").string) ++ (if(direct) Seq("direct") else Nil) ++ _args ++ args.propsRaw
+        logger.test(allArgs.toString)
+        val pb = new ProcessBuilder( allArgs :_* )
+        pb.directory( workingDirectory )
+        val p = pb.start
+        val serr = new InputStreamReader(p.getErrorStream);
+        val sout = new InputStreamReader(p.getInputStream);
+        import scala.concurrent.ExecutionContext.Implicits.global
+        val err = Future(blocking(Iterator.continually(serr.read).takeWhile(_ != -1).map(_.toChar).mkString))
+        val out = Future(blocking(Iterator.continually(sout.read).takeWhile(_ != -1).map(_.toChar).mkString))
+        p.waitFor
+        p.exitValue
+        Result(
+          p.exitValue === 0,
+          Await.result( out, Duration.Inf ),
+          Await.result( err, Duration.Inf )
+        )
+      } else {
+        val c = context.copy(
+          workingDirectory = workingDirectory,
+          args = _args.drop(1),
+          transientCache = new java.util.HashMap()
+        )
+        val ( outVar, errVar ) = lib.getOutErr
+        val oldOut = outVar.get
+        val oldErr = errVar.get
+        val out = new ByteArrayOutputStream
+        val err = new ByteArrayOutputStream
+        val out2 = new ByteArrayOutputStream
+        val err2 = new ByteArrayOutputStream
+        try{
+          outVar.set(new PrintStream(out))
+          errVar.set(new PrintStream(err))
+          val exitValue = try{
+            scala.Console.withOut(out2)(
+              scala.Console.withErr(err2)(
+                lib.trapExitCode(
+                  lib.callReflective( DirectoryDependency(c,None), _args.headOption, c )
+                )
+              )
+            )
+          } catch {
+            case scala.util.control.NonFatal(e) =>
+              lib.redirectOutToErr( e.printStackTrace )
+              ExitCode.Failure
+          }
+          System.out.flush
+          System.err.flush
+          Result(
+            exitValue.integer === 0,
+            out.toString ++ out2.toString,
+            err.toString ++ err2.toString
+          )
+        } finally {
+          outVar.set(oldOut)
+          errVar.set(oldErr)
+        }
+      }
     }
     case class Result(exit0: Boolean, out: String, err: String)
     def assertSuccess(res: Result, msg: => String)(implicit logger: Logger) = {
@@ -122,33 +171,12 @@ object Main{
 
     logger.test( "Running tests " ++ _args.toList.toString )
 
-    val cache = cbtHome ++ "/cache"
-    val mavenCache = cache ++ "/maven"
-    val cbtLastModified = System.currentTimeMillis
     implicit val transientCache: java.util.Map[AnyRef,AnyRef] = new java.util.HashMap
     implicit val classLoaderCache: ClassLoaderCache = new ClassLoaderCache( new java.util.HashMap )
     def Resolver(urls: URL*) = MavenResolver(cbtLastModified, mavenCache, urls: _*)
 
     {
-      val noContext = new ContextImplementation(
-        cbtHome ++ "/test/nothing",
-        cbtHome,
-        Array(),
-        Array(),
-        start,
-        cbtLastModified,
-        null,
-        new HashMap[AnyRef,AnyRef],
-        new HashMap[AnyRef,AnyRef],
-        cache,
-        cbtHome,
-        cbtHome,
-        cbtHome ++ "/compatibilityTarget",
-        null,
-        false
-      )
-
-      val b = new BasicBuild(noContext){
+      val b = new BasicBuild(context){
         override def dependencies =
           Resolver(mavenCentral).bind(
             MavenDependency("net.incongru.watchservice","barbary-watchservice","1.0"),
@@ -250,7 +278,7 @@ object Main{
     }
     compile("../examples/uber-jar-example")
 
-    if( compat ){
+    if( compat && fork ){ // FIXME: this should not be excluded in forking
       val res = task("docJar","simple-fixed-cbt")
       assert( res.out endsWith "simple-fixed-cbt_2.11-0.1-javadoc.jar\n", res.out )
       assert( res.err contains "model contains", res.err )
@@ -411,6 +439,6 @@ object Main{
 
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
-    if(failures > 0) System.exit(1) else System.exit(0)
+    if(failures > 0) ExitCode.Failure else ExitCode.Success
   }
 }

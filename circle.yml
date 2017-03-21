@@ -3,25 +3,38 @@ machine:
     version: oraclejdk8
 
 dependencies:
-#  cache_directories:
-#    - "cache"
+  cache_directories:
+    - "~/cache"
   override:
-    - sudo apt-add-repository "deb http://archive.ubuntu.com/ubuntu trusty-backports main restricted universe"
-    - sudo apt-get update
-    - sudo apt-get install -t trusty-backports shellcheck
+    - mkdir -p ~/cache
+    - wget http://mirrors.kernel.org/ubuntu/pool/universe/n/nailgun/nailgun_0.9.0+trunk95-3_amd64.deb --continue -O ~/cache/nailgun_0.9.0+trunk95-3_amd64.deb
+    - sudo dpkg -i ~/cache/nailgun_0.9.0+trunk95-3_amd64.deb
+    - wget http://mirrors.kernel.org/ubuntu/pool/universe/s/shellcheck/shellcheck_0.3.3-1~ubuntu14.04.1_amd64.deb --continue -O ~/cache/shellcheck_0.3.3-1~ubuntu14.04.1_amd64.deb
+    - sudo dpkg -i ~/cache/shellcheck_0.3.3-1~ubuntu14.04.1_amd64.deb
 
 compile:
   override:
+    - ./cbt direct compile
+    - ./cbt direct test.compile
     - ./cbt compile
-    - git diff --exit-code
-    - ./cbt direct
     - ./cbt -Dlog=all
+    - git diff --exit-code
 
 test:
   override:
     - rm ~/.gitconfig # avoid url replacement breaking jgit
     - ./cbt direct test.run slow:
         timeout: 1800
+    - ./cbt direct test.run slow:
+        timeout: 1800
+    - ./cbt direct test.run slow fork:
+        timeout: 1800
+    - ./cbt direct test.run slow fork direct:
+        timeout: 1800
     - ./cbt test.run slow:
+        timeout: 1800
+    - ./cbt test.run slow fork:
+        timeout: 1800
+    - ./cbt test.run slow fork direct:
         timeout: 1800
     - git diff --exit-code
