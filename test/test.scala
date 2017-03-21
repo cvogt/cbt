@@ -387,6 +387,7 @@ object Main{
     {
       val sourceFile = cbtHome / "examples" / "scalafix-example" / "Main.scala"
       val sourceBefore = sourceFile.readAsString
+      runCbt("../examples/scalafix-example", Seq("clean","force"))
       val res = runCbt("../examples/scalafix-example", Seq("compile"))
       assert(res.exit0)
       val sourceAfter = sourceFile.readAsString
