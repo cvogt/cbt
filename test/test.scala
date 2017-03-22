@@ -269,6 +269,12 @@ object Main{
     }
 
     {
+      val res = runCbt("../examples/scalapb-example", Seq("run"))
+      assert(res.exit0)
+      assert(res.out contains "age: 123", res.out ++ "\n--\n" ++ res.err)
+    }
+
+    {
       val res = runCbt("broken-build/build-class-with-wrong-arguments", Seq("run"))
       assert(!res.exit0)
       assert(res.err contains s"Expected class ${lib.buildClassName}(val context: Context), but found different constructor", res.err)

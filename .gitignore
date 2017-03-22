@@ -17,3 +17,4 @@ examples/scalajs-plain-example/server/public/generated
 examples/scalajs-react-example/server/public/generated
 .cbt-loop.tmp
 test/simple/src_generated
+examples/scalapb-example/src_generated

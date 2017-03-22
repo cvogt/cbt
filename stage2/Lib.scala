@@ -131,6 +131,7 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
       //case e: ExitCode => System.err.println(e.integer); System.exit(e.integer); ???
       case s: Seq[_] => s.map(render).mkString("\n")
       case s: Set[_] => s.map(render).toSeq.sorted.mkString("\n")
+      case null => "null"
       case _ => obj.toString
     }
   }

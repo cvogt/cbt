@@ -1,0 +1,6 @@
+syntax = "proto2";
+
+package foo;
+message Address {
+    optional string street = 1;
+}
