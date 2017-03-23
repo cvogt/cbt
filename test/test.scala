@@ -226,6 +226,7 @@ object Main{
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")
+    compile("../examples/akka-example")
     if(slow){
       compile("../examples/scalajs-react-example/js")
       compile("../examples/scalajs-react-example/jvm")
