@@ -11,6 +11,7 @@ class plugins(implicit context: Context){
   final lazy val sbtLayout = plugin( "sbt_layout" )
   final lazy val scalafmt = plugin( "scalafmt" )
   final lazy val scalaJs   = plugin( "scalajs" )
+  final lazy val scalapb = plugin( "scalapb" )
   final lazy val scalariform = plugin( "scalariform" )
   final lazy val scalaTest = plugin( "scalatest" )
   final lazy val sonatypeRelease = plugin( "sonatype-release" )
