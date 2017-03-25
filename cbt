@@ -77,7 +77,8 @@ fi
 # fi
 
 NG_EXECUTABLE=$(which ng || which ng-nailgun)
-NG_SERVER=$(which ng-server || find /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar 2>/dev/null | awk '{print "java -jar " $0}')
+NG_SERVER_JAR=$(find /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar 2>/dev/null || find /usr/share/java/nailgun-server.jar 2>/dev/null)
+NG_SERVER=$(which ng-server || echo "java -jar $NG_SERVER_JAR")
 nailgun_installed=0
 if [ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER" == "" ]; then
 	nailgun_installed=1
