@@ -5,6 +5,7 @@ class plugins( implicit context: Context ) {
   final lazy val googleJavaFormat = plugin( "google-java-format" )
   final lazy val proguard = plugin( "proguard" )
   final lazy val sbtLayout = plugin( "sbt_layout" )
+  final lazy val scalafix = plugin( "scalafix" )
   final lazy val scalafixCompilerPlugin = plugin( "scalafix-compiler-plugin" )
   final lazy val scalafmt = plugin( "scalafmt" )
   final lazy val scalaJs = plugin( "scalajs" )
