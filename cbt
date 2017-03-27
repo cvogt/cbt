@@ -228,7 +228,7 @@ stage1 () {
 			log "Running JVM directly" "$@"
 			options=($JAVA_OPTS)
 			# JVM options to improve startup time. See https://github.com/cvogt/cbt/pull/262
-			java "${options[@]}" $DEBUG -Xmx6072m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp "$NAILGUN$TARGET" cbt.NailgunLauncher "$(time_taken)" "$CWD" "$loop" "$@"
+			java "${options[@]}" $DEBUG -Xmx3072m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp "$NAILGUN$TARGET" cbt.NailgunLauncher "$(time_taken)" "$CWD" "$loop" "$@"
 			exitCode=$?
 		else
 			log "Running via background process (nailgun)" "$@"
