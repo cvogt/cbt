@@ -444,6 +444,28 @@ object Main{
       lib.write(sourceFile, sourceBefore)
     }
 
+    /*
+    // currently fails with
+    // java.lang.UnsupportedOperationException: scalafix.rewrite.ScalafixMirror.fromMirror $anon#typeSignature requires the semantic api
+    {
+      val sourceFile = cbtHome / "examples" / "scalafix-example" / "Main.scala"
+      val sourceBefore = sourceFile.readAsString
+      runCbt("../examples/scalafix-example", Seq("clean","force"))
+      val res = runCbt("../examples/scalafix-example", Seq("compile"))
+      assert(res.exit0)
+      val sourceAfter = sourceFile.readAsString
+      assert(!(sourceBefore contains "@volatile"))
+      assert(!(sourceBefore contains ": Unit"))
+      assert(!(sourceBefore contains ": String "))
+      assert(!(sourceBefore contains "import scala.collection.immutable"))
+      assert(sourceAfter contains "@volatile")
+      assert(sourceAfter contains ": Unit")
+      assert(sourceAfter contains ": String ")
+      assert(sourceAfter contains "import scala.collection.immutable")
+      lib.write(sourceFile, sourceBefore)
+    }
+    */
+
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )
     if(failures > 0) ExitCode.Failure else ExitCode.Success
