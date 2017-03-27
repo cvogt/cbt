@@ -79,14 +79,14 @@ trait Module {
       case v @ ( file, _ ) if collector.isDefinedAt( v ) => file -> collector( v )
     }
     if ( !allowDuplicates ) {
-      val relatives = map.unzip._2
-      val duplicateFiles = ( relatives diff relatives.distinct ).distinct
+      val duplicates = map.groupBy( _._2 ).filter( _._2.size > 1 ).mapValues( _.map( _._1 ).toSeq.sorted ).toSeq.sortBy( _._1 )
       assert(
-        duplicateFiles.isEmpty, {
-          val rs = relatives.toSet
+        duplicates.isEmpty,
+        {
           "Conflicting:\n\n" +
-            map.filter( rs contains _._2 ).groupBy( _._2 ).mapValues( _.map( _._1 ).sorted ).toSeq.sortBy( _._1 ).map {
-              case ( name, files ) => s"$name:\n" ++ files.mkString( "\n" )
+            duplicates.map {
+              case ( path, locations ) =>
+                path + " in:\n" + locations.mkString( "\n" )
             }.mkString( "\n\n" )
         }
       )
