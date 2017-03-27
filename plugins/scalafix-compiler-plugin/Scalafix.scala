@@ -5,7 +5,7 @@ import java.nio.file.Files._
 import java.nio.file._
 import java.io.File
 
-trait Scalafix extends BaseBuild {
+trait ScalafixCompilerPlugin extends BaseBuild {
   def scalafixVersion = "0.3.1"
 
   override def scalacOptions = super.scalacOptions ++

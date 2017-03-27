@@ -257,7 +257,7 @@ object Main{
     compile("../plugins/scalatest")
     compile("../plugins/wartremover")
     compile("../plugins/uber-jar")
-    compile("../plugins/scalafix")
+    compile("../plugins/scalafix-compiler-plugin")
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")
@@ -427,10 +427,10 @@ object Main{
     }
 
     {
-      val sourceFile = cbtHome / "examples" / "scalafix-example" / "Main.scala"
+      val sourceFile = cbtHome / "examples" / "scalafix-compiler-plugin-example" / "Main.scala"
       val sourceBefore = sourceFile.readAsString
-      runCbt("../examples/scalafix-example", Seq("clean","force"))
-      val res = runCbt("../examples/scalafix-example", Seq("compile"))
+      runCbt("../examples/scalafix-compiler-plugin-example", Seq("clean","force"))
+      val res = runCbt("../examples/scalafix-compiler-plugin-example", Seq("compile"))
       assert(res.exit0)
       val sourceAfter = sourceFile.readAsString
       assert(!(sourceBefore contains "@volatile"))
