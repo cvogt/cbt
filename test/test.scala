@@ -427,6 +427,14 @@ object Main{
     }
 
     {
+      val res = runCbt("../examples/cross-rewrite-example", Seq("cross.exportedClasspath"))
+      assert(res.exit0)
+      Seq("cats","scalaz","2.11.8","2.12.1").foreach(
+        s => assert(res.out contains s, res.out)
+      )
+    }
+
+    {
       val sourceFile = cbtHome / "examples" / "scalafix-compiler-plugin-example" / "Main.scala"
       val sourceBefore = sourceFile.readAsString
       runCbt("../examples/scalafix-compiler-plugin-example", Seq("clean","force"))
