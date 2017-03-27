@@ -9,6 +9,9 @@ trait BuildBuild extends BaseBuild{
 
   object plugins extends plugins( context, scalaVersion )
 
+  /** CBT relies on hierarchical classloaders */
+  final override def flatClassLoader = false
+
   assert(
     projectDirectory.getName === lib.buildDirectoryName,
     s"You can't extend ${lib.buildBuildClassName} in: " + projectDirectory + "/" + lib.buildDirectoryName
