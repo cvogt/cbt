@@ -77,9 +77,17 @@ trait DependencyImplementation extends Dependency{
     )
   }
   */
+  def fork = false
 
   def runMain( className: String, args: Seq[String] ): ExitCode = {
+    if(fork){
+      val java_exe = new File(System.getProperty("java.home")) / "bin" / "java"
+      lib.runWithIO(
+        java_exe.string +: "-cp" +: classpath.string +: className +: args
+      )
+    } else {
       lib.getMain( classLoader.loadClass( className ) )( args )
+    }
   }
 
   def runMain( args: Seq[String] ): ExitCode = {

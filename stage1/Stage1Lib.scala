@@ -8,7 +8,7 @@ import java.nio.file._
 import java.nio.file.attribute.FileTime
 import javax.tools._
 import java.security._
-import java.util.{Set=>_,Map=>_,List=>_,_}
+import java.util.{Set=>_,Map=>_,List=>_,Iterator=>_,_}
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter
 
 class Stage1Lib( logger: Logger ) extends
@@ -249,16 +249,20 @@ ${sourceFiles.sorted.mkString(" \\\n")}
     }
   }
 
-  def getOutErr: (ThreadLocal[PrintStream], ThreadLocal[PrintStream]) =
+  def getOutErrIn: (ThreadLocal[PrintStream], ThreadLocal[PrintStream], InputStream) =
     try{
       // trying nailgun's System.our/err wrapper
       val field = System.out.getClass.getDeclaredField("streams")
-      assert(System.out.getClass.getName == "com.martiansoftware.nailgun.ThreadLocalPrintStream")
-      assert(System.err.getClass.getName == "com.martiansoftware.nailgun.ThreadLocalPrintStream")
+      val field2 = System.in.getClass.getDeclaredField("streams")
+      assert(System.out.getClass.getName == "com.martiansoftware.nailgun.ThreadLocalPrintStream", System.out.getClass.getName)
+      assert(System.err.getClass.getName == "com.martiansoftware.nailgun.ThreadLocalPrintStream", System.err.getClass.getName)
+      assert(System.in.getClass.getName == "com.martiansoftware.nailgun.ThreadLocalInputStream", System.in.getClass.getName)
       field.setAccessible(true)
+      field2.setAccessible(true)
       val out = field.get(System.out).asInstanceOf[ThreadLocal[PrintStream]]
       val err = field.get(System.err).asInstanceOf[ThreadLocal[PrintStream]]
-      ( out, err )
+      val in = field2.get(System.in).asInstanceOf[ThreadLocal[InputStream]]
+      ( out, err, in.get )
     } catch {
       case e: NoSuchFieldException =>
         // trying cbt's System.our/err wrapper
@@ -272,11 +276,11 @@ ${sourceFiles.sorted.mkString(" \\\n")}
         field2.setAccessible(true)
         val out = field2.get(outStream).asInstanceOf[ThreadLocal[PrintStream]]
         val err = field2.get(errStream).asInstanceOf[ThreadLocal[PrintStream]]
-        ( out, err )
+        ( out, err, System.in )
     }
 
   def redirectOutToErr[T](code: => T): T = {
-    val ( out, err ) = getOutErr
+    val ( out, err, _ ) = getOutErrIn
     val oldOut: PrintStream = out.get
     out.set( err.get: PrintStream )
     val res = code
@@ -426,6 +430,99 @@ ${sourceFiles.sorted.mkString(" \\\n")}
       },
       outputLastModified
     )
+  }
+
+  def asyncPipeCharacterStreamSyncLines( inputStream: InputStream, outputStream: OutputStream, lock: AnyRef ): Thread = {
+    new Thread(
+      new Runnable{
+        def run = {
+          val b = new BufferedInputStream( inputStream )
+          Iterator.continually{
+            b.read // block until and read next character
+          }.takeWhile(_ != -1).map{ c =>
+            lock.synchronized{ // synchronize with other invocations
+              outputStream.write(c)
+              Iterator
+                .continually( b.read )
+                .takeWhile( _ != -1 )
+                .map{ c =>
+                  try{
+                    outputStream.write(c)
+                    outputStream.flush
+                    (
+                      c != '\n' // release lock when new line was encountered, allowing other writers to slip in
+                      && b.available > 0 // also release when nothing is available to not block other outputs
+                    )
+                  } catch {
+                    case e: IOException if e.getMessage == "Stream closed" => false
+                  }
+                }
+                .takeWhile(identity)
+                .length // force entire iterator
+            }
+          }.length // force entire iterator
+        }
+      }
+    )
+  }
+
+  def asyncPipeCharacterStream( inputStream: InputStream, outputStream: OutputStream, continue: => Boolean ) = {
+    new Thread(
+      new Runnable{
+        def run = {
+          Iterator
+            .continually{ inputStream.read }
+            .takeWhile(_ != -1)
+            .map{ c =>
+              try{
+                outputStream.write(c)
+                outputStream.flush
+                true
+              } catch {
+                case e: IOException if e.getMessage == "Stream closed" => false
+              }
+            }
+            .takeWhile( identity )
+            .takeWhile( _ => continue )
+            .length // force entire iterator
+        }
+      }
+    )
+  }
+
+  def runWithIO( commandLine: Seq[String], directory: Option[File] = None ): ExitCode = {
+    val (out,err,in) = lib.getOutErrIn match { case (l,r, in) => (l.get,r.get, in) }
+    val pb = new ProcessBuilder( commandLine: _* )
+    val exitCode =
+      if( !NailgunLauncher.runningViaNailgun ){
+        pb.inheritIO.start.waitFor
+      } else {
+        val process = directory.map( pb.directory( _ ) ).getOrElse( pb )
+            .redirectInput(ProcessBuilder.Redirect.PIPE)
+            .redirectOutput(ProcessBuilder.Redirect.PIPE)
+            .redirectError(ProcessBuilder.Redirect.PIPE)
+            .start
+
+        val lock = new AnyRef
+
+        val t1 = lib.asyncPipeCharacterStreamSyncLines( process.getErrorStream, err, lock )
+        val t2 = lib.asyncPipeCharacterStreamSyncLines( process.getInputStream, out, lock )
+        val t3 = lib.asyncPipeCharacterStream( System.in, process.getOutputStream, process.isAlive )
+
+        t1.start
+        t2.start
+        t3.start
+
+        t1.join
+        t2.join
+
+        val e = process.waitFor
+        System.err.println( scala.Console.RESET + "Please press ENTER to continue..." )
+        t3.join
+        e
+      }
+
+    ExitCode( exitCode )
   }
 }
 

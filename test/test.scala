@@ -89,7 +89,7 @@ object Main{
           args = _args.drop(1),
           transientCache = new java.util.HashMap()
         )
-        val ( outVar, errVar ) = lib.getOutErr
+        val ( outVar, errVar, _ ) = lib.getOutErrIn
         val oldOut = outVar.get
         val oldErr = errVar.get
         val out = new ByteArrayOutputStream
@@ -258,6 +258,7 @@ object Main{
     compile("../plugins/wartremover")
     compile("../plugins/uber-jar")
     compile("../plugins/scalafix-compiler-plugin")
+    compile("../examples/fork-example")
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")
