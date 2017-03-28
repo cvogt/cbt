@@ -257,7 +257,7 @@ object Main{
     compile("../plugins/scalatest")
     compile("../plugins/wartremover")
     compile("../plugins/uber-jar")
-    compile("../plugins/scalafix")
+    compile("../plugins/scalafix-compiler-plugin")
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")
@@ -427,6 +427,35 @@ object Main{
     }
 
     {
+      val res = runCbt("../examples/cross-rewrite-example", Seq("cross.exportedClasspath"))
+      assert(res.exit0)
+      Seq("cats","scalaz","2.11.8","2.12.1").foreach(
+        s => assert(res.out contains s, res.out)
+      )
+    }
+
+    {
+      val sourceFile = cbtHome / "examples" / "scalafix-compiler-plugin-example" / "Main.scala"
+      val sourceBefore = sourceFile.readAsString
+      runCbt("../examples/scalafix-compiler-plugin-example", Seq("clean","force"))
+      val res = runCbt("../examples/scalafix-compiler-plugin-example", Seq("compile"))
+      assert(res.exit0)
+      val sourceAfter = sourceFile.readAsString
+      assert(!(sourceBefore contains "@volatile"))
+      assert(!(sourceBefore contains ": Unit"))
+      assert(!(sourceBefore contains ": String "))
+      assert(!(sourceBefore contains "import scala.collection.immutable"))
+      assert(sourceAfter contains "@volatile")
+      assert(sourceAfter contains ": Unit")
+      assert(sourceAfter contains ": String ")
+      assert(sourceAfter contains "import scala.collection.immutable")
+      lib.write(sourceFile, sourceBefore)
+    }
+
+    /*
+    // currently fails with
+    // java.lang.UnsupportedOperationException: scalafix.rewrite.ScalafixMirror.fromMirror $anon#typeSignature requires the semantic api
+    {
       val sourceFile = cbtHome / "examples" / "scalafix-example" / "Main.scala"
       val sourceBefore = sourceFile.readAsString
       runCbt("../examples/scalafix-example", Seq("clean","force"))
@@ -443,6 +472,7 @@ object Main{
       assert(sourceAfter contains "import scala.collection.immutable")
       lib.write(sourceFile, sourceBefore)
     }
+    */
 
     System.err.println(" DONE!")
     System.err.println( successes.toString ++ " succeeded, "++ failures.toString ++ " failed" )

@@ -1,28 +1,66 @@
 package cbt
 
-import cbt._
-import java.nio.file.Files._
-import java.nio.file._
 import java.io.File
 
-trait Scalafix extends BaseBuild {
-  def scalafixVersion = "0.3.1"
+import scala.meta._
+import scala.meta.semantic.v1._
+import scala.meta.{ Symbol => _, _ }
+import scalafix._, rewrite._, config._, util._
+import org.scalameta.{logger => scalametaLogger}
 
-  override def scalacOptions = super.scalacOptions ++
-   Scalafix.scalacOptions(projectDirectory.toPath,
-    Resolver( mavenCentral, sonatypeReleases ).bindOne(
-        ScalaDependency( "ch.epfl.scala", "scalafix-nsc", scalafixVersion )
-    ).jar)
+import cbt._
+
+trait Scalafix extends Scalameta{
+  def scalafix = Scalafix.apply( lib ).config(
+    classpath,
+    sourceFiles zip sourceFiles
+  )
 }
 
-object Scalafix {
-  def scalacOptions( rootPath: Path, nscJar: File ) =
-    Seq(
-      "-Xplugin:" ++ nscJar.string,
-      "-Yrangepos"
-    ) ++ configOption(rootPath)
+object Scalafix{
+  case class apply( lib: Lib ){
+    case class config(
+      classpath: ClassPath,
+      files: Seq[(File,File)],
+      patches: Seq[Patch] = Seq(),
+      rewrites: Seq[ Rewrite[ScalafixMirror] ] = Seq(),
+      allowEmpty: Boolean = false
+    ){
+      def mirror =
+        Mirror(
+          classpath.string,
+          files.map(_._1).mkString(File.pathSeparator)
+        )
 
-  def configOption( rootPath: Path ) =
-    Some( rootPath.resolve(".scalafix.conf").toAbsolutePath )
-      .filter(isRegularFile(_)).map("-P:scalafix:" ++ _.toString).toSeq
+      def context(file: File): ( RewriteCtx[Mirror], RewriteCtx[ScalafixMirror] ) = (
+        scalafix.rewrite.RewriteCtx(
+          mirror.dialect(file).parse[Source].get, ScalafixConfig(), mirror
+        ),
+        scalafix.rewrite.RewriteCtx(
+          mirror.dialect(file).parse[Source].get, ScalafixConfig(), ScalafixMirror.fromMirror( mirror )
+        )
+      )
+
+      def apply: Unit = {
+        require(
+          allowEmpty || rewrites.nonEmpty || patches.nonEmpty,
+          "You need to provide some rewrites via: `override def scalafix = super.scalafix.copy( rewrites = Seq(...) )`"
+        )
+        files.foreach{ case (from, to) =>
+          implicit val ( ctx, ctx2 ) = context(from)
+          lib.writeIfChanged(
+            to,
+            Patch(
+              (
+                patches
+                ++ rewrites.flatMap(
+                  _.rewrite( ctx2 ).to
+                )
+              ).to
+            )
+          )
+        }
+      }
+    }
+  }
 }
