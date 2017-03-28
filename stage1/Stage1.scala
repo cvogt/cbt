@@ -98,7 +98,8 @@ object Stage1{
 
     val cls = this.getClass.getClassLoader.loadClass("cbt.NailgunLauncher")
 
-    def cbtDependencies = new CbtDependencies(
+    def _cbtDependencies = new CbtDependencies(
+      (stage2Target++".last-success").lastModified,
       mavenCache, nailgunTarget, stage1Target, stage2Target,
       new File(buildStage1.compatibilityClasspath)
     )
@@ -109,10 +110,16 @@ object Stage1{
     val Some( stage2LastModified ) = compile(
       buildStage1.stage1LastModified,
       stage2sourceFiles, stage2Target, stage2StatusFile,
-      cbtDependencies.stage2Dependency.dependencies,
+      _cbtDependencies.stage2Dependency.dependencies,
       mavenCache,
       Seq("-deprecation","-feature","-unchecked"),
       zincVersion = constants.zincVersion, scalaVersion = constants.scalaVersion
+    )
+
+    def cbtDependencies = new CbtDependencies(
+      (stage2Target++".last-success").lastModified,
+      mavenCache, nailgunTarget, stage1Target, stage2Target,
+      new File(buildStage1.compatibilityClasspath)
     )
 
     logger.stage1(s"calling CbtDependency.classLoader")

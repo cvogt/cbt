@@ -1,11 +1,12 @@
 package cbt_build.proguard
 import cbt._
+import cbt_internal._
 import java.nio.file.Files._
 import java.net._
 import java.io._
 import scala.xml._
 
-class Build(val context: Context) extends Scalafmt{
+class Build(val context: Context) extends Library{
   def description: String = "Type-safe scala wrapper to interfaces with ProGuard.main runner"
   def inceptionYear = 2017
 
@@ -13,11 +14,6 @@ class Build(val context: Context) extends Scalafmt{
     lib.transformFiles( sourceFiles, replaceSections( _, replacements ) )
     compile
   }
-
-  override def scalafmt = super.scalafmt.copy(
-    config = Scalafmt.cbtRecommendedConfig,
-    whiteSpaceInParenthesis = true
-  )
 
   override def compile = {
     // currently suffers from non-deterministic formatting. Try a few times to reproduce commit state.

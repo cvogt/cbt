@@ -76,14 +76,6 @@ fi
 # 	exit 1
 # fi
 
-NG_EXECUTABLE=$(which ng || which ng-nailgun)
-NG_SERVER_JAR=$(find /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar 2>/dev/null || find /usr/share/java/nailgun-server.jar 2>/dev/null)
-NG_SERVER=$(which ng-server || echo "java -jar $NG_SERVER_JAR")
-nailgun_installed=0
-if [ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER" == "" ]; then
-	nailgun_installed=1
-	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun' or 'apt install nailgun'.)" 1>&2
-fi
 which realpath >/dev/null 2>/dev/null
 realpath_installed=$?
 which gcc >/dev/null 2>/dev/null
@@ -98,9 +90,6 @@ gpg_installed=$?
 if [ ! $gpg_installed -eq 0 ]; then
 	echo "(Note: gpg not found. In order to use publishSigned you'll need it.)" 1>&2
 fi
-
-NAILGUN_PORT=4444
-NG="$NG_EXECUTABLE --nailgun-port $NAILGUN_PORT"
 
 CWD=$(pwd)
 
@@ -123,8 +112,9 @@ export NAILGUN="$CBT_HOME"/nailgun_launcher/
 export TARGET=target/scala-2.11/classes/
 mkdir -p "$NAILGUN$TARGET"
 
-nailgun_out=$NAILGUN/target/nailgun.stdout.log
-nailgun_err=$NAILGUN/target/nailgun.strerr.log
+nailgun_out="$NAILGUN/target/nailgun.stdout.log"
+nailgun_err="$NAILGUN/target/nailgun.strerr.log"
+
 DEBUG=""
 foo(){
 	while test $# -gt 0; do
@@ -147,9 +137,33 @@ foo(){
 
 foo "$@"
 
+JAVA_OPTS_CBT=($DEBUG -Xmx1536m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none)
+
+# ng on osx, install via brew install nailgun
+# ng-nailgun on unbuntu, install via apt-get install nailgun
+NG_EXECUTABLE=$(which ng || env which ng-nailgun)
+
+# on osx, install via brew install nailgun, /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar
+# on unbuntu, install via apt-get install nailgun, /usr/share/java/nailgun.jar
+# on debian, install via apt-get install nailgun, /usr/share/java/nailgun-server.jar
+NG_SERVER_JAR=$( \
+	find /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar 2>/dev/null \
+	|| find /usr/share/java/nailgun.jar 2>/dev/null \
+	|| find /usr/share/java/nailgun-server.jar 2>/dev/null \
+)
+
+nailgun_installed=0
+if [ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER_JAR" == "" ]; then
+	nailgun_installed=1
+	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun' or 'apt-get install nailgun'.)" 1>&2
+fi
+
+NAILGUN_PORT=4444
+NG="$NG_EXECUTABLE --nailgun-port $NAILGUN_PORT"
+
 if [ "$1" = "kill" ]; then
 	echo "Stopping background process (nailgun)" 1>&2
-	$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
+	$NG ng-stop >> "$nailgun_out" 2>> "$nailgun_err" &
 	exit 1
 fi
 
@@ -189,21 +203,21 @@ fi
 if [ $use_nailgun -eq 0 ] && [ ! $server_up -eq 0 ]; then
 	log "Starting background process (nailgun)" "$@"
 	# try to start nailgun-server, just in case it's not up
-	$NG_SERVER 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
+	java "${options[@]}" "${JAVA_OPTS_CBT[@]}" -jar "$NG_SERVER_JAR" 127.0.0.1:$NAILGUN_PORT >> "$nailgun_out" 2>> "$nailgun_err" &
 fi
 
 stage1 () {
 	log "Checking for changes in cbt/nailgun_launcher" "$@"
 	NAILGUN_INDICATOR=$NAILGUN$TARGET../classes.last-success
 	changed=1
-	NAILGUN_SOURCES=("$NAILGUN"*.java)
+	NAILGUN_SOURCES=("$NAILGUN"*.java "$CBT_HOME"/libraries/common-0/*.java)
 	for file in "${NAILGUN_SOURCES[@]}"; do
 		if [ "$file" -nt "$NAILGUN_INDICATOR" ]; then changed=0; fi
 	done
 	exitCode=0
 	if [ $changed -eq 0 ]; then
 		echo "Stopping background process (nailgun) if running" 1>&2
-		$NG ng-stop >> $nailgun_out 2>> $nailgun_err &
+		$NG ng-stop >> "$nailgun_out" 2>> "$nailgun_err" &
 		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
 		echo "Compiling cbt/nailgun_launcher" 1>&2
 		COMPILE_TIME=$(date +%YY%mm%dd%HH%MM.%SS|sed "s/[YmdHMS]//g")
@@ -214,7 +228,7 @@ stage1 () {
 			touch -t "$COMPILE_TIME" "$NAILGUN_INDICATOR"
 			if [ $use_nailgun -eq 0 ]; then
 				echo "Starting background process (nailgun)" 1>&2
-				ng-server 127.0.0.1:$NAILGUN_PORT >> $nailgun_out 2>> $nailgun_err &
+				java "${options[@]}" "${JAVA_OPTS_CBT[@]}" -jar "$NG_SERVER_JAR" 127.0.0.1:$NAILGUN_PORT >> "$nailgun_out" 2>> "$nailgun_err" &
 				sleep 1
 			fi
 		fi
@@ -228,15 +242,15 @@ stage1 () {
 			log "Running JVM directly" "$@"
 			options=($JAVA_OPTS)
 			# JVM options to improve startup time. See https://github.com/cvogt/cbt/pull/262
-			java "${options[@]}" $DEBUG -Xmx6072m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none -cp "$NAILGUN$TARGET" cbt.NailgunLauncher "$(time_taken)" "$CWD" "$loop" "$@"
+			java "${options[@]}" "${JAVA_OPTS_CBT[@]}" -cp "$NAILGUN$TARGET" cbt.NailgunLauncher "$(time_taken)" "$CWD" "$loop" "$@"
 			exitCode=$?
 		else
 			log "Running via background process (nailgun)" "$@"
 			for i in 0 1 2 3 4 5 6 7 8 9; do
 				log "Adding classpath." "$@"
-				$NG ng-cp "$NAILGUN$TARGET" >> $nailgun_out 2>> $nailgun_err
+				$NG ng-cp "$NAILGUN$TARGET" >> "$nailgun_out" 2>> "$nailgun_err"
 				log "Checking if nailgun is up yet." "$@"
-				$NG cbt.NailgunLauncher check-alive >> $nailgun_out 2>> $nailgun_err
+				$NG cbt.NailgunLauncher check-alive >> "$nailgun_out" 2>> "$nailgun_err"
 				alive=$?
 				if [ $alive -eq 131 ] || [ $alive -eq 33 ]; then
 				# the 33 is not working right now

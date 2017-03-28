@@ -22,6 +22,9 @@ case class ClassPath(files: Seq[File] = Seq()){
   def ++(other: ClassPath) = ClassPath(files ++ other.files)
   def string = strings.mkString( File.pathSeparator )
   def strings = files.map{
-    f => f.string ++ ( if(f.isDirectory) "/" else "" )
+    f => f.string + (
+      // using file extension instead of isDirectory for performance reasons
+      if( f.getName.endsWith(".jar") /* !f.isDirectory */ ) "" else "/"
+    )
   }.sorted
 }

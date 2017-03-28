@@ -77,27 +77,26 @@ trait DependencyImplementation extends Dependency{
     )
   }
   */
-
-  def runMain( className: String, args: Seq[String] ) = lib.runMain( className, args, classLoader )
-
   def flatClassLoader: Boolean = false
 
-  def mainClasses: Seq[Class[_]] = exportedClasspath.files.flatMap( lib.mainClasses( _, classLoader ) )
-
-  def runClass: Option[String] = lib.runClass( mainClasses ).map( _.getName )
-
-  def run( args: String* ): ExitCode = {
-    runClass.map( runMain( _, args ) ).getOrElse{
-      // FIXME: this just doing nothing when class is not found has been repeatedly
-      // surprising. Let's try to make this more visible than just logging an error.
-      // Currently blocked on task `recursive` trying every subbuild and would error
-      // for all that don't have a run class. Maybe that's ok actually.
-      logger.task( "No main class found for " ++ show )
-      ExitCode.Success
-    }
+  def runMain( className: String, args: Seq[String] ): ExitCode = lib.trapExitCode{
+    lib.runMain( classLoader.loadClass( className ), args )
   }
 
-  def classLoader: ClassLoader = {
+  def runMain( args: Seq[String] ): ExitCode = lib.trapExitCode{
+    mainMethod.getOrElse(
+      throw new RuntimeException( "No main class found in " + this )
+    )( args )
+  }
+
+  def mainMethod = lib.pickOne( "Which one do you want to run?", mainMethods )( _.name )
+
+  def classes = exportedClasspath.files.flatMap(
+    lib.iterateClasses( _, classLoader, false )
+  )
+  def mainMethods = classes.flatMap( lib.discoverMain )
+
+  def classLoader: ClassLoader = taskCache[DependencyImplementation]( "classLoader" ).memoize{
     if( flatClassLoader ){
       new java.net.URLClassLoader(classpath.strings.map(f => new URL("file://" ++ f)).toArray)
     } else {
@@ -120,11 +119,13 @@ trait DependencyImplementation extends Dependency{
 
   // FIXME: these probably need to update outdated as well
   def classpath           : ClassPath = exportedClasspath ++ dependencyClasspath
-  def dependencyClasspath : ClassPath = ClassPath(
-    transitiveDependencies
-    .flatMap(_.exportedClasspath.files)
-    .distinct // <- currently needed here to handle diamond dependencies on builds (duplicate in classpath)
-  )
+  def dependencyClasspath : ClassPath = taskCache[DependencyImplementation]( "dependencyClasspath" ).memoize{
+    ClassPath(
+      transitiveDependencies
+      .flatMap(_.exportedClasspath.files)
+      .distinct // <- currently needed here to handle diamond dependencies on builds (duplicate in classpath)
+    )
+  }
   def dependencies: Seq[Dependency]
 
   /** return dependencies in order of linearized dependence. this is a bit tricky. */
@@ -157,13 +158,13 @@ case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(i
   def exportedClasspath = ClassPath(paths)
   override def lastModified = paths.map(_.lastModifiedRecursive).max // FIXME: cache this
   def targetClasspath = exportedClasspath
-  def moduleKey = this.getClass.getName ++ "(" ++ paths.mkString(", ") ++ ")"
+  lazy val moduleKey = this.getClass.getName + "(" + paths.mkString(", ") + ")" // PERFORMANCE HOTSPOT
 }
 
 /** Allows to easily assemble a bunch of dependencies */
 case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override def lastModified = dependencies.map(_.lastModified).maxOption.getOrElse(0)
-  def moduleKey = this.getClass.getName ++ "(" ++ dependencies.map(_.moduleKey).mkString(", ") ++ ")"
+  lazy val moduleKey = this.getClass.getName + "(" + dependencies.map(_.moduleKey).mkString(", ") + ")" // PERFORMANCE HOTSPOT
   def targetClasspath = ClassPath() 
   def exportedClasspath = ClassPath() 
   override def show: String = this.getClass.getSimpleName + "( " + dependencies.map(_.show).mkString(", ") + " )"
@@ -171,15 +172,14 @@ case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Lo
 
 case class PostBuildDependency(target: File, _dependencies: Seq[DependencyImplementation])(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override final lazy val lastModified = (target++".last-success").lastModified
-  def moduleKey = target.string
+  lazy val moduleKey = target.string
   override def show = s"PostBuildDependency($target)"
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(target) )
   override def dependencies = _dependencies
 }
-case class CbtDependencies(mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
+case class CbtDependencies(cbtLastModified: Long, mavenCache: File, nailgunTarget: File, stage1Target: File, stage2Target: File, compatibilityTarget: File)(implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache){
   val compatibilityDependency = PostBuildDependency(compatibilityTarget, Nil)
-  val cbtLastModified = (stage2Target++".last-success").lastModified
   val stage1Dependency = PostBuildDependency(
     stage1Target,
     Seq(
@@ -213,12 +213,19 @@ abstract class DependenciesProxy{
 case class MavenDependency(
   groupId: String, artifactId: String, version: String, classifier: Classifier = Classifier.none, verifyHash: Boolean = true
 ){
-  private[cbt] def serialize = groupId ++ ":" ++ artifactId ++ ":"++ version ++ classifier.name.map(":" ++ _).getOrElse("")
+  private[cbt] def serialize = // PERFORMANCE HOTSPOT
+    groupId + ":" + artifactId + ":" + version + ( if(classifier.name.nonEmpty) ":" + classifier.name.get else "" )
+  private[cbt] def javafy: Array[String] =
+    Array(groupId,artifactId,version) ++ classifier.name
 }
 object MavenDependency{
   private[cbt] def deserialize = (_:String).split(":") match {
     case col => MavenDependency( col(0), col(1), col(2), Classifier(col.lift(3)) )
   }
+  private[cbt] def dejavafy =
+    ( cols:Array[Array[String]] ) => cols.map(
+      col => MavenDependency( col(0), col(1), col(2), Classifier(col.lift(3)) )
+    ).toSeq
 }
 // FIXME: take MavenResolver instead of mavenCache and repositories separately
 case class BoundMavenDependency(
@@ -227,7 +234,7 @@ case class BoundMavenDependency(
 )(
   implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache
 ) extends ArtifactInfo with DependencyImplementation{
-  def moduleKey = this.getClass.getName ++ "(" ++ mavenDependency.serialize ++ ")"
+  lazy val moduleKey = this.getClass.getName + "(" + mavenDependency.serialize + ")" // PERFORMANCE HOTSPOT
   override def hashCode = mavenDependency.hashCode
   override def equals(other: Any) = other match{
     case o: BoundMavenDependency => o.mavenDependency == mavenDependency && o.repositories == repositories
@@ -252,10 +259,13 @@ case class BoundMavenDependency(
   )
   override def show: String = this.getClass.getSimpleName ++ "(" ++ mavenDependency.serialize ++ ")"
 
-  override final lazy val lastModified = classpath.strings.map(new File(_).lastModified).max
+  override final lazy val lastModified: Long = taskCache[BoundMavenDependency]( "lastModified" ).memoize[java.lang.Long]{
+    classpath.strings.map(new File(_).lastModified).max
+  }
 
-  private val groupPath = groupId.split("\\.").mkString("/")
-  protected[cbt] def basePath(useClassifier: Boolean) = s"/$groupPath/$artifactId/$version/$artifactId-$version" ++ (if (useClassifier) classifier.name.map("-"++_).getOrElse("") else "")
+  private lazy val base = "/" + groupId.split("\\.").mkString("/") + "/" + artifactId + "/" + version + "/" + artifactId + "-" + version
+  protected[cbt] def basePath(useClassifier: Boolean) = // PERFORMANCE HOTSPOT
+    base + (if (useClassifier && classifier.name.nonEmpty) "-" + classifier.name.get else "")
 
   //private def coursierJarFile = userHome++"/.coursier/cache/v1/https/repo1.maven.org/maven2"++basePath++".jar"
 
@@ -277,10 +287,15 @@ case class BoundMavenDependency(
   }
 
   private def resolveHash(suffix: String, useClassifier: Boolean) = {
-    Files.readAllLines(
-      resolve( suffix ++ ".sha1", None, useClassifier ).toPath,
-      StandardCharsets.UTF_8
-    ).mkString("\n").split(" ").head.trim
+    val path = resolve( suffix ++ ".sha1", None, useClassifier ).toPath
+    Option( classLoaderCache.hashMap.get("hash:"+path) ).map(_.asInstanceOf[String]).getOrElse{
+      val result = Files.readAllLines(
+        path,
+        StandardCharsets.UTF_8
+      ).mkString("\n").split(" ").head.trim
+      classLoaderCache.hashMap.put("hash:"+path, result)
+      result
+    }
   }
 
   def jarSha1: String = taskCache[BoundMavenDependency]("jarSha1").memoize{ resolveHash("jar", true) }
@@ -338,8 +353,8 @@ case class BoundMavenDependency(
       if(classifier == Classifier.sources) Seq()
       else {
         lib.cacheOnDisk(
-        cbtLastModified, mavenCache ++ basePath(true) ++ ".pom.dependencies"
-        )( MavenDependency.deserialize )( _.serialize ){
+          cbtLastModified, mavenCache ++ basePath(true) ++ ".pom.dependencies", classLoaderCache.hashMap
+        )( MavenDependency.deserialize )( _.serialize )( MavenDependency.dejavafy )( _.map(_.javafy).toArray ){
           (pomXml \ "dependencies" \ "dependency").collect{
           case xml if ( (xml \ "scope").text == "" || (xml \ "scope").text == "compile" ) && (xml \ "optional").text != "true" =>
               val artifactId = lookup(xml,_ \ "artifactId").get
@@ -366,7 +381,7 @@ case class BoundMavenDependency(
       }
     ).map(
       BoundMavenDependency( cbtLastModified, mavenCache, _, repositories, replace )
-    ).to
+    ).toVector
   }
   def lookup( xml: Node, accessor: Node => NodeSeq ): Option[String] = {
     // println("lookup in " + xml)
@@ -401,7 +416,7 @@ case class BoundMavenDependency(
   }
 }
 object BoundMavenDependency{
-  def ValidIdentifier = "^([A-Za-z0-9_\\-.]+)$".r // according to maven's DefaultModelValidator.java
+  val ValidIdentifier = "^([A-Za-z0-9_\\-.]+)$".r // according to maven's DefaultModelValidator.java
   def semanticVersionLessThan(left: Array[Either[Int,String]], right: Array[Either[Int,String]]) = {
     // FIXME: this ignores ends when different size
     val zipped = left zip right

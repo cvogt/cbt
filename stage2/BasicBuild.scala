@@ -6,19 +6,21 @@ import java.nio.file._
 
 class BasicBuild(final val context: Context) extends BaseBuild
 trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDependencyDsl{
+  override def equals(other: Any) = {
+    other match {
+      case b: BaseBuild => projectDirectory === b.projectDirectory
+      case _ => false
+    }
+  }
+
   //* DO NOT OVERRIDE CONTEXT in non-idempotent ways, because .copy and new Build
   // will create new instances given the context, which means operations in the
   // overrides will happen multiple times and if they are not idempotent stuff likely breaks
   def context: Context
-  def moduleKey: String = "BaseBuild("+target.string+")"
+  lazy val moduleKey: String = "BaseBuild("+target.string+")"
   implicit def transientCache: java.util.Map[AnyRef,AnyRef] = context.transientCache
 
-  object libraries{
-    private def dep(name: String) = DirectoryDependency( context.cbtHome / "libraries" / name )
-    def captureArgs = dep( "capture_args" )
-    def eval = dep( "eval" )
-    def proguard = dep( "proguard" )
-  }
+  implicit def libraries(implicit context: Context): libraries = new libraries(context)
 
   // library available to builds
   implicit protected final val logger: Logger = context.logger
@@ -211,7 +213,8 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
     )
   }
 
-  def run: ExitCode = run( context.args: _* )
+  def run: ExitCode = runMain( context.args )
+
   def test: Dependency = {
     val testDirectory = projectDirectory / "test"
     if( (testDirectory / lib.buildDirectoryName / lib.buildFileName).exists ){
@@ -225,6 +228,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
       }
     }
   }
+
   def t: Any = lib.callReflective( test, Some("run"), context )
   def rt = recursiveUnsafe(Some("test.run"))
 

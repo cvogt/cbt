@@ -24,7 +24,7 @@ object ProGuard {
         context.logger, transientCache, context.classLoaderCache
       ).bindOne(
         MavenDependency(groupId, artifactId, version)
-      ).runMain(cbt.proguard.ProGuard.mainClass, args: _*).integer,
+      ).runMain(cbt.proguard.ProGuard.mainClass, args).integer,
       ClassPath(_),
       context.logger.log("proguard",_)
     )

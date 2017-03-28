@@ -33,7 +33,7 @@ object ScalaTestLib{
       .getMethod("discoverSuiteNames", classOf[List[_]], classOf[ClassLoader], classOf[Option[_]])
       .invoke(null, List(discoveryPath.string ++ "/"), classLoader, None)
       .asInstanceOf[Set[String]]
-      .to
+      .toVector
   }
   def loadSuite(name: String, classLoader: ClassLoader) = {
     classLoader.loadClass(name).getConstructor().newInstance().asInstanceOf[Suite]

@@ -5,6 +5,7 @@ import java.net.*;
 import java.security.*;
 import java.util.*;
 import static cbt.Stage0Lib.*;
+import cbt.reflect.TrapSystemExit;
 import static java.io.File.pathSeparator;
 import java.nio.file.*;
 import static java.nio.file.Files.write;
@@ -66,7 +67,7 @@ public class NailgunLauncher{
       return;
     }
 
-    System.setSecurityManager( new TrapSecurityManager() );
+    System.setSecurityManager( TrapSystemExit.createSecurityManager(initialSecurityManager) );
     installProxySettings();
     String[] diff = args[0].split("\\.");
     long start = _start - (Long.parseLong(diff[0]) * 1000L) - Long.parseLong(diff[1]);
@@ -146,7 +147,7 @@ public class NailgunLauncher{
     String nailgunTarget = nailgunSources + TARGET;
     String stage1Sources = cbtHome + "/" + STAGE1;
     String stage1Target = stage1Sources + TARGET;
-    File compatibilitySources = new File(cbtHome + "/compatibility");
+    String compatibilitySources = cbtHome + "/compatibility";
     String mavenCache = cache + "maven";
     String mavenUrl = "https://repo1.maven.org/maven2";
     File loopFile = new File(cwd + "/target/.cbt-loop.tmp");
@@ -171,9 +172,14 @@ public class NailgunLauncher{
       compatibilityLastModified = new File( compatibilityTarget + "../classes.last-success" ).lastModified();
     } else {
       compatibilitySourceFiles = new ArrayList<File>();
-      for( File f: compatibilitySources.listFiles() ){
-        if( f.isFile() && f.toString().endsWith(".java") ){
-          compatibilitySourceFiles.add(f);
+      for( String d: new String[]{
+        compatibilitySources,
+        cbtHome + "/libraries/interfaces"
+      } ){
+        for( File f: new File(d).listFiles() ){
+          if( f.isFile() && f.toString().endsWith(".java") ){
+            compatibilitySourceFiles.add(f);
+          }
         }
       }
 
@@ -206,9 +212,16 @@ public class NailgunLauncher{
     String stage1Classpath = classpath( stage1ClasspathArray );
 
     stage1SourceFiles = new ArrayList<File>();
-    for( File f: new File(stage1Sources).listFiles() ){
-      if( f.isFile() && f.toString().endsWith(".scala") ){
-        stage1SourceFiles.add(f);
+    for( String d: new String[]{
+      stage1Sources,
+      cbtHome + "/libraries/reflect",
+      cbtHome + "/libraries/common-1",
+      cbtHome + "/libraries/file"
+    } ){
+      for( File f: new File(d).listFiles() ){
+        if( f.isFile() && (f.toString().endsWith(".scala") || f.toString().endsWith(".java")) ){
+          stage1SourceFiles.add(f);
+        }
       }
     }
 
