@@ -51,7 +51,7 @@ class ToolsTasks(
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val ammonite = Resolver(mavenCentral).bindOne(
       MavenDependency(
-        "com.lihaoyi","ammonite-repl_2.11.8",args.lift(1).getOrElse("0.5.8")
+        "com.lihaoyi","ammonite-repl_2.12.1",args.lift(1).getOrElse("0.5.8")
       )
     )
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
@@ -126,7 +126,11 @@ import java.util.*;
 import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
 
-class EarlyDependencies{
+public class EarlyDependencies{
+
+  public static String scalaVersion = "$scalaVersion";
+  public static String scalaXmlVersion = "$scalaXmlVersion";
+  public static String zincVersion = "$zincVersion";
 
   /** ClassLoader for stage1 */
   ClassLoader classLoader;

@@ -9,7 +9,9 @@ trait ScalaTest extends BaseBuild{
     runSuites( suiteNames.map( loadSuite( _, classLoader ) ) )
     ExitCode.Success
   }
-  override def dependencies = super.dependencies ++ Resolver( mavenCentral ).bind( ScalaDependency("org.scalatest","scalatest","2.2.4") )
+  override def dependencies = super.dependencies ++ Resolver( mavenCentral ).bind(
+    ScalaDependency("org.scalatest","scalatest","3.0.1")
+  )
 }
 
 object ScalaTestLib{
