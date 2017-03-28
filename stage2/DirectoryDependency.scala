@@ -77,7 +77,7 @@ object DirectoryDependency {
 
       val buildClasses =
         buildBuild.exportedClasspath.files.flatMap(
-          lib.iterateClasses( _, classLoader, false )
+          lib.topLevelClasses( _, classLoader, false )
             .filter( _.getSimpleName === lib.buildClassName )
             .filter( classOf[BaseBuild] isAssignableFrom _ )
         )

@@ -77,24 +77,36 @@ trait DependencyImplementation extends Dependency{
     )
   }
   */
-  def flatClassLoader: Boolean = false
+  def fork = false
 
-  def runMain( className: String, args: Seq[String] ): ExitCode = lib.trapExitCode{
-    lib.runMain( classLoader.loadClass( className ), args )
+  def runMain( className: String, args: Seq[String] ): ExitCode = {
+    if(fork){
+      val java_exe = new File(System.getProperty("java.home")) / "bin" / "java"
+      lib.runWithIO(
+        java_exe.string +: "-cp" +: classpath.string +: className +: args
+      )
+    } else {
+      lib.getMain( classLoader.loadClass( className ) )( args )
+    }
   }
 
-  def runMain( args: Seq[String] ): ExitCode = lib.trapExitCode{
-    mainMethod.getOrElse(
+  def runMain( args: Seq[String] ): ExitCode = {
+    val c = mainClass.getOrElse(
       throw new RuntimeException( "No main class found in " + this )
-    )( args )
+    )
+    runMain( c.getName, args )
   }
 
-  def mainMethod = lib.pickOne( "Which one do you want to run?", mainMethods )( _.name )
+  def mainClass = lib.pickOne(
+    "Which one do you want to run?",
+    classes.filter( lib.findMain(_).nonEmpty )
+  )( _.name.stripSuffix( "$" ) )
 
   def classes = exportedClasspath.files.flatMap(
-    lib.iterateClasses( _, classLoader, false )
+    lib.topLevelClasses( _, classLoader, false )
   )
-  def mainMethods = classes.flatMap( lib.discoverMain )
+
+  def flatClassLoader: Boolean = false
 
   def classLoader: ClassLoader = taskCache[DependencyImplementation]( "classLoader" ).memoize{
     if( flatClassLoader ){

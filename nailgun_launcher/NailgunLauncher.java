@@ -56,6 +56,8 @@ public class NailgunLauncher{
     ClassLoader.getSystemClassLoader().getParent()
   );
 
+  public static boolean runningViaNailgun = System.out.getClass().getName().equals("com.martiansoftware.nailgun.ThreadLocalPrintStream");
+
   public static List<File> compatibilitySourceFiles;
   public static List<File> nailgunLauncherSourceFiles;
   public static List<File> stage1SourceFiles;

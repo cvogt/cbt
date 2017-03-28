@@ -1,4 +1,5 @@
 package cbt.reflect
-case class StaticMethod[Arg, Result]( function: Arg => Result, name: String ) extends ( Arg => Result ) {
+import java.lang.reflect.Method
+case class StaticMethod[Arg, Result]( function: Arg => Result, method: Method ) extends ( Arg => Result ) {
   def apply( arg: Arg ): Result = function( arg )
 }
