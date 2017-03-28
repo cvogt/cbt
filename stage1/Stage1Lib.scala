@@ -79,28 +79,11 @@ class Stage1Lib( logger: Logger ) extends
     }
   }
 
-  /*
-  // ========== compilation / execution ==========
-  // TODO: move classLoader first
-  def runMain( className: String, args: Seq[String], classLoader: ClassLoader ): ExitCode = {
-    import java.lang.reflect.Modifier
-    logger.run(s"Running $className.main($args) with classLoader: " ++ classLoader.toString)
-    trapExitCode{
-      /*
-      val cls = classLoader.loadClass(className)
-      discoverCbtMain( cls ) orElse discoverMain( cls ) getOrElse (
-        throw new NoSuchMethodException( "No main method found in " ++ cbt )
-      ).apply( arg.toVector )*/
-      ExitCode.Success
-    }
-  }
-  */
+  def getCbtMain( cls: Class[_] ): cbt.reflect.StaticMethod[Context, ExitCode] =
+    findStaticMethodForced[Context, ExitCode]( cls, "cbtMain" )
 
-  def discoverCbtMainForced( cls: Class[_] ): cbt.reflect.StaticMethod[Context, ExitCode] =
-    discoverStaticMethodForced[Context, ExitCode]( cls, "cbtMain" )
-
-  def discoverCbtMain( cls: Class[_] ): Option[cbt.reflect.StaticMethod[Context, ExitCode]] =
-    discoverStaticMethod[Context, ExitCode]( cls, "cbtMain" )
+  def findCbtMain( cls: Class[_] ): Option[cbt.reflect.StaticMethod[Context, ExitCode]] =
+    findStaticMethod[Context, ExitCode]( cls, "cbtMain" )
 
   /** shows an interactive dialogue in the shell asking the user to pick one of many choices */
   def pickOne[T]( msg: String, choices: Seq[T] )( show: T => String ): Option[T] = {

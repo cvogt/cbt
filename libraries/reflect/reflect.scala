@@ -7,6 +7,7 @@ import scala.reflect.ClassTag
 
 import cbt.ExitCode
 import cbt.file._
+import cbt.common_1._
 
 object `package` extends Module {
   implicit class CbtClassOps( val c: Class[_] ) extends AnyVal with ops.CbtClassOps
@@ -54,27 +55,37 @@ package ops {
     def isSynchronized = Modifier.isSynchronized( m.getModifiers )
     def isTransient = Modifier.isTransient( m.getModifiers )
     def isVolatile = Modifier.isVolatile( m.getModifiers )
+
+    def show = (
+      m.name ~ "( "
+      ~ m.parameters.map( _.getType.name ).mkString( ", " )
+      ~ " )"
+    )
   }
 }
 trait Module {
-  def runMain( cls: Class[_], args: Seq[String] ): ExitCode =
-    discoverStaticExitMethodForced[Array[String]]( cls, "main" ).apply( args.to )
+  def getMain( cls: Class[_] ): StaticMethod[Seq[String], ExitCode] = {
+    val f = findStaticExitMethodForced[Array[String]]( cls, "main" )
+    f.copy(
+      function = ( args: Seq[String] ) => f.function( args.to )
+    )
+  }
 
-  def discoverMain( cls: Class[_] ): Option[StaticMethod[Seq[String], ExitCode]] = {
-    discoverStaticExitMethod[Array[String]]( cls, "main" )
+  def findMain( cls: Class[_] ): Option[StaticMethod[Seq[String], ExitCode]] = {
+    findStaticExitMethod[Array[String]]( cls, "main" )
       .map( f =>
         f.copy(
-          function = ( arg: Seq[String] ) => f.function( arg.to )
+          function = ( args: Seq[String] ) => f.function( args.to )
         ) )
   }
 
   /** ignoreMissingClasses allows ignoring other classes root directories which are subdirectories of this one */
-  def iterateClasses(
+  def topLevelClasses(
     classesRootDirectory: File,
     classLoader:          ClassLoader,
     ignoreMissingClasses: Boolean
   ): Seq[Class[_]] =
-    iterateClassNames( classesRootDirectory )
+    topLevelClassNames( classesRootDirectory )
       .map { name =>
         try {
           classLoader.loadClass( name )
@@ -85,10 +96,10 @@ trait Module {
       }
       .filterNot( ignoreMissingClasses && _ == null )
 
-  /** Given a directory corresponding to the root package, iterate
-    * the names of all classes derived from the class files found
+  /** Given a directory corresponding to the root package, return
+    * the names of all top-level classes based on the class files found
     */
-  def iterateClassNames( classesRootDirectory: File ): Seq[String] =
+  def topLevelClassNames( classesRootDirectory: File ): Seq[String] =
     classesRootDirectory.listRecursive
       .filter( _.isFile )
       .map( _.getPath )
@@ -102,16 +113,16 @@ trait Module {
             .replace( File.separator, "." )
       }
 
-  def discoverStaticExitMethodForced[Arg: ClassTag](
+  def findStaticExitMethodForced[Arg: ClassTag](
     cls: Class[_], name: String
   ): StaticMethod[Arg, ExitCode] = {
-    val f = discoverStaticMethodForced[Arg, Unit]( cls, name )
+    val f = findStaticMethodForced[Arg, Unit]( cls, name )
     f.copy(
       function = arg => trapExitCode { f.function( arg ); ExitCode.Success }
     )
   }
 
-  def discoverStaticMethodForced[Arg, Result](
+  def findStaticMethodForced[Arg, Result](
     cls: Class[_], name: String
   )(
     implicit
@@ -122,15 +133,15 @@ trait Module {
     typeStaticMethod( m )
   }
 
-  def discoverStaticExitMethod[Arg: ClassTag](
+  def findStaticExitMethod[Arg: ClassTag](
     cls: Class[_], name: String
   ): Option[StaticMethod[Arg, ExitCode]] =
-    discoverStaticMethod[Arg, Unit]( cls, name ).map( f =>
+    findStaticMethod[Arg, Unit]( cls, name ).map( f =>
       f.copy(
         function = arg => trapExitCode { f.function( arg ); ExitCode.Success }
       ) )
 
-  def discoverStaticMethod[Arg, Result](
+  def findStaticMethod[Arg, Result](
     cls: Class[_], name: String
   )(
     implicit
@@ -157,9 +168,7 @@ trait Module {
       else m.declaringClass.newInstance // Dottydoc needs this. It's main method is not static.
     StaticMethod(
       arg => m.invoke( instance, arg.asInstanceOf[AnyRef] ).asInstanceOf[Result],
-      m.getClass.name.stripSuffix( "$" ) ++ "." ++ m.name ++ "( "
-        ++ m.parameters.map( _.getType.name ).mkString( ", " )
-        ++ " )"
+      m
     )
   }
 
