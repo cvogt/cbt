@@ -8,4 +8,6 @@ trait ScalaTest extends BaseBuild{
     ).invoke( null, exportedClasspath.files.toArray, classLoader )
     ExitCode.Success
   }
+    ScalaDependency("org.scalatest","scalatest",cbt_plugins.scalaTest.BuildInfo.scalaTestVersion)
+  )
 }
