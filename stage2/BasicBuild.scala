@@ -17,7 +17,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   // will create new instances given the context, which means operations in the
   // overrides will happen multiple times and if they are not idempotent stuff likely breaks
   def context: Context
-  lazy val moduleKey: String = "BaseBuild("+target.string+")"
+  override lazy val moduleKey: String = "BaseBuild("+target.string+")"
   implicit def transientCache: java.util.Map[AnyRef,AnyRef] = context.transientCache
 
   implicit def libraries(implicit context: Context): libraries = new libraries(context, scalaVersion)
@@ -153,7 +153,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
     "-unchecked"
   )
 
-  final def lastModified: Long = compile.getOrElse(0L)
+  override final def lastModified: Long = compile.getOrElse(0L)
 
   def triggerLoopFiles: Set[File] = sources.toSet
 
