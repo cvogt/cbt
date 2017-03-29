@@ -8,7 +8,11 @@ import java.util.*;
 import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
 
-class EarlyDependencies{
+public class EarlyDependencies{
+
+  public static String scalaVersion = "2.11.8";
+  public static String scalaXmlVersion = "1.0.6";
+  public static String zincVersion = "0.3.13";
 
   /** ClassLoader for stage1 */
   ClassLoader classLoader;
@@ -16,32 +20,26 @@ class EarlyDependencies{
   /** ClassLoader for zinc */
   ClassLoader zinc;
 
-  String scalaReflect_2_11_8_File;
-  String scalaCompiler_2_11_8_File;
-  String scalaXml_1_0_5_File;
-  String scalaLibrary_2_11_8_File;
-  String zinc_0_3_13_File;
-  String incrementalCompiler_0_13_13_File;
-  String compilerInterface_0_13_13_File;
-  String scalaCompiler_2_10_6_File;
-  String sbtInterface_0_13_13_File;
-  String scalaReflect_2_10_6_File;
-  String scalaLibrary_2_10_6_File;
+  String scalaCompiler_File;
+  String scalaLibrary_File;
+  String scalaReflect_File;
+  String sbtInterface_File;
+  String compilerInterface_File;
 
   public EarlyDependencies(
     String mavenCache, String mavenUrl, ClassLoaderCache classLoaderCache, ClassLoader rootClassLoader
   ) throws Throwable {
-    scalaReflect_2_11_8_File = mavenCache + "/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar";
-    scalaCompiler_2_11_8_File = mavenCache + "/org/scala-lang/scala-compiler/2.11.8/scala-compiler-2.11.8.jar";
-    scalaXml_1_0_5_File = mavenCache + "/org/scala-lang/modules/scala-xml_2.11/1.0.5/scala-xml_2.11-1.0.5.jar";
-    scalaLibrary_2_11_8_File = mavenCache + "/org/scala-lang/scala-library/2.11.8/scala-library-2.11.8.jar";
-    zinc_0_3_13_File = mavenCache + "/com/typesafe/zinc/zinc/0.3.13/zinc-0.3.13.jar";
-    incrementalCompiler_0_13_13_File = mavenCache + "/com/typesafe/sbt/incremental-compiler/0.13.13/incremental-compiler-0.13.13.jar";
-    compilerInterface_0_13_13_File = mavenCache + "/com/typesafe/sbt/compiler-interface/0.13.13/compiler-interface-0.13.13-sources.jar";
-    scalaCompiler_2_10_6_File = mavenCache + "/org/scala-lang/scala-compiler/2.10.6/scala-compiler-2.10.6.jar";
-    sbtInterface_0_13_13_File = mavenCache + "/com/typesafe/sbt/sbt-interface/0.13.13/sbt-interface-0.13.13.jar";
-    scalaReflect_2_10_6_File = mavenCache + "/org/scala-lang/scala-reflect/2.10.6/scala-reflect-2.10.6.jar";
-    scalaLibrary_2_10_6_File = mavenCache + "/org/scala-lang/scala-library/2.10.6/scala-library-2.10.6.jar";
+    String scalaReflect_2_11_8_File = mavenCache + "/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar";
+    String scalaCompiler_2_11_8_File = mavenCache + "/org/scala-lang/scala-compiler/2.11.8/scala-compiler-2.11.8.jar";
+    String scalaXml_1_0_6_File = mavenCache + "/org/scala-lang/modules/scala-xml_2.11/1.0.6/scala-xml_2.11-1.0.6.jar";
+    String scalaLibrary_2_11_8_File = mavenCache + "/org/scala-lang/scala-library/2.11.8/scala-library-2.11.8.jar";
+    String zinc_0_3_13_File = mavenCache + "/com/typesafe/zinc/zinc/0.3.13/zinc-0.3.13.jar";
+    String incrementalCompiler_0_13_13_File = mavenCache + "/com/typesafe/sbt/incremental-compiler/0.13.13/incremental-compiler-0.13.13.jar";
+    String compilerInterface_0_13_13_File = mavenCache + "/com/typesafe/sbt/compiler-interface/0.13.13/compiler-interface-0.13.13-sources.jar";
+    String scalaCompiler_2_10_6_File = mavenCache + "/org/scala-lang/scala-compiler/2.10.6/scala-compiler-2.10.6.jar";
+    String sbtInterface_0_13_13_File = mavenCache + "/com/typesafe/sbt/sbt-interface/0.13.13/sbt-interface-0.13.13.jar";
+    String scalaReflect_2_10_6_File = mavenCache + "/org/scala-lang/scala-reflect/2.10.6/scala-reflect-2.10.6.jar";
+    String scalaLibrary_2_10_6_File = mavenCache + "/org/scala-lang/scala-library/2.10.6/scala-library-2.10.6.jar";
 
     download(new URL(mavenUrl + "/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar"), Paths.get(scalaReflect_2_11_8_File), "b74530deeba742ab4f3134de0c2da0edc49ca361");
     download(new URL(mavenUrl + "/org/scala-lang/scala-compiler/2.11.8/scala-compiler-2.11.8.jar"), Paths.get(scalaCompiler_2_11_8_File), "fe1285c9f7b58954c5ef6d80b59063569c065e9a");
@@ -134,20 +132,26 @@ class EarlyDependencies{
       scalaLibrary_2_11_8_ClasspathArray
     );
 
-    // org.scala-lang.modules:scala-xml_2.11:1.0.5
-    String[] scalaXml_1_0_5_ClasspathArray = new String[]{scalaXml_1_0_5_File, scalaLibrary_2_11_8_File};
-    ClassLoader scalaXml_1_0_5_ = loadDependency(
-      mavenUrl + "/org/scala-lang/modules/scala-xml_2.11/1.0.5/scala-xml_2.11-1.0.5.jar",
-      scalaXml_1_0_5_File,
-      "77ac9be4033768cf03cc04fbd1fc5e5711de2459",
+    // org.scala-lang.modules:scala-xml_2.11:1.0.6
+    String[] scalaXml_1_0_6_ClasspathArray = new String[]{scalaXml_1_0_6_File, scalaLibrary_2_11_8_File};
+    ClassLoader scalaXml_1_0_6_ = loadDependency(
+      mavenUrl + "/org/scala-lang/modules/scala-xml_2.11/1.0.6/scala-xml_2.11-1.0.6.jar",
+      scalaXml_1_0_6_File,
+      "4ebd108453e6455351c0ec50d32509ae1154fdb1",
       classLoaderCache,
       scalaLibrary_2_11_8_,
-      scalaXml_1_0_5_ClasspathArray
+      scalaXml_1_0_6_ClasspathArray
     );
 
-    classLoader = scalaXml_1_0_5_;
-    classpathArray = scalaXml_1_0_5_ClasspathArray;
+    classLoader = scalaXml_1_0_6_;
+    classpathArray = scalaXml_1_0_6_ClasspathArray;
 
     zinc = zinc_0_3_13_;
+
+    scalaCompiler_File = scalaCompiler_2_11_8_File;
+    scalaLibrary_File = scalaLibrary_2_11_8_File;
+    scalaReflect_File = scalaReflect_2_11_8_File;
+    sbtInterface_File = sbtInterface_0_13_13_File;
+    compilerInterface_File = compilerInterface_0_13_13_File;
   }
 }
