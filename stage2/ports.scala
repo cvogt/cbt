@@ -8,4 +8,5 @@ class ports( context: Context, scalaVersion: String ) {
     None
   )
   def mima = dep( "migration-manager" )
+  def scalariform = dep( "scalariform" )
 }
