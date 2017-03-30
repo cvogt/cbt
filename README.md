@@ -97,7 +97,7 @@ We know that's a bit unusual, but roll with it, there are good reasons :).
 Open a shell, cd to the directory where you want to install cbt and execute:
 
 ```
-$ git clone git@github.com:cvogt/cbt.git
+$ git clone https://github.com/cvogt/cbt.git
 ```
 
 There are a bash script `cbt` and a `cbt.bat` in the checkout directory.
