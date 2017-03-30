@@ -5,6 +5,6 @@ class Build(val context: Context) extends BaseBuild{
     super.dependencies
     :+ context.cbtDependency
   ) ++ Resolver( mavenCentral ).bind(
-    ScalaDependency("org.scalatest","scalatest","2.2.4")
+    ScalaDependency("org.scalatest","scalatest","3.0.1")
   )
 }
