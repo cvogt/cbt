@@ -13,6 +13,7 @@ class Build(val context: Context) extends BaseBuild { outer =>
     new BasicBuild(context) with ScalaTest {
       override def dependencies = outer +: super.dependencies
       override def defaultScalaVersion = "2.12.1"
+      override def projectDirectory = outer.projectDirectory / "test"
     }
   }
 
