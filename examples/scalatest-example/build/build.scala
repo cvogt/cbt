@@ -8,7 +8,7 @@ java.lang.Exception: This should never happend. Could not find (org.scala-lang,s
   */
   override def test: Dependency = {
     new BasicBuild(context) with ScalaTest with SbtLayoutTest{
-      override def dependencies = outer +: super.dependencies 
+      override def dependencies = outer +: super.dependencies
     }
   }
 }

@@ -57,7 +57,9 @@ object DirectoryDependency {
               // the beginning. Instead CBT always needs to build the pure Java
               // Launcher in the checkout with itself and then run it via reflection.
               val ( checkoutDirectory, dependency ) =
-                GitDependency.withCheckoutDirectory( base, hash, Some( "nailgun_launcher" ) )( context )
+                GitDependency.withCheckoutDirectory( base, hash, Some( "nailgun_launcher" ) )(
+                  context.copy( scalaVersion = None )
+                )
               dependency
                 .dependency
                 .asInstanceOf[BaseBuild] // should work because nailgun_launcher/ has no cbt build of it's own
@@ -71,7 +73,9 @@ object DirectoryDependency {
 
     def loadCustomBuild: AnyRef = {
       lib.logger.composition( "Loading build at " ++ buildDirectory.string )
-      val buildBuild = apply( buildDirectory, None )( context ).dependency.asInstanceOf[BuildInterface]
+      val buildBuild = apply(
+        context.copy( workingDirectory = buildDirectory, scalaVersion = None ), None
+      ).dependency.asInstanceOf[BuildInterface]
       import buildBuild._
       val managedContext = context.copy( parentBuild = Some( buildBuild ) )
 

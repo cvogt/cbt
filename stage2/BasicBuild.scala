@@ -20,7 +20,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   lazy val moduleKey: String = "BaseBuild("+target.string+")"
   implicit def transientCache: java.util.Map[AnyRef,AnyRef] = context.transientCache
 
-  implicit def libraries(implicit context: Context): libraries = new libraries(context)
+  implicit def libraries(implicit context: Context): libraries = new libraries(context, scalaVersion)
 
   // library available to builds
   implicit protected final val logger: Logger = context.logger
