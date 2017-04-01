@@ -137,6 +137,10 @@ foo(){
 
 foo "$@"
 
+if [ ! "$DEBUG" == "" ]; then
+	shift
+fi
+
 JAVA_OPTS_CBT=($DEBUG -Xmx1536m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none)
 
 # ng on osx, install via brew install nailgun
@@ -200,10 +204,19 @@ if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ]; then
 	use_nailgun=1
 fi
 
+if [ $server_up -eq 0 ] && [ ! "$DEBUG" == "" ]; then
+	echo "Can't use \`-debug\` (without \`direct\`) when nailgun is already running. If you started it up with \`-debug\` you can still connect to it. Otherwise use \`cbt kill\` to kill it."
+	exit 1
+fi
+
 if [ $use_nailgun -eq 0 ] && [ ! $server_up -eq 0 ]; then
 	log "Starting background process (nailgun)" "$@"
 	# try to start nailgun-server, just in case it's not up
 	java "${options[@]}" "${JAVA_OPTS_CBT[@]}" -jar "$NG_SERVER_JAR" 127.0.0.1:$NAILGUN_PORT >> "$nailgun_out" 2>> "$nailgun_err" &
+	if [ ! "$DEBUG" == "" ]; then
+		echo "Started nailgun server in debug mode"
+		exit 1
+	fi
 fi
 
 stage1 () {
