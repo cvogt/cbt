@@ -80,7 +80,7 @@ class Stage1Lib( logger: Logger ) extends
   }
 
   def getCbtMain( cls: Class[_] ): cbt.reflect.StaticMethod[Context, ExitCode] =
-    findStaticMethodForced[Context, ExitCode]( cls, "cbtMain" )
+    findStaticMethodOrFail[Context, ExitCode]( cls, "cbtMain" )
 
   def findCbtMain( cls: Class[_] ): Option[cbt.reflect.StaticMethod[Context, ExitCode]] =
     findStaticMethod[Context, ExitCode]( cls, "cbtMain" )
@@ -376,7 +376,7 @@ ${sourceFiles.sorted.mkString(" \\\n")}
     case d => d
   }
 
-  def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency])(implicit transientCache: java.util.Map[AnyRef,AnyRef], cache: ClassLoaderCache): ClassLoader = {
+  def classLoaderRecursion( dependency: Dependency, latest: Map[(String,String),Dependency] )(implicit transientCache: java.util.Map[AnyRef,AnyRef], cache: ClassLoaderCache): ClassLoader = {
     // FIXME: shouldn't we be using KeyLockedLazyCache instead of hashmap directly here?
     val dependencies = dependency.dependencies.toVector
     val dependencyClassLoader: ClassLoader = {

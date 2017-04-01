@@ -65,7 +65,7 @@ package ops {
 }
 trait Module {
   def getMain( cls: Class[_] ): StaticMethod[Seq[String], ExitCode] = {
-    val f = findStaticExitMethodForced[Array[String]]( cls, "main" )
+    val f = findStaticExitMethodOrFail[Array[String]]( cls, "main" )
     f.copy(
       function = ( args: Seq[String] ) => f.function( args.to )
     )
@@ -113,16 +113,16 @@ trait Module {
             .replace( File.separator, "." )
       }
 
-  def findStaticExitMethodForced[Arg: ClassTag](
+  def findStaticExitMethodOrFail[Arg: ClassTag](
     cls: Class[_], name: String
   ): StaticMethod[Arg, ExitCode] = {
-    val f = findStaticMethodForced[Arg, Unit]( cls, name )
+    val f = findStaticMethodOrFail[Arg, Unit]( cls, name )
     f.copy(
       function = arg => trapExitCode { f.function( arg ); ExitCode.Success }
     )
   }
 
-  def findStaticMethodForced[Arg, Result](
+  def findStaticMethodOrFail[Arg, Result](
     cls: Class[_], name: String
   )(
     implicit
