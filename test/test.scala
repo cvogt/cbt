@@ -254,7 +254,6 @@ object Main{
     compile("../plugins/scalafmt")
     compile("../plugins/scalajs")
     compile("../plugins/scalariform")
-    compile("../plugins/scalatest")
     compile("../plugins/wartremover")
     compile("../plugins/uber-jar")
     compile("../plugins/scalafix-compiler-plugin")

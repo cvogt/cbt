@@ -24,6 +24,7 @@ class Build(val context: Context) extends Shared with Scalariform with PublishLo
     Seq(
       context.cbtHome / "stage2" / "DirectoryDependency.scala",
       context.cbtHome / "stage2" / "LazyDependency.scala",
+      context.cbtHome / "stage2" / "plugins" / "ScalaTest.scala",
       context.cbtHome / "stage2" / "libraries.scala",
       context.cbtHome / "stage2" / "plugins.scala",
       context.cbtHome / "stage2" / "ports.scala"
