@@ -13,7 +13,7 @@ class Build(val context: Context) extends Shared with Scalariform with PublishLo
     super.dependencies ++ Resolver(mavenCentral).bind(
       MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
       ScalaDependency("org.scala-lang.modules","scala-xml",constants.scalaXmlVersion)
-    ) :+ libraries.reflect :+ libraries.eval
+    ) :+ libraries.cbt.reflect :+ libraries.cbt.eval
   }
 
   override def sources = Seq(
@@ -24,8 +24,10 @@ class Build(val context: Context) extends Shared with Scalariform with PublishLo
     Seq(
       context.cbtHome / "stage2" / "DirectoryDependency.scala",
       context.cbtHome / "stage2" / "LazyDependency.scala",
+      context.cbtHome / "stage2" / "plugins" / "ScalaTest.scala",
       context.cbtHome / "stage2" / "libraries.scala",
-      context.cbtHome / "stage2" / "plugins.scala"
+      context.cbtHome / "stage2" / "plugins.scala",
+      context.cbtHome / "stage2" / "ports.scala"
     )
   )
 

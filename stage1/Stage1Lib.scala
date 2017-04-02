@@ -314,9 +314,10 @@ ${sourceFiles.sorted.mkString(" \\\n")}
        .map( dejavafy )
        .orElse{
         (cacheFile.exists && cacheFile.lastModified > cbtLastModified).option{
-          import collection.JavaConversions._
+          import collection.JavaConverters._
           val v = Files
             .readAllLines( cacheFile.toPath, StandardCharsets.UTF_8 )
+            .asScala
             .toStream
             .map( deserialize )
           persistentCache.put(key, Array(System.currentTimeMillis:java.lang.Long, javafy(v)))

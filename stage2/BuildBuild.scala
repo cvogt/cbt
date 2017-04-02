@@ -7,7 +7,7 @@ class ConcreteBuildBuild(val context: Context) extends BuildBuild
 trait BuildBuild extends BaseBuild{
   override def dependencies = super.dependencies :+ context.cbtDependency
 
-  object plugins extends plugins
+  object plugins extends plugins( context, scalaVersion )
 
   assert(
     projectDirectory.getName === lib.buildDirectoryName,

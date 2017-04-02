@@ -83,12 +83,12 @@ trait Module {
       val duplicateFiles = ( relatives diff relatives.distinct ).distinct
       assert(
         duplicateFiles.isEmpty, {
-        val rs = relatives.toSet
-        "Conflicting:\n\n" +
-          map.filter( rs contains _._2 ).groupBy( _._2 ).mapValues( _.map( _._1 ).sorted ).toSeq.sortBy( _._1 ).map {
-            case ( name, files ) => s"$name:\n" ++ files.mkString( "\n" )
-          }.mkString( "\n\n" )
-      }
+          val rs = relatives.toSet
+          "Conflicting:\n\n" +
+            map.filter( rs contains _._2 ).groupBy( _._2 ).mapValues( _.map( _._1 ).sorted ).toSeq.sortBy( _._1 ).map {
+              case ( name, files ) => s"$name:\n" ++ files.mkString( "\n" )
+            }.mkString( "\n\n" )
+        }
       )
     }
     map

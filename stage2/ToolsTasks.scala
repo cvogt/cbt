@@ -51,7 +51,7 @@ class ToolsTasks(
     val version = args.lift(1).getOrElse(constants.scalaVersion)
     val ammonite = Resolver(mavenCentral).bindOne(
       MavenDependency(
-        "com.lihaoyi","ammonite-repl_2.11.8",args.lift(1).getOrElse("0.5.8")
+        "com.lihaoyi","ammonite-repl_"++constants.scalaVersion,args.lift(1).getOrElse("0.5.8")
       )
     )
     // FIXME: this does not work quite yet, throws NoSuchFileException: /ammonite/repl/frontend/ReplBridge$.class
@@ -76,7 +76,7 @@ class ToolsTasks(
       Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-reflect",scalaVersion)),
       Resolver(mavenCentral).bindOne(MavenDependency("org.scala-lang","scala-compiler",scalaVersion))
     )
-    
+
     val scalaXml = Dependencies(
       Resolver(mavenCentral).bind(
         MavenDependency("org.scala-lang.modules","scala-xml_"+scalaMajorVersion,scalaXmlVersion),
@@ -85,6 +85,17 @@ class ToolsTasks(
     )
 
     val zinc = Resolver(mavenCentral).bindOne(MavenDependency("com.typesafe.zinc","zinc",zincVersion))
+    val sbtVersion =
+      zinc.dependencies
+        .collect{ case d @
+          BoundMavenDependency(
+            _, _, MavenDependency( "com.typesafe.sbt", "compiler-interface", _, Classifier.sources, _), _, _
+          ) => d
+        }
+        .headOption
+        .getOrElse( throw new Exception(s"cannot find compiler-interface in zinc $zincVersion dependencies: "++zinc.dependencies.toString) )
+        .mavenDependency
+        .version
 
     def valName(dep: BoundMavenDependency) = {
       val words = dep.artifactId.split("_").head.split("-")
@@ -93,7 +104,7 @@ class ToolsTasks(
 
     def jarVal(dep: BoundMavenDependency) = "_" + valName(dep) +"Jar"
     def transitive(dep: Dependency) = (dep +: lib.transitiveDependencies(dep).reverse).collect{case d: BoundMavenDependency => d}
-    def codeEach(dep: Dependency) = {    
+    def codeEach(dep: Dependency) = {
       transitive(dep).tails.map(_.reverse).toVector.reverse.drop(1).map{
         deps =>
           val d = deps.last
@@ -115,6 +126,10 @@ class ToolsTasks(
     }
     val assignments = codeEach(zinc) ++ codeEach(scalaXml)
     val files = scalaDeps ++ transitive(scalaXml) ++ transitive(zinc)
+    val _scalaVersion = scalaVersion.replace(".","_")
+    val _scalaXmlVersion = scalaXmlVersion.replace(".","_")
+    val _zincVersion = zincVersion.replace(".","_")
+    val _sbtVersion = sbtVersion.replace(".","_")
     //{ case (name, dep) => s"$name =\n      ${tree(dep, 4)};" }.mkString("\n\n    ")
     val code = s"""// This file was auto-generated using `cbt tools cbtEarlyDependencies`
 package cbt;
@@ -126,7 +141,11 @@ import java.util.*;
 import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
 
-class EarlyDependencies{
+public class EarlyDependencies{
+
+  public static String scalaVersion = "$scalaVersion";
+  public static String scalaXmlVersion = "$scalaXmlVersion";
+  public static String zincVersion = "$zincVersion";
 
   /** ClassLoader for stage1 */
   ClassLoader classLoader;
@@ -134,25 +153,35 @@ class EarlyDependencies{
   /** ClassLoader for zinc */
   ClassLoader zinc;
 
-${files.map(d => s"""  String ${valName(d)}File;""").mkString("\n")}
+  String scalaCompiler_File;
+  String scalaLibrary_File;
+  String scalaReflect_File;
+  String sbtInterface_File;
+  String compilerInterface_File;
 
   public EarlyDependencies(
     String mavenCache, String mavenUrl, ClassLoaderCache classLoaderCache, ClassLoader rootClassLoader
   ) throws Throwable {
-${files.map(d => s"""    ${valName(d)}File = mavenCache + "${d.basePath(true)}.jar";""").mkString("\n")}
+${files.map(d => s"""    String ${valName(d)}File = mavenCache + "${d.basePath(true)}.jar";""").mkString("\n")}
 
 ${scalaDeps.map(d => s"""    download(new URL(mavenUrl + "${d.basePath(true)}.jar"), Paths.get(${valName(d)}File), "${d.jarSha1}");""").mkString("\n")}
 ${assignments.mkString("\n")}
 
-    classLoader = scalaXml_${scalaXmlVersion.replace(".","_")}_;
-    classpathArray = scalaXml_${scalaXmlVersion.replace(".","_")}_ClasspathArray;
+    classLoader = scalaXml_${_scalaXmlVersion}_;
+    classpathArray = scalaXml_${_scalaXmlVersion}_ClasspathArray;
 
-    zinc = zinc_${zincVersion.replace(".","_")}_;
+    zinc = zinc_${_zincVersion}_;
+
+    scalaCompiler_File = scalaCompiler_${_scalaVersion}_File;
+    scalaLibrary_File = scalaLibrary_${_scalaVersion}_File;
+    scalaReflect_File = scalaReflect_${_scalaVersion}_File;
+    sbtInterface_File = sbtInterface_${_sbtVersion}_File;
+    compilerInterface_File = compilerInterface_${_sbtVersion}_File;
   }
 }
 """
     val file = nailgun ++ ("/" ++ "EarlyDependencies.java")
-    lib.write( file, code )
+    lib.writeIfChanged( file, code )
     println( Console.GREEN ++ "Wrote " ++ file.string ++ Console.RESET )
   }
 }

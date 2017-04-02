@@ -209,12 +209,11 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
     } else {
       val performDelete = (
         force || {
-          val console = consoleOrFail("Use `cbt direct clean` or `cbt clean help`")
           System.err.println("Files to be deleted:\n")
           files.foreach( System.err.println )
           System.err.println("")
           System.err.print("To delete the above files type 'delete': ")
-          console.readLine() == "delete"
+          new BufferedReader( new InputStreamReader(System.in), 1 ).readLine == "delete"
         }
       )
 

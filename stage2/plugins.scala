@@ -1,7 +1,12 @@
 package cbt
-class plugins( implicit context: Context ) {
-  // TODO: move this out of the OO
-  private def plugin( dir: String ) = DirectoryDependency( context.cbtHome / "plugins" / dir )
+class plugins( context: Context, scalaVersion: String ) {
+  private def plugin( name: String ) = DirectoryDependency(
+    context.copy(
+      scalaVersion     = Some( scalaVersion ),
+      workingDirectory = context.cbtHome / "plugins" / name
+    ),
+    None
+  )
   final lazy val googleJavaFormat = plugin( "google-java-format" )
   final lazy val proguard = plugin( "proguard" )
   final lazy val sbtLayout = plugin( "sbt_layout" )
@@ -11,7 +16,6 @@ class plugins( implicit context: Context ) {
   final lazy val scalaJs = plugin( "scalajs" )
   final lazy val scalapb = plugin( "scalapb" )
   final lazy val scalariform = plugin( "scalariform" )
-  final lazy val scalaTest = plugin( "scalatest" )
   final lazy val sonatypeRelease = plugin( "sonatype-release" )
   final lazy val uberJar = plugin( "uber-jar" )
   final lazy val wartremover = plugin( "wartremover" )

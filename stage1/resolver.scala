@@ -108,7 +108,7 @@ trait DependencyImplementation extends Dependency{
 
   def flatClassLoader: Boolean = false
 
-  def classLoader: ClassLoader = taskCache[DependencyImplementation]( "classLoader" ).memoize{
+  override def classLoader: ClassLoader = taskCache[DependencyImplementation]( "classLoader" ).memoize{
     if( flatClassLoader ){
       new java.net.URLClassLoader(classpath.strings.map(f => new URL("file://" ++ f)).toArray)
     } else {
@@ -170,13 +170,13 @@ case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(i
   def exportedClasspath = ClassPath(paths)
   override def lastModified = paths.map(_.lastModifiedRecursive).max // FIXME: cache this
   def targetClasspath = exportedClasspath
-  lazy val moduleKey = this.getClass.getName + "(" + paths.mkString(", ") + ")" // PERFORMANCE HOTSPOT
+  override lazy val moduleKey = this.getClass.getName + "(" + paths.mkString(", ") + ")" // PERFORMANCE HOTSPOT
 }
 
 /** Allows to easily assemble a bunch of dependencies */
 case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override def lastModified = dependencies.map(_.lastModified).maxOption.getOrElse(0)
-  lazy val moduleKey = this.getClass.getName + "(" + dependencies.map(_.moduleKey).mkString(", ") + ")" // PERFORMANCE HOTSPOT
+  override lazy val moduleKey = this.getClass.getName + "(" + dependencies.map(_.moduleKey).mkString(", ") + ")" // PERFORMANCE HOTSPOT
   def targetClasspath = ClassPath() 
   def exportedClasspath = ClassPath() 
   override def show: String = this.getClass.getSimpleName + "( " + dependencies.map(_.show).mkString(", ") + " )"
@@ -184,7 +184,7 @@ case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Lo
 
 case class PostBuildDependency(target: File, _dependencies: Seq[DependencyImplementation])(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override final lazy val lastModified = (target++".last-success").lastModified
-  lazy val moduleKey = target.string
+  override lazy val moduleKey = target.string
   override def show = s"PostBuildDependency($target)"
   override def targetClasspath = exportedClasspath
   override def exportedClasspath = ClassPath( Seq(target) )
@@ -246,7 +246,7 @@ case class BoundMavenDependency(
 )(
   implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache
 ) extends ArtifactInfo with DependencyImplementation{
-  lazy val moduleKey = this.getClass.getName + "(" + mavenDependency.serialize + ")" // PERFORMANCE HOTSPOT
+  override lazy val moduleKey = this.getClass.getName + "(" + mavenDependency.serialize + ")" // PERFORMANCE HOTSPOT
   override def hashCode = mavenDependency.hashCode
   override def equals(other: Any) = other match{
     case o: BoundMavenDependency => o.mavenDependency == mavenDependency && o.repositories == repositories
@@ -284,7 +284,7 @@ case class BoundMavenDependency(
   def exportedJars = Seq( jar )
   override def exportedClasspath = ClassPath( exportedJars )
   override def targetClasspath = exportedClasspath
-  import scala.collection.JavaConversions._
+  import scala.collection.JavaConverters._
 
   private def resolve(suffix: String, hash: Option[String], useClassifier: Boolean): File = {
     logger.resolver(lib.blue("Resolving ")+this)
@@ -304,7 +304,7 @@ case class BoundMavenDependency(
       val result = Files.readAllLines(
         path,
         StandardCharsets.UTF_8
-      ).mkString("\n").split(" ").head.trim
+      ).asScala.mkString("\n").split(" ").head.trim
       classLoaderCache.hashMap.put("hash:"+path, result)
       result
     }

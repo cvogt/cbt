@@ -102,11 +102,11 @@ public class Stage0Lib{
       List<String> zincArgs = new ArrayList<String>(
         Arrays.asList(
           new String[]{
-            "-scala-compiler", earlyDeps.scalaCompiler_2_11_8_File,
-            "-scala-library", earlyDeps.scalaLibrary_2_11_8_File,
-            "-scala-extra", earlyDeps.scalaReflect_2_11_8_File,
-            "-sbt-interface", earlyDeps.sbtInterface_0_13_13_File,
-            "-compiler-interface", earlyDeps.compilerInterface_0_13_13_File,
+            "-scala-compiler", earlyDeps.scalaCompiler_File,
+            "-scala-library", earlyDeps.scalaLibrary_File,
+            "-scala-extra", earlyDeps.scalaReflect_File,
+            "-sbt-interface", earlyDeps.sbtInterface_File,
+            "-compiler-interface", earlyDeps.compilerInterface_File,
             "-cp", classpath,
             "-d", target,
             "-S-deprecation",

@@ -14,6 +14,7 @@ dependencies:
 
 compile:
   override:
+    - rm ~/.gitconfig # avoid url replacement breaking jgit
     - ./cbt direct compile
     - ./cbt direct test.compile
     - ./cbt compile
@@ -22,7 +23,6 @@ compile:
 
 test:
   override:
-    - rm ~/.gitconfig # avoid url replacement breaking jgit
     - ./cbt direct test.run slow:
         timeout: 1800
     - ./cbt direct test.run slow:
