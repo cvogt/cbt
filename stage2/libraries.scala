@@ -15,8 +15,8 @@ class libraries( context: Context, scalaVersion: String, scalaMajorVersion: Stri
     def file = dep( "file" )
     def interfaces = dep( "interfaces" )
     def proguard = dep( "proguard" )
-    def reflect = dep( "reflect" )
     def scalatestRunner = dep( "scalatest-runner" )
+    def reflect = dep( "reflect" )
   }
   object scala {
     private def _maven = ( g: String, a: String, v: String ) => {
@@ -27,10 +27,11 @@ class libraries( context: Context, scalaVersion: String, scalaMajorVersion: Stri
         ) bindOne MavenDependency( g, a, v )
     }
 
+    def compiler = _maven( "org.scala-lang", "scala-compiler", scalaVersion )
     def library = _maven( "org.scala-lang", "scala-library", scalaVersion )
     def reflect = _maven( "org.scala-lang", "scala-reflect", scalaVersion )
-    def compiler = _maven( "org.scala-lang", "scala-compiler", scalaVersion )
-    def xml = _maven( "org.scala-lang.modules", "scala-xml_" ++ scalaMajorVersion, "1.0.6" )
+
     def parserCombinators = _maven( "org.scala-lang.modules", "scala-parser-combinators_" ++ scalaMajorVersion, "1.0.5" )
+    def xml = _maven( "org.scala-lang.modules", "scala-xml_" ++ scalaMajorVersion, "1.0.6" )
   }
 }
