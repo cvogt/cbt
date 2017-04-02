@@ -1,7 +1,10 @@
 package cbt
-class ports( context: Context ) {
+class ports( context: Context, scalaVersion: String ) {
   private def dep( name: String ) = DirectoryDependency(
-    context.copy( workingDirectory = context.cbtHome / "ports" / name ),
+    context.copy(
+      scalaVersion     = Some( scalaVersion ),
+      workingDirectory = context.cbtHome / "ports" / name
+    ),
     None
   )
   def mima = dep( "migration-manager" )

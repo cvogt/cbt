@@ -1,5 +1,5 @@
 package cbt
-class libraries( context: Context, scalaVersion: String ) {
+class libraries( context: Context, scalaVersion: String, scalaMajorVersion: String ) {
   private def dep( name: String ) = DirectoryDependency(
     context.copy(
       scalaVersion     = Some( scalaVersion ),
