@@ -23,8 +23,8 @@ class libraries( context: Context, scalaVersion: String, scalaMajorVersion: Stri
       MavenResolver(
         context.cbtLastModified, context.paths.mavenCache, mavenCentral
       )(
-          context.logger, context.transientCache, context.classLoaderCache
-        ) bindOne MavenDependency( g, a, v )
+        context.logger, context.transientCache, context.classLoaderCache
+      ) bindOne MavenDependency( g, a, v )
     }
 
     def compiler = _maven( "org.scala-lang", "scala-compiler", scalaVersion )
