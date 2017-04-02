@@ -15,16 +15,17 @@ class libraries( context: Context, scalaVersion: String, scalaMajorVersion: Stri
     def file = dep( "file" )
     def interfaces = dep( "interfaces" )
     def proguard = dep( "proguard" )
-    def scalatestRunner = dep( "scalatest-runner" )
     def reflect = dep( "reflect" )
+    def scalatestRunner = dep( "scalatest-runner" )
+    def scalatex = dep( "scalatex" )
   }
   object scala {
     private def _maven = ( g: String, a: String, v: String ) => {
       MavenResolver(
         context.cbtLastModified, context.paths.mavenCache, mavenCentral
       )(
-          context.logger, context.transientCache, context.classLoaderCache
-        ) bindOne MavenDependency( g, a, v )
+        context.logger, context.transientCache, context.classLoaderCache
+      ) bindOne MavenDependency( g, a, v )
     }
 
     def compiler = _maven( "org.scala-lang", "scala-compiler", scalaVersion )

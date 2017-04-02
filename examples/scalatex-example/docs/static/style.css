@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css?family=Muli');
+body{
+  font-family: 'Muli', sans-serif;
+  width: 600px;
+  left: 50%;
+  margin-left: -300px;
+  position: absolute;
+}
+
+h1, h2, h3, h4, h5, h6{
+  color: #007bbf;
+}
+
+.path-readme li{
+  font-size: 30px;
+}
+
+pre{
+  display: block;
+  border-top: 0px;
+  border-bottom: 0px;
+  border-left: 0;
+  border-right: 0;
+  border-color: #007bbf;
+  border-style: solid;
+  padding: 5px 0;
+}
+
+pre.inline{
+  display: inline;
+  border: 0;
+}

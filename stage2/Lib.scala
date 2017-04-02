@@ -160,13 +160,8 @@ final class Lib(val logger: Logger) extends Stage1Lib(logger){
         }.getOrElse{
           if( context =!= null && (context.workingDirectory / name).exists ){
             val newContext = context.copy( workingDirectory = context.workingDirectory / name )
-            callInternal(
-              DirectoryDependency( newContext.cwd )( newContext ).dependency,
-              members.tail,
-              previous :+ taskName,
-              newContext,
-              callback
-            )
+            val build = DirectoryDependency( newContext, None ).dependency
+            callInternal( build, members.tail, previous :+ taskName, newContext, callback )
           } else {
             val p = previous.mkString(".")
             val msg = (if(p.nonEmpty) p ++ s" has " else " ")
