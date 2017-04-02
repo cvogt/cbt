@@ -48,6 +48,7 @@ trait DynamicOverrides extends BaseBuild{
         (
           baseName,
           s"""
+          import _root_.cbt._
           class $baseName(context: _root_.cbt.Context)
             extends $parent(context)$mixin{
               $body
@@ -58,6 +59,7 @@ trait DynamicOverrides extends BaseBuild{
         (
           overrideName,
           s"""
+          import _root_.cbt._
           class $baseName(context: _root_.cbt.Context)
             extends $parent(context)$mixin{
               $body

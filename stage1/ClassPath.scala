@@ -27,4 +27,34 @@ case class ClassPath(files: Seq[File] = Seq()){
       if( f.getName.endsWith(".jar") /* !f.isDirectory */ ) "" else "/"
     )
   }.sorted
+
+  def verify( lib: Stage1Lib ) = {
+    val ( directories, jarFiles ) = files.partition(_.isDirectory)
+    val all = lib.autoRelative(
+      directories
+    ) ++ jarFiles.flatMap{ f => 
+      import collection.JavaConverters._
+      new java.util.jar.JarFile(f).entries.asScala.filterNot(_.isDirectory).toVector.map(
+        f -> _.toString
+      )
+    }
+    val duplicates =
+      all
+        .groupBy( _._2 )
+        .filter( _._2.size > 1 )
+        .filter( _._1 endsWith ".class" )
+        .mapValues( _.map( _._1 ) )
+        .toSeq
+        .sortBy( _._1 )
+    assert(
+      duplicates.isEmpty,
+      {
+        "Conflicting:\n\n" +
+        duplicates.map{
+          case ( path, locations ) =>
+            path + " exits in multiple locations:\n" + locations.mkString("\n")
+        }.mkString("\n\n")
+      }
+    )
+  }
 }
