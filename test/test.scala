@@ -305,6 +305,13 @@ object Main{
     }
 
     {
+      val res = runCbt("../examples/scalastyle", Seq("scalastyle"))
+      assert(!res.exit0)
+      assert(res.err contains "Line contains a tab", res.out ++ "\n" ++ res.err)
+      assert(res.out.isEmpty, res.out ++ "\n" ++ res.err)
+    }
+
+    {
       val res = runCbt("../examples/scalapb-example", Seq("run"))
       assert(res.exit0)
       assert(res.out contains "age: 123", res.out ++ "\n--\n" ++ res.err)

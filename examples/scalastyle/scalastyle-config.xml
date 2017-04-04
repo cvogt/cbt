@@ -1,0 +1,4 @@
+<scalastyle commentFilter="enabled">
+ <name>CBT Scalastyle example configuration</name>
+ <check enabled="true" class="org.scalastyle.file.FileTabChecker" level="warning"/>
+</scalastyle>

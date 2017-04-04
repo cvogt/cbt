@@ -5,94 +5,76 @@ import java.util.Date
 import scala.io.Codec
 import com.typesafe.config.ConfigFactory
 
-import org.scalastyle.MainConfig
-import org.scalastyle.Directory
-import org.scalastyle.ScalastyleConfiguration
-import org.scalastyle.ScalastyleChecker
-import org.scalastyle.{XmlOutput, TextOutput}
+import org.scalastyle._
 
-trait Scalastyle extends BaseBuild {
-  def scalastyle = {
-      val dirList = List(projectDirectory) map (_.getAbsolutePath)
-
-      val pluginHome : String = context.cbtHome.getAbsolutePath + "/plugins/" + "scalastyle"
-
-	    val result = ScalaStyle(dirList, ScalaStyle.checkConfig(projectDirectory.getAbsolutePath, Some(pluginHome))) 
-      result match {
-        case 1 => println("Error Scalastyle Checking")
-        case 2 => println("Config file for ScalaStyle not found")
-        case _ => ()
-      }
-  }
+trait Scalastyle extends Plugin {
+  def scalastyle = Scalastyle.apply( lib ).config( Scalastyle.defaultConfig, sourceFiles, getClass.getClassLoader )
 }
 
+object Scalastyle {
+  def readConfigFromXml( file: File ) = ScalastyleConfiguration.readFromXml( file.string )
+  def defaultConfig =
+    ScalastyleConfiguration.readFromXml(
+      Option( getClass.getClassLoader.getResource("scalastyle-config.xml") )
+        .getOrElse( throw new Exception("scalastyle-config.xml not found in resources")
+    ).getPath
+  )
 
-object ScalaStyle {
-
-  val defaultConfigName : String = "/scalastyle_config.xml"
-
-  def userHome = Option( System.getProperty("user.home") )
-
-  def checkConfig(directory: String, fallback: Option[String] = userHome) : Option[String] = {
-    
-    def checkConfigExists(filename: String) : Option[String] = {
-      val file = new File(filename)
-      if (file.exists()) Some(filename) else None
-    }
-
-    checkConfigExists(directory + defaultConfigName) orElse (
-      fallback flatMap (fdir => checkConfigExists(fdir + defaultConfigName))
-    )
-  }
+  case class apply( lib: Lib ){
+    /** @param classLoader able to load the Checker classes */
+    case class config(
+      scalastyleConfig: ScalastyleConfiguration,
+      files: Seq[File],
+      classLoader: ClassLoader/*,
+      xmlOutput: Option[File] = None,
+      logLevel: Option[Level] = Some( InfoLevel )*/
+    ){
+      def apply: ExitCode = output( messages )
 
 
+      def messages =
+        new ScalastyleChecker( Some( classLoader ) )
+          .checkFiles( scalastyleConfig, Directory.getFiles( None, files ) )
 
-  def apply(directories: List[String], configFile: Option[String]) : Int = {
-    val exitVal = configFile match {
-      case Some(_) => {
-         val conf = MainConfig(false).copy(config = configFile, directories = directories)
-         if (conf.error) {
-            1
-         } else {
-            if (execute(conf)) 1 else 0
-         }
+      def output( messages: List[Message[_]] ) = {
+        val messageHelper = new MessageHelper( ConfigFactory.load( classLoader ) )
+
+        def fileLineColumn( file: FileSpec, line: Option[Int], column: Option[Int] ) =
+          file.name ~ line.map( ":" ~ _.toString ~ column.map( ":" ~ _.toString ).getOrElse( "" ) ).getOrElse("")
+
+        val errors = messages.map(x => x:AnyRef).collect{
+          case s@StyleError(
+            file, cls, key, level, args, line, column, customMessage
+          ) => (
+            fileLineColumn( file, line, column ) ~ ": [" ~ cls.getSimpleName ~ "] "
+              ~ Output.findMessage( messageHelper, key, args, customMessage )
+          )
+          case s@StyleException(file, cls, message, stacktrace, line, column) =>
+            fileLineColumn( file, line, column ) ~ ": " ~ cls.map( "[" ~ _.getSimpleName ~ "] " ).getOrElse( "" ) ~ message ~ "\n" ~ stacktrace
+        }
+
+        if( errors.nonEmpty ){
+          System.err.println(
+            lib.red( "Scalastyle linting errors found\n" ) + errors.mkString("\n")
+          )
+          ExitCode.Failure
+        } else {
+          ExitCode.Success
+        }
+
+        /*
+        xmlOutput.foreach(
+          XmlOutput.save(config, _, encoding, messages)
+        )
+
+        if (!mc.quiet) println("Processed " + outputResult.files + " file(s)")
+        if (!mc.quiet) println("Found " + outputResult.errors + " errors")
+        if (!mc.quiet) println("Found " + outputResult.warnings + " warnings")
+        if (!mc.quiet) println("Finished in " + (now - start) + " ms")
+
+        outputResult.errors > 0 || (mc.warningsaserrors && outputResult.warnings > 0)
+        */
       }
-      case None => {
-        2
-      } 
     }
-   
-    exitVal
   }
-
-
-  private[this] def now(): Long = new Date().getTime()
-
-  private[this] def execute(mc: MainConfig)(implicit codec: Codec): Boolean = {
-    val start = now()
-    val configuration = ScalastyleConfiguration.readFromXml(mc.config.get)
-    val cl = mc.externalJar.flatMap(j => Some(new java.net.URLClassLoader(Array(new java.io.File(j).toURI().toURL()))))
-    val messages = new ScalastyleChecker(cl).checkFiles(configuration, Directory.getFiles(mc.inputEncoding, mc.directories.map(new File(_)).toSeq, excludedFiles=mc.excludedFiles))
-
-    // scalastyle:off regex
-    val config = ConfigFactory.load(cl.getOrElse(this.getClass().getClassLoader()))
-    val outputResult = new TextOutput(config, mc.verbose, mc.quiet).output(messages)
-    mc.xmlFile match {
-      case Some(x) => {
-        val encoding = mc.xmlEncoding.getOrElse(codec.charSet).toString
-        XmlOutput.save(config, x, encoding, messages)
-      }
-      case None =>
-    }
-
-    if (!mc.quiet) println("Processed " + outputResult.files + " file(s)")
-    if (!mc.quiet) println("Found " + outputResult.errors + " errors")
-    if (!mc.quiet) println("Found " + outputResult.warnings + " warnings")
-    if (!mc.quiet) println("Finished in " + (now - start) + " ms")
-
-    // scalastyle:on regex
-
-    outputResult.errors > 0 || (mc.warningsaserrors && outputResult.warnings > 0)
-  }
-  
 }
