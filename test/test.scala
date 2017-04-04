@@ -261,7 +261,7 @@ object Main{
     compile("../examples/scalafmt-example")
     compile("../examples/scalariform-example")
     compile("../examples/scalatest-example")
-    compile("../examples/akka-example")
+    compile("../plugins/scalastyle")
     if(slow){
       compile("../examples/scalajs-react-example/js")
       compile("../examples/scalajs-react-example/jvm")
@@ -302,6 +302,13 @@ object Main{
       val res = runCbt("../examples/build-info-example", Seq("run"))
       assert(res.exit0)
       assert(res.out contains "version: 0.1", res.out)
+    }
+
+    {
+      val res = runCbt("../examples/scalastyle", Seq("scalastyle"))
+      assert(!res.exit0)
+      assert(res.err contains "Line contains a tab", res.out ++ "\n" ++ res.err)
+      assert(res.out.isEmpty, res.out ++ "\n" ++ res.err)
     }
 
     {

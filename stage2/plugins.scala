@@ -16,6 +16,7 @@ class plugins( context: Context, scalaVersion: String ) {
   final lazy val scalaJs = plugin( "scalajs" )
   final lazy val scalapb = plugin( "scalapb" )
   final lazy val scalariform = plugin( "scalariform" )
+  final lazy val scalastyle = plugin( "scalastyle" )
   final lazy val sonatypeRelease = plugin( "sonatype-release" )
   final lazy val uberJar = plugin( "uber-jar" )
   final lazy val wartremover = plugin( "wartremover" )
