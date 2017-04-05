@@ -1,7 +1,7 @@
 package cbt_internal
 import cbt._
 import java.net.URL
-trait Shared extends AdvancedScala with SonatypeRelease with SnapshotVersion with GithubPom{
+trait Shared extends AdvancedScala with SonatypeRelease with SnapshotVersion with GithubPom with ScalaXRay{
   override def user = "cvogt"
   override def groupId = "org.cvogt"
   override def organization = Some( Organization( "Jan Christopher Vogt", Some( new URL("http://cvogt.org") ) ) )

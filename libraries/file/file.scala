@@ -69,8 +69,9 @@ trait Module {
     val map = files.sorted.flatMap { base =>
       val b = base.getCanonicalFile.string
       if ( base.isDirectory ) {
-        base.listRecursive.map { f =>
-          f -> f.getCanonicalFile.string.stripPrefix( b ).stripPrefix( File.separator )
+        base.listRecursive.collect {
+          case f if !f.isDirectory =>
+            f -> f.getCanonicalFile.string.stripPrefix( b ).stripPrefix( File.separator )
         }
       } else {
         Seq( base -> base.getName )

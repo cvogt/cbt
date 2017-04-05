@@ -9,4 +9,5 @@ class ports( context: Context, scalaVersion: String ) {
   )
   def mima = dep( "migration-manager" )
   def scalariform = dep( "scalariform" )
+  def scalaXRay = dep( "scala-xray" )
 }
