@@ -7,7 +7,7 @@ class Build(val context: Context) extends PackageJars with AdvancedScala{ outer 
   def groupId = "org.scala-sbt"
 
   private def gitHash =
-    if( scalaVersion.startsWith("2.12") ) "cb66c7aaad618dc072d75f5899d9fdf3e8fde8d8"
+    if( scalaVersion.startsWith("2.12") ) "6484c9e90fae956044653e4dd764d8fdd15ccf99"
     else if( scalaVersion.startsWith("2.11") ) "cb66c7aaad618dc072d75f5899d9fdf3e8fde8d8"
     else if( scalaVersion.startsWith("2.10") ) "1239fa39b5ee8c171af3f9df201497561d749826"
     else throw new Exception( "Unsupported scalaVersion: " + scalaVersion )
