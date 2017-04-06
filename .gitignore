@@ -19,3 +19,5 @@ examples/scalajs-react-example/server/public/generated
 test/simple/src_generated
 examples/scalapb-example/src_generated
 ScalatexGenerated.scala
+.idea/
+*.iml

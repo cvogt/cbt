@@ -2,7 +2,7 @@ package cbt_build.cbt
 import cbt._
 import cbt_internal._
 
-class Build(val context: Context) extends Shared with Scalariform with PublishLocal{
+class Build(val context: Context) extends Shared with Scalariform with PublishLocal with CommandLineOverrides{
   override def name: String = "cbt"
   override def version: String = "0.1"
   override def description: String = "Fast, intuitive Build Tool for Scala"
@@ -24,6 +24,7 @@ class Build(val context: Context) extends Shared with Scalariform with PublishLo
     Seq(
       context.cbtHome / "stage2" / "DirectoryDependency.scala",
       context.cbtHome / "stage2" / "LazyDependency.scala",
+      context.cbtHome / "stage2" / "plugins" / "IntelliJ.scala",
       context.cbtHome / "stage2" / "plugins" / "ScalaTest.scala",
       context.cbtHome / "stage2" / "plugins" / "Scalatex.scala",
       context.cbtHome / "stage2" / "plugins" / "Tut.scala",
