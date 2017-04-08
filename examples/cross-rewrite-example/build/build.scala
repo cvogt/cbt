@@ -6,12 +6,30 @@ import scalafix.util._
 import scalafix.util.TreePatch._
 import scalafix.util.TokenPatch._
 
-class Build(val context: Context) extends BaseBuild{ outer =>
-  override def defaultScalaVersion = "2.11.8"
+class Build(val context: Context) extends BaseBuild with Scalameta { outer =>
+  override def defaultScalaVersion = "2.12.1"
+
+  override def test: Dependency = {
+    new BasicBuild(context) with ScalaTest {
+      override def dependencies = outer +: super.dependencies
+      override def defaultScalaVersion = outer.scalaVersion
+      override def sources = Seq(context.workingDirectory / "test")
+      override def projectDirectory = {
+        val d = outer.projectDirectory / "test"
+        d.mkdirs
+        d
+      }
+    }
+  }
+
+//  case class CrossRewrite(name: String, patches: Seq[Patch], scalaVersion: Option[ScalaVersion], lib: Option[String])
+//
+//  case class AddDependency(dep: MavenDependency)
+//  case class RemoveDependency(dep: MavenDependency)
 
   def versions = Seq[(String, Seq[Patch])](
     scalaVersion -> Seq(),
-    "2.12.1" -> Seq(
+    "2.11.8" -> Seq(
       RemoveGlobalImport(
         importer"scala.concurrent.Future"
       ),
@@ -23,14 +41,19 @@ class Build(val context: Context) extends BaseBuild{ outer =>
   def libs = Seq[(String, MavenDependency, Seq[Patch])](
     (
       "scalaz",
-      ScalaDependency( "org.scalaz", "scalaz-core", "7.2.2" ),
+      MavenDependency( "org.scalaz", "scalaz-core", "7.2.10" ),
       Seq(
+        AddGlobalImport(importer"scalaz._"),
+        Replace(Symbol("_root_.scala.package.Either."), q"\/"),
+        Replace(Symbol("_root_.scala.util.Right."), q"\/-"),
+        RemoveGlobalImport(importer"cats.implicits._")
       )
     ),
     (
       "cats",
-      ScalaDependency( "org.typelevel", "cats", "0.9.0" ),
+      MavenDependency( "org.typelevel", "cats", "0.9.0" ),
       Seq(
+        AddGlobalImport(importer"cats.implicits._")
       )
     )
   )
@@ -45,7 +68,15 @@ class Build(val context: Context) extends BaseBuild{ outer =>
           override def artifactId = "cbt-examples-cross-rewrite-" + label
           override def version = "0.1"
           override def defaultScalaVersion = v
-          override def dependencies = super.dependencies ++ Resolver( mavenCentral ).bind( dep )
+          override def dependencies =
+            super.dependencies ++ Resolver(mavenCentral).bind(
+              // hack because using ScalaDependency in the outer build binds it
+              // to THAT builds initial scalaVersion, which we are overriding
+              // here, but we are looping over libs outside of that, so
+              // the override doesn't affect it
+              // So we use MavenDependency instead and append the id here.
+              dep.copy(artifactId = dep.artifactId + "_" + scalaMajorVersion)
+            )
           override def projectDirectory = d
           override def scaladoc = None
           override def sources = {
