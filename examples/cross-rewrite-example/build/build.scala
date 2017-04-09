@@ -6,8 +6,9 @@ import scalafix.util._
 import scalafix.util.TreePatch._
 import scalafix.util.TokenPatch._
 
-  object DayDreaming {
 
+/*
+  object DayDreaming {
     val imaginaryBaseBuild = BaseBuild(
       context = Context,
       defaultScalaVersion = "2.12.1"
@@ -41,6 +42,7 @@ import scalafix.util.TokenPatch._
     //Over time I would hope to build up a community libraryof rewrites so many of the transforms would be pulled from
     //a library instead of declared in the build
   }
+*/
 
 class Build(val context: Context) extends BaseBuild with Scalameta { outer =>
   override def defaultScalaVersion = "2.12.1"
