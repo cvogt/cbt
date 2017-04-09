@@ -22,6 +22,8 @@ object GitDependency{
       ++ "(" ++ url ++ subDirectory.map("/" ++ _).getOrElse("") ++ "#" ++ ref
       ++ ", "
       ++ subBuild.mkString(", ")
+      ++ ", "
+      ++ context.scalaVersion.toString
       ++ ")"
     )
 

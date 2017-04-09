@@ -132,7 +132,7 @@ trait DependencyImplementation extends Dependency{
   // FIXME: these probably need to update outdated as well
   def classpath: ClassPath = exportedClasspath ++ dependencyClasspath
   def verifyClasspath: Unit = classpath.verify(lib)
-  def dependencyClasspath: ClassPath = taskCache[DependencyImplementation]( "dependencyClasspath" ).memoize{
+  def dependencyClasspath: ClassPath = {
     ClassPath(
       transitiveDependencies
       .flatMap(_.exportedClasspath.files)
