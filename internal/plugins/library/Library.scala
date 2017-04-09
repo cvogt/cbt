@@ -3,7 +3,7 @@ import cbt._
 import java.io._
 import scala.concurrent._
 import scala.concurrent.duration._
-trait Library extends Scalariform with GoogleJavaFormat with DynamicOverrides with AdvancedScala with ScalaXRay{
+trait Library extends Scalariform with GoogleJavaFormat with DynamicOverrides with AdvancedScala {
   def inceptionYear: Int
   def description: String
   def version = ???
