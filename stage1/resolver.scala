@@ -86,7 +86,10 @@ trait DependencyImplementation extends Dependency{
         java_exe.string +: "-cp" +: classpath.string +: className +: args
       )
     } else {
-      lib.getMain( classLoader.loadClass( className ) )( args )
+      val cl = if( !flatClassLoader ) classLoader else {
+        new java.net.URLClassLoader(classpath.strings.map(f => new URL("file://" ++ f)).toArray)
+      }
+      lib.getMain( cl.loadClass( className ) )( args )
     }
   }
 
@@ -109,24 +112,20 @@ trait DependencyImplementation extends Dependency{
   def flatClassLoader: Boolean = false
 
   override def classLoader: ClassLoader = taskCache[DependencyImplementation]( "classLoader" ).memoize{
-    if( flatClassLoader ){
-      new java.net.URLClassLoader(classpath.strings.map(f => new URL("file://" ++ f)).toArray)
-    } else {
-      /*
-      if( concurrencyEnabled ){
-        // trigger concurrent building / downloading dependencies
-        exportClasspathConcurrently
-      }
-      */
-      lib.classLoaderRecursion(
-        this,
-        (this +: transitiveDependencies).collect{
-          case d: ArtifactInfo => d 
-        }.groupBy(
-          d => (d.groupId,d.artifactId)
-        ).mapValues(_.head)
-      )
+    /*
+    if( concurrencyEnabled ){
+      // trigger concurrent building / downloading dependencies
+      exportClasspathConcurrently
     }
+    */
+    lib.classLoaderRecursion(
+      this,
+      (this +: transitiveDependencies).collect{
+        case d: ArtifactInfo => d 
+      }.groupBy(
+        d => (d.groupId,d.artifactId)
+      ).mapValues(_.head)
+    )
   }
 
   // FIXME: these probably need to update outdated as well
