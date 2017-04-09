@@ -21,6 +21,63 @@ class Build(val context: Context) extends BaseBuild with Scalameta { defaultMain
     }
   }
 
+  import CrossRewrite._
+
+  def cross = CrossRewrite.versions.flatMap{ case ( v, version_rewrites ) =>
+    CrossRewrite.libs.map{
+      case ( label, dep, lib_rewrites ) =>
+        val d = defaultMainBuild.target / "rewrites" / label ++ "-" ++ v
+        d.mkdirs
+        new Build(context) with Scalafix with PackageJars{ patchedMainBuild =>
+          override def groupId = "org.cvogt"
+          override def artifactId = "cbt-examples-cross-rewrite-" + label
+          override def version = "0.1"
+          override def defaultScalaVersion = v
+          override def dependencies =
+            super.dependencies ++ Resolver(mavenCentral).bind(
+              // hack because using ScalaDependency in the outer build binds it
+              // to THAT builds initial scalaVersion, which we are overriding
+              // here, but we are looping over libs outside of that, so
+              // the override doesn't affect it
+              // So we use MavenDependency instead and append the id here.
+              dep.copy(artifactId = dep.artifactId + "_" + scalaMajorVersion)
+            )
+          override def projectDirectory = d
+          override def scaladoc = None
+          override def sources = CrossRewrite.patchesSources(
+            defaultMainBuild.sources,
+            projectDirectory / "src",
+            defaultMainBuild.classpath,
+            lib_rewrites ++ version_rewrites,
+            lib
+          )
+
+          override def test = {
+            new BasicBuild( context ) with ScalaTest { patchedTestBuild =>
+              override def defaultScalaVersion = v
+              override def projectDirectory = {
+                val dt = defaultMainBuild.projectDirectory / "test"
+                dt.mkdirs
+                dt
+              }
+              override def dependencies = patchedMainBuild +: super.dependencies
+              override def target = super.target / v ~ "-" ~ label
+
+              override def sources = CrossRewrite.patchesSources(
+                defaultMainBuild.test.sources,
+                target / "src",
+                defaultMainBuild.test.classpath,
+                lib_rewrites ++ version_rewrites,
+                lib
+              )
+            }
+          }
+        }
+    }
+  }
+}
+
+object CrossRewrite{
   def versions = Seq[(String, Seq[Patch])](
     "2.12.1" -> Seq(),
     "2.11.8" -> Seq(
@@ -52,78 +109,28 @@ class Build(val context: Context) extends BaseBuild with Scalameta { defaultMain
     )
   )
 
-  def cross = versions.flatMap{ case ( v, version_rewrites ) =>
-    libs.map{
-      case ( label, dep, lib_rewrites ) =>
-        val d = defaultMainBuild.target / "rewrites" / label ++ "-" ++ v
-        d.mkdirs
-        new Build(context) with Scalafix with PackageJars{ patchedMainBuild =>
-          override def groupId = "org.cvogt"
-          override def artifactId = "cbt-examples-cross-rewrite-" + label
-          override def version = "0.1"
-          override def defaultScalaVersion = v
-          override def dependencies =
-            super.dependencies ++ Resolver(mavenCentral).bind(
-              // hack because using ScalaDependency in the outer build binds it
-              // to THAT builds initial scalaVersion, which we are overriding
-              // here, but we are looping over libs outside of that, so
-              // the override doesn't affect it
-              // So we use MavenDependency instead and append the id here.
-              dep.copy(artifactId = dep.artifactId + "_" + scalaMajorVersion)
-            )
-          override def projectDirectory = d
-          override def scaladoc = None
-          override def sources = {
-            val fromTo = lib.autoRelative( defaultMainBuild.sources ).collect{
-              case (location, relative) if location.isFile
-              => location -> projectDirectory / "src" / relative
-            }
-
-            val to = fromTo.map(_._2)
-            assert( ( to diff to.distinct ).isEmpty )
-
-            Scalafix.apply(lib).config(
-              defaultMainBuild.classpath,
-              files = fromTo,
-              patches = lib_rewrites ++ version_rewrites,
-              allowEmpty = true
-            ).apply
-
-            to
-          }
-
-          override def test = {
-            new BasicBuild( context ) with ScalaTest { patchedTestBuild =>
-              override def defaultScalaVersion = v
-              override def projectDirectory = {
-                val dt = defaultMainBuild.projectDirectory / "test"
-                dt.mkdirs
-                dt
-              }
-              override def dependencies = patchedMainBuild +: super.dependencies
-              override def target = super.target / v ~ "-" ~ label
-
-              override def sources = {
-                val fromTo = lib.autoRelative( defaultMainBuild.test.sources ).collect{
-                  case (location, relative) if location.isFile
-                  => location -> target / "src" / relative
-                }
-
-                val to = fromTo.map(_._2)
-                assert( ( to diff to.distinct ).isEmpty )
-
-                Scalafix.apply(lib).config(
-                  defaultMainBuild.test.classpath,
-                  files = fromTo,
-                  patches = lib_rewrites ++ version_rewrites,
-                  allowEmpty = true
-                ).apply
-
-                to
-              }
-            }
-          }
-        }
+  def patchesSources(
+    sources: Seq[File],
+    destination: File,
+    semanticDbClassPath: ClassPath,
+    patches: Seq[Patch],
+    lib: Lib
+  ) = {
+    val fromTo = lib.autoRelative( sources ).collect{
+      case (location, relative) if location.isFile
+      => location -> destination / relative
     }
+
+    val to = fromTo.map(_._2)
+    assert( ( to diff to.distinct ).isEmpty )
+
+    Scalafix.apply(lib).config(
+      semanticDbClassPath,
+      files = fromTo,
+      patches = patches,
+      allowEmpty = true
+    ).apply
+
+    to
   }
 }
