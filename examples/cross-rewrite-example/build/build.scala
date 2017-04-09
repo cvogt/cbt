@@ -43,18 +43,15 @@ import scalafix.util.TokenPatch._
     //a library instead of declared in the build
   }
 */
+class Build(val context: Context) extends BaseBuild with Scalameta { defaultMainBuild =>
+  override def defaultScalaVersion: String = "2.12.1"
 
-class Build(val context: Context) extends BaseBuild with Scalameta { outer =>
-  override def defaultScalaVersion = "2.12.1"
-
-  override def test: Dependency = {
+  override def test: BasicBuild = {
     new BasicBuild(context) with ScalaTest {
-      def apply = run
-      override def dependencies = outer +: super.dependencies
-      override def defaultScalaVersion = outer.scalaVersion
-      override def sources = Seq(context.workingDirectory / "test")
+      override def dependencies = defaultMainBuild +: super.dependencies
+      override def defaultScalaVersion = defaultMainBuild.scalaVersion
       override def projectDirectory = {
-        val d = outer.projectDirectory / "test"
+        val d = defaultMainBuild.projectDirectory / "test"
         d.mkdirs
         d
       }
@@ -100,7 +97,7 @@ class Build(val context: Context) extends BaseBuild with Scalameta { outer =>
   def cross = versions.flatMap{ case ( v, version_rewrites ) =>
     libs.map{
       case ( label, dep, lib_rewrites ) =>
-        val d = outer.target / "rewrites" / label ++ "-" ++ v
+        val d = defaultMainBuild.target / "rewrites" / label ++ "-" ++ v
         d.mkdirs
         new Build(context) with Scalafix with PackageJars{
           override def groupId = "org.cvogt"
@@ -119,7 +116,7 @@ class Build(val context: Context) extends BaseBuild with Scalameta { outer =>
           override def projectDirectory = d
           override def scaladoc = None
           override def sources = {
-            val fromTo = lib.autoRelative( outer.sources ).collect{
+            val fromTo = lib.autoRelative( defaultMainBuild.sources ).collect{
               case (location, relative) if location.isFile
               => location -> projectDirectory / "src" / relative
             }
@@ -128,7 +125,7 @@ class Build(val context: Context) extends BaseBuild with Scalameta { outer =>
             assert( ( to diff to.distinct ).isEmpty )
 
             Scalafix.apply(lib).config(
-              outer.classpath,
+              defaultMainBuild.classpath,
               files = fromTo,
               patches = lib_rewrites ++ version_rewrites,
               allowEmpty = true
@@ -142,17 +139,17 @@ class Build(val context: Context) extends BaseBuild with Scalameta { outer =>
             new BasicBuild( context.copy(workingDirectory = testDirectory) ) with ScalaTest {
 //              def apply = run
 
-              override def dependencies = outer +: super.dependencies
 
               override def defaultScalaVersion = v
 
               override def sources = Seq(context.workingDirectory / "test")
 
               override def projectDirectory = {
-                val d = outer.projectDirectory / "test"
-                d.mkdirs
-                d
+                val dt = defaultMainBuild.projectDirectory / "test"
+                dt.mkdirs
+                dt
               }
+              override def dependencies = patchedMainBuild +: super.dependencies
             }
           }
 
