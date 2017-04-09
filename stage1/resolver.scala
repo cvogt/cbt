@@ -369,7 +369,13 @@ case class BoundMavenDependency(
           cbtLastModified, mavenCache ++ basePath(true) ++ ".pom.dependencies", classLoaderCache.hashMap
         )( MavenDependency.deserialize )( _.serialize )( MavenDependency.dejavafy )( _.map(_.javafy).toArray ){
           (pomXml \ "dependencies" \ "dependency").collect{
-          case xml if ( (xml \ "scope").text == "" || (xml \ "scope").text == "compile" ) && (xml \ "optional").text != "true" =>
+          case xml if (
+            (xml \ "scope").text == ""
+             // these are probably not right like this, but should be better than not having them for now
+            || (xml \ "scope").text == "runtime"
+            || (xml \ "scope").text == "compile"
+            || (xml \ "scope").text == "provided"
+          ) && (xml \ "optional").text != "true" =>
               val artifactId = lookup(xml,_ \ "artifactId").get
               val groupId =
                 lookup(xml,_ \ "groupId").getOrElse(
