@@ -1,4 +1,3 @@
-import collection.mutable.Stack
 import org.scalatest._
 
 class Test extends FunSpec with Matchers {
