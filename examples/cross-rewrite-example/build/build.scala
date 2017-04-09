@@ -64,7 +64,7 @@ class Build(val context: Context) extends BaseBuild with Scalameta { defaultMain
 //  case class RemoveDependency(dep: MavenDependency)
 
   def versions = Seq[(String, Seq[Patch])](
-//    scalaVersion -> Seq(),
+    "2.12.1" -> Seq(),
     "2.11.8" -> Seq(
       RemoveGlobalImport(
         importer"scala.concurrent.Future"
@@ -99,7 +99,7 @@ class Build(val context: Context) extends BaseBuild with Scalameta { defaultMain
       case ( label, dep, lib_rewrites ) =>
         val d = defaultMainBuild.target / "rewrites" / label ++ "-" ++ v
         d.mkdirs
-        new Build(context) with Scalafix with PackageJars{
+        new Build(context) with Scalafix with PackageJars{ patchedMainBuild =>
           override def groupId = "org.cvogt"
           override def artifactId = "cbt-examples-cross-rewrite-" + label
           override def version = "0.1"
@@ -134,50 +134,37 @@ class Build(val context: Context) extends BaseBuild with Scalameta { defaultMain
             to
           }
 
-          override def test: Dependency = {
-            val testDirectory = projectDirectory / "test"
-            new BasicBuild( context.copy(workingDirectory = testDirectory) ) with ScalaTest {
-//              def apply = run
-
-
+          override def test = {
+            new BasicBuild( context ) with ScalaTest { patchedTestBuild =>
               override def defaultScalaVersion = v
-
-              override def sources = Seq(context.workingDirectory / "test")
-
               override def projectDirectory = {
                 val dt = defaultMainBuild.projectDirectory / "test"
                 dt.mkdirs
                 dt
               }
               override def dependencies = patchedMainBuild +: super.dependencies
+              override def target = super.target / v ~ "-" ~ label
+
+              override def sources = {
+                val fromTo = lib.autoRelative( defaultMainBuild.test.sources ).collect{
+                  case (location, relative) if location.isFile
+                  => location -> target / "src" / relative
+                }
+
+                val to = fromTo.map(_._2)
+                assert( ( to diff to.distinct ).isEmpty )
+
+                Scalafix.apply(lib).config(
+                  defaultMainBuild.test.classpath,
+                  files = fromTo,
+                  patches = lib_rewrites ++ version_rewrites,
+                  allowEmpty = true
+                ).apply
+
+                to
+              }
             }
           }
-
-//          with
-//          {
-//            override def sources
-//
-//            =
-//            {
-//              val fromTo = lib.autoRelative(outer.sources).collect {
-//                case (location, relative) if location.isFile
-//                => location -> projectDirectory / "src" / relative
-//              }
-//
-//              val to = fromTo.map(_._2)
-//              assert((to diff to.distinct).isEmpty)
-//
-//              Scalafix.apply(lib).config(
-//                outer.classpath,
-//                files = fromTo,
-//                patches = lib_rewrites ++ version_rewrites,
-//                allowEmpty = true
-//              ).apply
-//
-//              to
-//            }
-//          }
-
         }
     }
   }
