@@ -41,11 +41,11 @@ object Scalapb{
       def apply = {
         output.mkdirs
         val protoFiles = input.listRecursive.filter(_.isFile).map(_.string).toArray
-        Seq(
-          javaConversions.option("javaConversions"),
+        val options = Seq(
+          javaConversions.option("java_conversions"),
           grpc.option("grpc"),
-          singleLineToString.option("singleLineToString"),
-          flatPackage.option("flatPackage")
+          singleLineToString.option("single_line_to_string"),
+          flatPackage.option("flat_package")
         ).flatten.mkString(",")
         import _root_.protocbridge.frontend.PluginFrontend
         val pluginFrontend: PluginFrontend = PluginFrontend.newInstance()
@@ -57,7 +57,7 @@ object Scalapb{
                 Array(
                   "-" ++ version.getClass.getSimpleName.stripSuffix("$"),
                   "-I=" ++ input.string,
-                  "--scala_out=" ++ output.string,
+                  s"--scala_out=$options:" ++ output.string,
                   s"--plugin=protoc-gen-scala=${scriptPath}"
                 ) ++ protoFiles
               )
