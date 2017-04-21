@@ -25,7 +25,7 @@ class ContextImplementation(
   @deprecated("this method is replaced by start","")
   def startCompat = start
   @deprecated("this methods is replaced by persistentCache","")
-  def permanentKeys = throw new IncompatibleCbtVersionException("You need to upgrade your CBT version in this module. The Context field permanentClassLoaders is no longer supported.");
+  def permanentKeys = throw new IncompatibleCbtVersionException("You need to upgrade your CBT version in this module. The Context field permanentKeys is no longer supported.");
   @deprecated("this methods is replaced by persistentCache","")
   def permanentClassLoaders = throw new IncompatibleCbtVersionException("You need to upgrade your CBT version in this module. The Context field permanentClassLoaders is no longer supported.");
 }
