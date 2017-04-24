@@ -287,7 +287,7 @@ $ cbt eval '1 + 1'
 $ cbt eval scalaVersion
 2.11.8
 
-$ cbt eval 'sources.strings.mkString(":")'
+$ cbt eval 'sources.map(_.string).mkString(":")'
 /a/b/c:/d/e/f
 ```
 
