@@ -26,6 +26,7 @@ class ToolsTasks(
   def gui = NailgunLauncher.main(Array(
     "0.0",
     (cbtHome / "tools" / "gui").getAbsolutePath,
+    "0",
     "run",
     cwd.getAbsolutePath,
     constants.scalaMajorVersion
