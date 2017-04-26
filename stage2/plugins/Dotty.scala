@@ -4,22 +4,29 @@ import java.net.URL
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
-trait Dotty extends BaseBuild{
+trait Dotty extends CustomDotty{
   def dottyVersion: String = Dotty.version
-  def dottyOptions: Seq[String] = Seq()
-  override def scalaTarget: File = target ++ s"/dotty-$dottyVersion"
-
   def dottyCompiler: DependencyImplementation = Resolver(mavenCentral).bindOne( Dotty.compilerOnMaven( dottyVersion ) )
   def dottyLibrary: DependencyImplementation = Resolver(mavenCentral).bindOne( Dotty.libraryOnMaven( dottyVersion ) )
+  override def scalaTarget: File = target ++ s"/dotty-$dottyVersion"
 
   // this seems needed for cbt run of dotty produced artifacts
-  override def dependencies: Seq[Dependency] = Seq( dottyLibrary )
+  override def dependencies: Seq[Dependency] = Seq( dottyCompiler )
+}
+trait CustomDotty extends BaseBuild{
+  def dottyOptions: Seq[String] = Seq()
+  override def scalaTarget: File = target ++ s"/dotty"
+
+  def dottyCompiler: DependencyImplementation
+  def dottyLibrary: DependencyImplementation
 
   private lazy val dottyLib = new DottyLib(
     context.cbtLastModified, context.paths.mavenCache, dottyCompiler
   )
 
   def compileJavaFirst: Boolean = false
+
+  override def dependencies: Seq[Dependency] = Seq()
 
   // this makes sure the scala or java classes compiled first are available on subsequent compile
   override def compileDependencies: Seq[Dependency]
@@ -28,9 +35,10 @@ trait Dotty extends BaseBuild{
   override def compile: Option[Long] = taskCache[Dotty]("compile").memoize{
     def compileDotty =
       dottyLib.compile(
-        sourceFiles.filter(_.string.endsWith(".scala")),
+        sourceFiles.filter(f => f.string.endsWith(".scala") || f.string.endsWith(".java")),
         compileTarget, compileStatusFile, compileDependencies, dottyOptions
       )
+
     def compileJava =
       lib.compile(
         context.cbtLastModified,
@@ -124,7 +132,7 @@ class DottyLib(
     dependencies: Seq[Dependency],
     dottyOptions: Seq[String]
   ): Option[Long] = {
-    val d = Dependencies(dependencies)
+    val d = Dependencies( dependencies )
     val classpath = d.classpath
     val cp = classpath.string
 
@@ -150,11 +158,30 @@ class DottyLib(
             System.err.println("Compiling with Dotty to " ++ compileTarget.toString)
             compileTarget.mkdirs
             redirectOutToErr{
+              /*
+              println(
+                s"""
+------------------------------
+java -cp \\
+${dottyCompiler.classpath.strings.mkString(":\\\n")} \\
+\\
+${_class} \\
+\\
+${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
+\\
+${singleArgs.mkString(" \\\n")} \\
+\\
+${sourceFiles.sorted.mkString(" \\\n")}
+------------------------------
+"""
+              )
+              */
+
               dottyCompiler.runMain(
                 _class,
-                dualArgs ++ singleArgs ++ Seq(
-                  "-bootclasspath", dottyCompiler.classpath.string
-                ) ++ (
+                dualArgs ++ singleArgs ++ /* Seq(
+                  "-bootclasspath", dottyCompiler.exportedClasspath.string
+                ) ++*/ (
                   if(cp.isEmpty) Nil else Seq("-classpath", cp) // let's put cp last. It so long
                 ) ++ sourceFiles.map(_.toString)
               )
@@ -172,10 +199,6 @@ ${_class} \\
 ${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
 \\
 ${singleArgs.mkString(" \\\n")} \\
-\\
--bootclasspath \\
-${dottyCompiler.classpath.strings.mkString(":\\\n")} \\
-${if(cp.isEmpty) "" else ("  -classpath \\\n" ++ classpath.strings.mkString(":\\\n"))} \\
 \\
 ${sourceFiles.sorted.mkString(" \\\n")}
 
