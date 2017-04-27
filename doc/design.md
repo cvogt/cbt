@@ -17,7 +17,7 @@ graph is what you do with sbt andso with CBT via inheritance/overrides.
 
 This was also discussed in gitter here: https://gitter.im/cvogt/cbt?at=58a95663de50490822e869e5
 
-Taking a graph an contrinuously patching it can be confusing, which is
+Taking a graph and continuously patching it can be confusing, which is
 why inheritance is confusing. You can even build non-terminating call
 cycles. CBT's logic is not coupled to the inheritance layer. You can
 write CBT builds without inheritance. They require a bit more code, but
@@ -28,7 +28,7 @@ may end up easier to maintain and understand.
 In CBT build tasks are methods. Task can depend on each
 other by invoking each other. E.g. `package` is a method that invokes `compile`.
 Build tasks can fail. By convention, if a task fails it is expected to throw
-an Exception in order to also abort the execution of dependent tasks. When
+an exception in order to also abort the execution of dependent tasks. When
 `compile` finds compile errors it throws an exception and thereby also
 drops out of the `package` execution pth. CBT catches and handles the
 exception and returns control back to the user.
@@ -36,7 +36,7 @@ exception and returns control back to the user.
 This design was chosen for simplicity and because build code lives in a
 world with exceptions anyways as a lot of it is directly or indirectly
 using java libraries. We might reconsider this design at some point. Or not.
-The hope is that Exceptions are without major drawbacks and more
+The hope is that exceptions are without major drawbacks and more
 approachable to newcomers than monadic error handling, which would require
 wrapper types and value composition via .map and for-expressions. Not using
 a Monad however also means that CBT cannot reason about task composition
