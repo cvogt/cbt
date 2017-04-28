@@ -18,7 +18,6 @@ trait CustomDotty extends BaseBuild{
   override def scalaTarget: File = target ++ s"/dotty"
 
   def dottyCompiler: DependencyImplementation
-  def dottyLibrary: DependencyImplementation
 
   private lazy val dottyLib = new DottyLib(
     context.cbtLastModified, context.paths.mavenCache, dottyCompiler
@@ -29,8 +28,8 @@ trait CustomDotty extends BaseBuild{
   override def dependencies: Seq[Dependency] = Seq()
 
   // this makes sure the scala or java classes compiled first are available on subsequent compile
-  override def compileDependencies: Seq[Dependency]
-    = super.compileDependencies ++ Seq( compileTarget ).filter(_.exists).map( t => BinaryDependency( Seq(t), Nil ) )
+  //override def compileDependencies: Seq[Dependency]
+  //  = super.compileDependencies //++ Seq( compileTarget ).filter(_.exists).map( t => BinaryDependency( Seq(t), Nil ) )
 
   override def compile: Option[Long] = taskCache[Dotty]("compile").memoize{
     def compileDotty =
@@ -158,7 +157,6 @@ class DottyLib(
             System.err.println("Compiling with Dotty to " ++ compileTarget.toString)
             compileTarget.mkdirs
             redirectOutToErr{
-              /*
               println(
                 s"""
 ------------------------------
@@ -171,18 +169,22 @@ ${dualArgs.grouped(2).map(_.mkString(" ")).mkString(" \\\n")} \\
 \\
 ${singleArgs.mkString(" \\\n")} \\
 \\
+${if(cp.isEmpty) "" else Seq("-classpath", cp).mkString("\n\n")}
+\\
 ${sourceFiles.sorted.mkString(" \\\n")}
 ------------------------------
 """
               )
-              */
 
               dottyCompiler.runMain(
                 _class,
                 dualArgs ++ singleArgs ++ /* Seq(
                   "-bootclasspath", dottyCompiler.exportedClasspath.string
                 ) ++*/ (
-                  if(cp.isEmpty) Nil else Seq("-classpath", cp) // let's put cp last. It so long
+                  if(cp.isEmpty) Nil else Seq("-classpath", cp)
+                    //":/Users/fixel/Projects/dotty/library/target/hack") // let's put cp last. It so long
+                ) ++ Seq(
+                  "-sourcepath", "/Users/fixel/Projects/dotty/library/src"
                 ) ++ sourceFiles.map(_.toString)
               )
             }
