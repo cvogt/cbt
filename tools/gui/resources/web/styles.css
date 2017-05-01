@@ -149,6 +149,19 @@ button, .entry {
   cursor: pointer;
 }
 
+#notifications {
+  position: absolute;
+  top: 1em;
+  left: 1em;
+  width: 20%;
+  max-height: 30%;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 0 0.2em;
+  font-size: 0.5em;
+  overflow-y: auto;
+  word-wrap: break-word;
+}
+
 #popup {
   position: fixed;
   left: 0;

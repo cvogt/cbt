@@ -1,4 +1,4 @@
-Notifications.init();
+Notifications.init($("#notifications"));
 
 Popup.init($("#popup"), $("#popup-table"));
 
@@ -35,7 +35,7 @@ function createProject() {
     dependencies: Dependencies.serialize(),
     flags: getFlags()
   }, "post").done(() => {
-    Notifications.show("Done.");
+    Notifications.show("Project created.");
   }).always(() => {
     button.innerHTML = buttonText;
     button.disabled = false;
@@ -65,7 +65,7 @@ function copyProject() {
   button.blur();
   button.disabled = true;
   ajax("/project/copy", {name: name}, "post").done(() => {
-    Notifications.show("Done.");
+    Notifications.show("Project copied.");
   }).always(() => {
     button.innerHTML = buttonText;
     button.disabled = false;

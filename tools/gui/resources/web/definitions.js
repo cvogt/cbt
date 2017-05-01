@@ -53,12 +53,15 @@ let Popup = {
 };
 
 let Notifications = {
-  init: function () {
-    Notification.requestPermission();
+  init: function (container) {
+    this._container = container;
   },
 
   show: function (text, title) {
-    new Notification(title || "", {body: text});
+    let now = new Date();
+    this._container.html(this._container.html() + now.getHours() + ":" + now.getMinutes() + ":" + now.getSeconds() +
+        " <b>" + (title || "") + "</b><br>" + text + "<br><br>");
+    this._container.animate({scrollTop: this._container[0].scrollHeight}, {duration: 500, queue: false});
   },
 
   showFail: function (e) {
