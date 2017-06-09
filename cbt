@@ -145,7 +145,7 @@ JAVA_OPTS_CBT=($DEBUG -Xmx1536m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+Tiere
 
 # ng on osx, install via brew install nailgun
 # ng-nailgun on unbuntu, install via apt-get install nailgun
-NG_EXECUTABLE=$(which ng || env which ng-nailgun)
+NG_EXECUTABLE=$(which ng 2>/dev/null|| env which ng-nailgun 2>/dev/null)
 
 # on osx, install via brew install nailgun, /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar
 # on unbuntu, install via apt-get install nailgun, /usr/share/java/nailgun.jar
@@ -157,7 +157,7 @@ NG_SERVER_JAR=$( \
 )
 
 nailgun_installed=0
-if [ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER_JAR" == "" ]; then
+if ([ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER_JAR" == "" ]) && [ "$1" != "direct" ]; then
 	nailgun_installed=1
 	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun' or 'apt-get install nailgun'.)" 1>&2
 fi
