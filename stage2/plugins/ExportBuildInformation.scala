@@ -15,7 +15,8 @@ object BuildInformation {
   case class Project(name: String,
              root: File,
              rootModule: Module,
-             modules: Seq[Module]) 
+             modules: Seq[Module],
+             libraries: Seq[Library]) 
 
   case class Module(name: String,
             root: File,
@@ -23,13 +24,16 @@ object BuildInformation {
             sources: Seq[File],
             mavenDependencies: Seq[MavenDependency],
             moduleDependencies: Seq[ModuleDependency],
+            targetLibraries: Seq[TargetLibrary],
             parentBuild: Option[String])
 
-  case class MavenDependency(groupId: String,
-            artifactId: String,
-            version: String)
+  case class Library(name: String) 
+
+  case class MavenDependency(name: String)
 
   case class ModuleDependency(name: String)
+
+  case class TargetLibrary(path: File)
 
   object Project {
     def apply(build: BaseBuild) =   
@@ -38,16 +42,20 @@ object BuildInformation {
     private class BuildInformationExporter(rootBuild: BaseBuild) {
       def exportBuildInformation(): Project = {
         val rootModule = exportModule(rootBuild)
-        val otherModules = rootBuild.transitiveDependencies
+        val modules = (rootBuild +: rootBuild.transitiveDependencies)
           .collect { case d: BaseBuild => d +: collectParentBuilds(d)}
           .flatten
           .map(exportModule)
           .distinct
-   
+        val libraries = rootBuild.transitiveDependencies
+          .collect { case d: BoundMavenDependency => Library(fomatMavenDependency(d.mavenDependency))}
+          .distinct
+       
         Project(rootModule.name,
             rootModule.root,
             rootModule,
-            rootModule +: otherModules)
+            modules,
+            libraries)
       }
 
       private def collectParentBuilds(build: BaseBuild): Seq[BaseBuild] = 
@@ -56,21 +64,27 @@ object BuildInformation {
             .map(b => b +: collectParentBuilds(b))
             .toSeq
             .flatten
-      
+
       private def exportModule(build: BaseBuild): Module = {
         val moduleDependencies = build.dependencies
           .collect { case d: BaseBuild => ModuleDependency(moduleName(d)) }
         val mavenDependencies = build.dependencies
-          .collect { case d: BoundMavenDependency => MavenDependency(d.groupId, d.artifactId, d.version)}
-
+          .collect { case d: BoundMavenDependency => MavenDependency(fomatMavenDependency(d.mavenDependency))}
+        val targetLibraries = build.dependencyClasspath.files
+          .filter(_.isFile)
+          .map(t => TargetLibrary(t))
         Module(moduleName(build),
             build.projectDirectory,
             build.projectDirectory,
             build.sources.filter(_.exists),
             mavenDependencies,
             moduleDependencies,
+            targetLibraries,
             build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild])))    
       }
+
+      private def fomatMavenDependency(dependency: cbt.MavenDependency) =
+        s"${dependency.groupId}:${dependency.artifactId}:${dependency.version}"
 
       private def moduleName(build: BaseBuild) = 
           if (rootBuild.projectDirectory == build.projectDirectory)
@@ -93,6 +107,9 @@ object BuildInformationSerializer {
       <modules>
         {project.modules.map(serialize)}
       </modules>
+      <libraries>
+        {project.libraries.map(serialize)}
+      </libraries>
     </project>
 
   private def serialize(module: BuildInformation.Module): Node = 
@@ -109,14 +126,21 @@ object BuildInformationSerializer {
       <moduleDependencies>
         {module.moduleDependencies.map(serialize)}
       </moduleDependencies>
+      <targetLibraries>
+        {module.targetLibraries.map(serialize)}
+      </targetLibraries>
       {module.parentBuild.map(p => <parentBuild>{p}</parentBuild>).getOrElse(NodeSeq.Empty)}
     </module>
 
   private def serialize(mavenDependency: BuildInformation.MavenDependency): Node = 
-    <mavenDependency>
-      {s"${mavenDependency.groupId}:${mavenDependency.artifactId}:${mavenDependency.version}"}
-    </mavenDependency>
+    <mavenDependency>{mavenDependency.name}</mavenDependency>
+
+  private def serialize(library: BuildInformation.Library): Node = 
+    <library>{library.name}</library>
 
   private def serialize(moduleDependency: BuildInformation.ModuleDependency): Node = 
     <moduleDependency>{moduleDependency.name}</moduleDependency>
+
+  private def serialize(targetLibrary: BuildInformation.TargetLibrary): Node = 
+    <targetLibrary>{targetLibrary.path.toString}</targetLibrary>
 }
