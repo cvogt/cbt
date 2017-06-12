@@ -422,6 +422,12 @@ object Main{
     }
 
     {
+      val res = runCbt("../examples/macroparadise-example", Seq("run"))
+      assert(res.exit0)
+      assert(res.out.contains("hello, world!"), res.out)
+    }
+
+    {
       val res = runCbt("../examples/resources-example", Seq("run"))
       assert(res.exit0)
       assert(res.out.contains("via parent.parent: false 0"), res.out)
