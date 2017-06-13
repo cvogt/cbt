@@ -1,10 +1,10 @@
 package cbt
-trait ScalaParadise extends BaseBuild{
-  def scalaParadiseVersion = "2.1.0"
+trait OldStyleMacros extends BaseBuild{
+  def oldStyleMacrosVersion = "2.1.0"
 
   private def scalaParadiseDependency =
     Resolver( mavenCentral ).bindOne(
-      "org.scalamacros" % ("paradise_" ++ scalaVersion) % scalaParadiseVersion
+      "org.scalamacros" % ("paradise_" ++ scalaVersion) % oldStyleMacrosVersion
     )
 
   override def dependencies = (

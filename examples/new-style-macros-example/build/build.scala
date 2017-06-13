@@ -1,7 +1,7 @@
 package macroparadise_example_build
 import cbt._
 
-trait SharedSettings extends Macroparadise{
+trait SharedSettings extends NewStyleMacros{
   override def defaultScalaVersion = "2.12.2"
 }
 

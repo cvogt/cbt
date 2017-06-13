@@ -422,7 +422,7 @@ object Main{
     }
 
     {
-      val res = runCbt("../examples/macroparadise-example", Seq("run"))
+      val res = runCbt("../examples/new-style-macros-example", Seq("run"))
       assert(res.exit0)
       assert(res.out.contains("hello, world!"), res.out)
     }
