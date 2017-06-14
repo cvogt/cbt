@@ -35,8 +35,15 @@ object Main{
       val p = pb.start
       val out = new java.io.InputStreamReader(p.getInputStream)
       val errors = Iterator.continually(out.read).takeWhile(_ != -1).map(_.toChar).mkString
-      if( p.waitFor != 0 ){
-        throw new Exception("Linting error in ./cbt bash launcher script:\n" + errors)
+      p.waitFor() match {
+        case 0 =>
+          ()
+
+        case 127 => // bash exit code: not found
+          System.err.println( "Shellcheck not found. Your build may fail during ci-build" )
+
+        case _ =>
+          throw new Exception( "Linting error in ./cbt bash launcher script:\n" + errors )
       }
     } else System.err.println( "Skipping shellcheck" )
 
@@ -419,6 +426,12 @@ object Main{
       val res = runCbt("../libraries/eval", Seq("test.run"))
       assert(res.exit0)
       assert(res.out.contains("All tests passed"), res.out)
+    }
+
+    {
+      val res = runCbt("../examples/new-style-macros-example", Seq("run"))
+      assert(res.exit0)
+      assert(res.out.contains("hello, world!"), res.out)
     }
 
     {

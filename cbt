@@ -141,7 +141,7 @@ if [ ! "$DEBUG" == "" ]; then
 	shift
 fi
 
-JAVA_OPTS_CBT=($DEBUG -Xmx1536m -Xss10M -XX:MaxJavaStackTraceDepth=-1 -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xverify:none)
+JAVA_OPTS_CBT=($DEBUG -Xmx1536m -Xss10M "-XX:MaxJavaStackTraceDepth=-1" -XX:+TieredCompilation "-XX:TieredStopAtLevel=1" -Xverify:none)
 
 # ng on osx, install via brew install nailgun
 # ng-nailgun on unbuntu, install via apt-get install nailgun
