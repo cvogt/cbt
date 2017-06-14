@@ -12,28 +12,32 @@ trait ExportBuildInformation { self: BaseBuild =>
 }
 
 object BuildInformation {
-  case class Project(name: String,
-             root: File,
-             rootModule: Module,
-             modules: Seq[Module],
-             libraries: Seq[Library]) 
+  case class Project(
+    name: String,
+    root: File,
+    rootModule: Module,
+    modules: Seq[Module],
+    libraries: Seq[Library]
+  )
 
-  case class Module(name: String,
-            root: File,
-            sources: Seq[File],
-            target: File,
-            mavenDependencies: Seq[MavenDependency],
-            moduleDependencies: Seq[ModuleDependency],
-            classpaths: Seq[ClassPathItem],
-            parentBuild: Option[String])
+  case class Module(
+    name: String,
+    root: File,
+    sources: Seq[File],
+    target: File,
+    mavenDependencies: Seq[MavenDependency],
+    moduleDependencies: Seq[ModuleDependency],
+    classpaths: Seq[ClassPathItem],
+    parentBuild: Option[String]
+  )
 
-  case class Library(name: String, jars: Seq[File]) 
+  case class Library( name: String, jars: Seq[File] )
 
-  case class MavenDependency(name: String)
+  case class MavenDependency( name: String )
 
-  case class ModuleDependency(name: String)
+  case class ModuleDependency( name: String )
 
-  case class ClassPathItem(path: File)
+  case class ClassPathItem( path: File )
 
   object Project {
     def apply(build: BaseBuild) =   
@@ -51,11 +55,13 @@ object BuildInformation {
           .collect { case d: BoundMavenDependency => exportLibrary(d)}
           .distinct
        
-        Project(rootModule.name,
-            rootModule.root,
-            rootModule,
-            modules,
-            libraries)
+        Project(
+          rootModule.name,
+          rootModule.root,
+          rootModule,
+          modules,
+          libraries
+        )
       }
 
       private def exportLibrary(mavenDependency: BoundMavenDependency) = 
@@ -84,14 +90,16 @@ object BuildInformation {
           else
             s
         }
-        Module(name = moduleName(build),
-            root = build.projectDirectory,
-            sources = sources,
-            target = build.target,
-            mavenDependencies = mavenDependencies,
-            moduleDependencies = moduleDependencies,
-            classpaths = classpaths,
-            parentBuild = build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild])))    
+        Module(
+          name = moduleName(build),
+          root = build.projectDirectory,
+          sources = sources,
+          target = build.target,
+          mavenDependencies = mavenDependencies,
+          moduleDependencies = moduleDependencies,
+          classpaths = classpaths,
+          parentBuild = build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild]))
+        )
       }
 
       private def fomatMavenDependency(dependency: cbt.MavenDependency) =
