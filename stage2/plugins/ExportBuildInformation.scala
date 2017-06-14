@@ -20,20 +20,20 @@ object BuildInformation {
 
   case class Module(name: String,
             root: File,
-            sourcesRoot: File,
             sources: Seq[File],
+            target: File,
             mavenDependencies: Seq[MavenDependency],
             moduleDependencies: Seq[ModuleDependency],
-            targetLibraries: Seq[TargetLibrary],
+            classpaths: Seq[ClassPathItem],
             parentBuild: Option[String])
 
-  case class Library(name: String) 
+  case class Library(name: String, jars: Seq[File]) 
 
   case class MavenDependency(name: String)
 
   case class ModuleDependency(name: String)
 
-  case class TargetLibrary(path: File)
+  case class ClassPathItem(path: File)
 
   object Project {
     def apply(build: BaseBuild) =   
@@ -48,7 +48,7 @@ object BuildInformation {
           .map(exportModule)
           .distinct
         val libraries = rootBuild.transitiveDependencies
-          .collect { case d: BoundMavenDependency => Library(fomatMavenDependency(d.mavenDependency))}
+          .collect { case d: BoundMavenDependency => exportLibrary(d)}
           .distinct
        
         Project(rootModule.name,
@@ -57,6 +57,9 @@ object BuildInformation {
             modules,
             libraries)
       }
+
+      private def exportLibrary(mavenDependency: BoundMavenDependency) = 
+        Library(fomatMavenDependency(mavenDependency.mavenDependency), mavenDependency.exportedJars)
 
       private def collectParentBuilds(build: BaseBuild): Seq[BaseBuild] = 
           build.context.parentBuild
@@ -70,17 +73,25 @@ object BuildInformation {
           .collect { case d: BaseBuild => ModuleDependency(moduleName(d)) }
         val mavenDependencies = build.dependencies
           .collect { case d: BoundMavenDependency => MavenDependency(fomatMavenDependency(d.mavenDependency))}
-        val targetLibraries = build.dependencyClasspath.files
+        val classpaths = build.dependencyClasspath.files
           .filter(_.isFile)
-          .map(t => TargetLibrary(t))
-        Module(moduleName(build),
-            build.projectDirectory,
-            build.projectDirectory,
-            build.sources.filter(_.exists),
-            mavenDependencies,
-            moduleDependencies,
-            targetLibraries,
-            build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild])))    
+          .map(t => ClassPathItem(t))
+        val sources = {
+          val s = build.sources
+            .filter(s => s.exists && s.isDirectory)
+          if (s.isEmpty)
+            Seq(build.projectDirectory)
+          else
+            s
+        }
+        Module(name = moduleName(build),
+            root = build.projectDirectory,
+            sources = sources,
+            target = build.target,
+            mavenDependencies = mavenDependencies,
+            moduleDependencies = moduleDependencies,
+            classpaths = classpaths,
+            parentBuild = build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild])))    
       }
 
       private def fomatMavenDependency(dependency: cbt.MavenDependency) =
@@ -115,10 +126,10 @@ object BuildInformationSerializer {
   private def serialize(module: BuildInformation.Module): Node = 
     <module>
       <name>{module.name}</name>
-      <root>{module.root.toString}</root>
-      <sourcesRoot>{module.sourcesRoot.toString}</sourcesRoot>      
+      <root>{module.root}</root>
+      <target>{module.target}</target>      
       <sources>
-        {module.sources.map(s => <source>{s.string}</source>)}
+        {module.sources.map(s => <source>{s}</source>)}
       </sources>
       <mavenDependencies>
         {module.mavenDependencies.map(serialize)}
@@ -126,9 +137,9 @@ object BuildInformationSerializer {
       <moduleDependencies>
         {module.moduleDependencies.map(serialize)}
       </moduleDependencies>
-      <targetLibraries>
-        {module.targetLibraries.map(serialize)}
-      </targetLibraries>
+      <classpaths>
+        {module.classpaths.map(serialize)}
+      </classpaths>
       {module.parentBuild.map(p => <parentBuild>{p}</parentBuild>).getOrElse(NodeSeq.Empty)}
     </module>
 
@@ -136,11 +147,16 @@ object BuildInformationSerializer {
     <mavenDependency>{mavenDependency.name}</mavenDependency>
 
   private def serialize(library: BuildInformation.Library): Node = 
-    <library>{library.name}</library>
+    <library>
+      <name>{library.name}</name>
+      <jars>
+        {library.jars.map(j => <jar>{j}</jar>)}
+      </jars>
+    </library>
 
   private def serialize(moduleDependency: BuildInformation.ModuleDependency): Node = 
     <moduleDependency>{moduleDependency.name}</moduleDependency>
 
-  private def serialize(targetLibrary: BuildInformation.TargetLibrary): Node = 
-    <targetLibrary>{targetLibrary.path.toString}</targetLibrary>
+  private def serialize(targetLibrary: BuildInformation.ClassPathItem): Node = 
+    <classpathItem>{targetLibrary.path.toString}</classpathItem>
 }
