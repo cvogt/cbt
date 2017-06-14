@@ -1,5 +1,7 @@
 package cbt
 
+import java.io.File
+
 trait KindProjectorPlugin extends BaseBuild {
   def kindProjectorVersion = "0.9.4"
 
@@ -11,7 +13,7 @@ trait KindProjectorPlugin extends BaseBuild {
 
 object KindProjector {
   def dependencies(
-                    scalaMajorVersion: String, kindProjectorVersion: String, cbtLastModified: Long, mavenCache: java.io.File
+                    scalaMajorVersion: String, kindProjectorVersion: String, cbtLastModified: Long, mavenCache: File
                   )(
                     implicit logger: Logger, transientCache: java.util.Map[AnyRef,AnyRef], classLoaderCache: ClassLoaderCache
                   ) =

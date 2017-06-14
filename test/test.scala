@@ -459,6 +459,11 @@ object Main{
       lib.write(sourceFile, sourceBefore)
     }
 
+    {
+      val res = runCbt("../examples/kindprojector-example", Seq())
+      assert(res.exit0)
+    }
+
     /*
     // currently fails with
     // java.lang.UnsupportedOperationException: scalafix.rewrite.ScalafixMirror.fromMirror $anon#typeSignature requires the semantic api
