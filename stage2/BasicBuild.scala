@@ -5,7 +5,7 @@ import java.net._
 import java.nio.file._
 
 class BasicBuild(final val context: Context) extends BaseBuild
-trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDependencyDsl{
+trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDependencyDsl with ExportBuildInformation{
   override def equals(other: Any) = {
     other match {
       case b: BaseBuild => projectDirectory === b.projectDirectory

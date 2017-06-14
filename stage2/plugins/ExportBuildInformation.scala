@@ -4,7 +4,7 @@ import cbt._
 import scala.xml._
 import java.io._
 
-trait ExportBuildInformation {self: BaseBuild =>
+trait ExportBuildInformation { self: BaseBuild =>
   lazy val printer = new scala.xml.PrettyPrinter(200, 2)
 
   def buildInfoXml = 
