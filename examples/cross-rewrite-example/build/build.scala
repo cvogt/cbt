@@ -6,12 +6,65 @@ import scalafix.util._
 import scalafix.util.TreePatch._
 import scalafix.util.TokenPatch._
 
-class Build(val context: Context) extends BaseBuild{ outer =>
-  override def defaultScalaVersion = "2.11.8"
+class TestBuild( val context: Context, mainBuild: BaseBuild ) extends ScalaTest with Scalameta {
+  override def defaultScalaVersion = mainBuild.scalaVersion
+  override def projectDirectory = CrossRewrite.mkdirIfNotExists( mainBuild.projectDirectory / "test" )
+  override def dependencies = mainBuild +: super.dependencies
+}
 
+class Build(val context: Context) extends BaseBuild with Scalameta with PackageJars { defaultMainBuild =>
+  override def defaultScalaVersion: String = "2.12.1"
+  override def groupId = "org.cvogt"
+  override def artifactId = "cbt-examples-cross-rewrite"
+  override def version = "0.1"
+  override def scaladoc = None // Scalameta breaks Scaladoc
+
+  override def test: BaseBuild = new TestBuild( context, this )
+
+  def cross = for{
+    ( v, version_rewrites ) <- CrossRewrite.versions
+    ( label, dep, lib_rewrites ) <- CrossRewrite.libs
+  } yield {
+    new Build(context) with Scalafix{ patchedMainBuild =>
+      override def defaultScalaVersion = v
+      override def artifactId = super.artifactId ~ "-" ~ label
+      override def projectDirectory = CrossRewrite.mkdirIfNotExists(
+        defaultMainBuild.target / "rewrites" / label ++ "-" ++ v
+      )
+      override def dependencies =
+        super.dependencies ++ Resolver(mavenCentral).bind(
+          // hack because using ScalaDependency in the outer build binds it
+          // to THAT builds initial scalaVersion, which we are overriding
+          // here, but we are looping over libs outside of that, so
+          // the override doesn't affect it
+          // So we use MavenDependency instead and append the id here.
+          dep.copy(artifactId = dep.artifactId + "_" + scalaMajorVersion)
+        )
+      override def sources = CrossRewrite.patchesSources(
+        defaultMainBuild.sources,
+        projectDirectory / "src",
+        defaultMainBuild.classpath,
+        lib_rewrites ++ version_rewrites,
+        lib
+      )
+
+      override def test = new TestBuild( context, this ){
+        override def sources = CrossRewrite.patchesSources(
+          defaultMainBuild.test.sources,
+          projectDirectory / "src",
+          defaultMainBuild.test.classpath,
+          lib_rewrites ++ version_rewrites,
+          lib
+        )
+      }
+    }
+  }
+}
+
+object CrossRewrite{
   def versions = Seq[(String, Seq[Patch])](
-    scalaVersion -> Seq(),
-    "2.12.1" -> Seq(
+    "2.12.1" -> Seq(),
+    "2.11.8" -> Seq(
       RemoveGlobalImport(
         importer"scala.concurrent.Future"
       ),
@@ -23,50 +76,50 @@ class Build(val context: Context) extends BaseBuild{ outer =>
   def libs = Seq[(String, MavenDependency, Seq[Patch])](
     (
       "scalaz",
-      ScalaDependency( "org.scalaz", "scalaz-core", "7.2.2" ),
+      MavenDependency( "org.scalaz", "scalaz-core", "7.2.10" ),
       Seq(
+        AddGlobalImport(importer"scalaz._"),
+        Replace(Symbol("_root_.scala.package.Either."), q"\/"),
+        Replace(Symbol("_root_.scala.util.Right."), q"\/-"),
+        RemoveGlobalImport(importer"cats.implicits._")
       )
     ),
     (
       "cats",
-      ScalaDependency( "org.typelevel", "cats", "0.9.0" ),
+      MavenDependency( "org.typelevel", "cats", "0.9.0" ),
       Seq(
+        AddGlobalImport(importer"cats.implicits._")
       )
     )
   )
 
-  def cross = versions.flatMap{ case ( v, version_rewrites ) =>
-    libs.map{
-      case ( label, dep, lib_rewrites ) =>
-        val d = outer.target / "rewrites" / label ++ "-" ++ v
-        d.mkdirs
-        new Build(context) with Scalafix with PackageJars{
-          override def groupId = "org.cvogt"
-          override def artifactId = "cbt-examples-cross-rewrite-" + label
-          override def version = "0.1"
-          override def defaultScalaVersion = v
-          override def dependencies = super.dependencies ++ Resolver( mavenCentral ).bind( dep )
-          override def projectDirectory = d
-          override def scaladoc = None
-          override def sources = {
-            val fromTo = lib.autoRelative( outer.sources ).collect{
-              case (location, relative) if location.isFile
-                => location -> projectDirectory / "src" / relative
-            }
+  def mkdirIfNotExists( d: File ): File = {
+    d.mkdirs
+    d
+  }
 
-            val to = fromTo.map(_._2)
-            assert( ( to diff to.distinct ).isEmpty )
-
-            Scalafix.apply(lib).config(
-              outer.classpath,
-              files = fromTo,
-              patches = lib_rewrites ++ version_rewrites,
-              allowEmpty = true
-            ).apply
-
-            to
-          }
-        }
+  def patchesSources(
+    sources: Seq[File],
+    destination: File,
+    semanticDbClassPath: ClassPath,
+    patches: Seq[Patch],
+    lib: Lib
+  ) = {
+    val fromTo = lib.autoRelative( sources ).collect{
+      case (location, relative) if location.isFile
+      => location -> destination / relative
     }
+
+    val to = fromTo.map(_._2)
+    assert( ( to diff to.distinct ).isEmpty )
+
+    Scalafix.apply(lib).config(
+      semanticDbClassPath,
+      files = fromTo,
+      patches = patches,
+      allowEmpty = true
+    ).apply
+
+    to
   }
 }
