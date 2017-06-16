@@ -315,11 +315,16 @@ while true; do
 		done
 		files=
 		if [ -f "$CBT_LOOP_FILE" ]; then
-			files=($(cat "$CBT_LOOP_FILE"))
+			files=($(sort "$CBT_LOOP_FILE"))
 			#rm "$CBT_LOOP_FILE"
 		fi
 		echo ""
 		echo "Watching for file changes... (ctrl+c short press for loop, long press for abort)"
+		for file in "${files[@]}"; do
+			if [ $file == "" ]; then
+				echo "warning: empty file found in loop file list" 1>&2
+			fi
+		done
 		fswatch --one-event "${files[@]}"
 	fi
 done
