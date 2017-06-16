@@ -14,6 +14,7 @@ class libraries( context: Context, scalaVersion: String, scalaMajorVersion: Stri
     def eval = dep( "eval" )
     def file = dep( "file" )
     def interfaces = dep( "interfaces" )
+    def process = dep( "process" )
     def proguard = dep( "proguard" )
     def reflect = dep( "reflect" )
     def scalatestRunner = dep( "scalatest-runner" )
