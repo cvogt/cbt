@@ -327,6 +327,19 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
     waitFor()
   }
 
+  /** currently only produces output when run via cbt direct */
+  def restart: Int = {
+    val pid = restart( mainClassOrFail.getName, context.args )
+    System.err.print("started process with pid: ")
+    pid
+  }
+
+  def restart( className: String, args: Seq[String] ): Int = {
+    val ( pid, waitFor, destroy ) = runForked( mainClassOrFail.getName, context.args )
+    lib.addProcessIdToKillList( context.cwd, pid )
+    pid
+  }
+
   protected def runForkedHandles = runForked( mainClassOrFail.getName, context.args )
 
   def runForked( className: String, args: Seq[String] ): ( Int, () => ExitCode, () => ExitCode ) =

@@ -417,6 +417,21 @@ ${sourceFiles.sorted.mkString(" \\\n")}
       StandardOpenOption.APPEND
     )
   }
+
+  /**
+  add process id to a cbt internal list of processes to kill
+  when looping after a file change
+  */
+  def addProcessIdToKillList(cwd: File, processId: Int) = {
+    val file = cwd / "target/.cbt-kill.tmp"
+    file.createNewFile
+    lib.write(
+      file,
+      processId.toString + "\n",
+      StandardOpenOption.APPEND
+    )
+  }
+
   def cached[T]( targetDirectory: File, inputLastModified: Long )( action: () => T ): (Option[T],Long) = {
     val t = targetDirectory
     val start = System.currentTimeMillis

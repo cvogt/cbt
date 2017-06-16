@@ -226,6 +226,11 @@ To also clear the screen on each run use:
 $ cbt loop clear run
 ```
 
+To call and restart the main method on file change (like sbt-revolver)
+```
+$ cbt direct loop restart
+```
+
 ### Adding tests
 
 The simplest way to add tests is putting a few assertions into the previously
