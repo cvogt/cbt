@@ -204,7 +204,7 @@ if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ]; then
 	use_nailgun=1
 fi
 
-if [ $server_up -eq 0 ] && [ ! "$DEBUG" == "" ]; then
+if [ $use_nailgun -eq 0 ] && [ $server_up -eq 0 ] && [ ! "$DEBUG" == "" ]; then
 	echo "Can't use \`-debug\` (without \`direct\`) when nailgun is already running. If you started it up with \`-debug\` you can still connect to it. Otherwise use \`cbt kill\` to kill it."
 	exit 1
 fi
