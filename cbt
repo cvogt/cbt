@@ -310,6 +310,9 @@ while true; do
 		log "not looping, exiting" "$@"
 		break
 	else
+		for file in "${NAILGUN_SOURCES[@]}"; do
+			echo "$file" >> "$CBT_LOOP_FILE"
+		done
 		files=
 		if [ -f "$CBT_LOOP_FILE" ]; then
 			files=($(cat "$CBT_LOOP_FILE"))
@@ -317,8 +320,7 @@ while true; do
 		fi
 		echo ""
 		echo "Watching for file changes... (ctrl+c short press for loop, long press for abort)"
-		#echo fswatch --one-event "${NAILGUN_SOURCES[@]}" "${files[@]}"
-		fswatch --one-event "${NAILGUN_SOURCES[@]}" "${files[@]}"
+		fswatch --one-event "${files[@]}"
 	fi
 done
 
