@@ -7,16 +7,16 @@ import java.util.concurrent.*;
 public interface Context{
   // recently added methods that needs default values for old versions to work
   public default long cbtLastModified(){
-    throw new IncompatibleCbtVersionException("You need to define method cbtLastModified.");
+    throw new IncompatibleCbtVersionException("You need to override this method.");
   };
   public default Map<Object,Object> persistentCache(){
-    throw new IncompatibleCbtVersionException("You need to define method persistentCache.");
+    throw new IncompatibleCbtVersionException("You need to override this method.");
   };
   public default Map<Object,Object> transientCache(){
-    throw new IncompatibleCbtVersionException("You need to define method transientCache.");
+    throw new IncompatibleCbtVersionException("You need to override this method.");
   };
   public default long start(){
-    throw new IncompatibleCbtVersionException("You need to define method start.");
+    throw new IncompatibleCbtVersionException("You need to override this method.");
   };
   public default File workingDirectory(){
     return projectDirectory();
