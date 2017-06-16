@@ -1,0 +1,50 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/cbt
+    docker:
+      - image: circleci/java:8-jdk
+    steps:
+      - checkout
+      - restore_cache:
+          key: dependency-cache
+      - run:
+          command: 'mkdir -p ~/cache'
+      - run:
+          command: 'rm ~/.gitconfig || true' # avoid url replacement breaking jgit
+      - run:
+          command: 'wget http://mirrors.kernel.org/ubuntu/pool/universe/n/nailgun/nailgun_0.9.0+trunk95-3_amd64.deb --continue -O ~/cache/nailgun_0.9.0+trunk95-3_amd64.deb'
+      - run:
+          command: 'sudo dpkg -i ~/cache/nailgun_0.9.0+trunk95-3_amd64.deb'
+      - run:
+          command: 'wget http://mirrors.kernel.org/ubuntu/pool/universe/s/shellcheck/shellcheck_0.3.3-1~ubuntu14.04.1_amd64.deb --continue -O ~/cache/shellcheck_0.3.3-1~ubuntu14.04.1_amd64.deb'
+      - run:
+          command: 'sudo dpkg -i ~/cache/shellcheck_0.3.3-1~ubuntu14.04.1_amd64.deb'
+      - save_cache:
+          key: dependency-cache
+          paths:
+            - "~/cache"
+      - run:
+          command: './cbt direct compile'
+      - run:
+          command: './cbt direct test.compile'
+      - run:
+          command: './cbt compile'
+      - run:
+          command: './cbt -Dlog=all'
+      - run:
+          command: 'git diff --exit-code'
+      - run:
+          command: './cbt direct test.run slow fork direct'
+      - run:
+          command: './cbt direct test.run slow fork'
+      - run:
+          command: './cbt direct test.run slow'
+      - run:
+          command: './cbt test.run slow fork direct'
+      - run:
+          command: './cbt test.run slow fork'
+      - run:
+          command: './cbt test.run slow'
+      - run:
+          command: 'git diff --exit-code'
