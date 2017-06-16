@@ -13,7 +13,7 @@ class Build(val context: Context) extends Shared with Scalariform with PublishLo
     super.dependencies ++ Resolver(mavenCentral).bind(
       MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
       ScalaDependency("org.scala-lang.modules","scala-xml",constants.scalaXmlVersion)
-    ) :+ libraries.cbt.reflect :+ libraries.cbt.eval
+    ) :+ libraries.cbt.reflect :+ libraries.cbt.eval :+ libraries.cbt.process
   }
 
   override def sources = Seq(

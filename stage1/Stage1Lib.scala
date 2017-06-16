@@ -417,6 +417,21 @@ ${sourceFiles.sorted.mkString(" \\\n")}
       StandardOpenOption.APPEND
     )
   }
+
+  /**
+  add process id to a cbt internal list of processes to kill
+  when looping after a file change
+  */
+  def addProcessIdToKillList(cwd: File, processId: Int) = {
+    val file = cwd / "target/.cbt-kill.tmp"
+    file.createNewFile
+    lib.write(
+      file,
+      processId.toString + "\n",
+      StandardOpenOption.APPEND
+    )
+  }
+
   def cached[T]( targetDirectory: File, inputLastModified: Long )( action: () => T ): (Option[T],Long) = {
     val t = targetDirectory
     val start = System.currentTimeMillis
@@ -431,99 +446,6 @@ ${sourceFiles.sorted.mkString(" \\\n")}
       },
       outputLastModified
     )
-  }
-
-  def asyncPipeCharacterStreamSyncLines( inputStream: InputStream, outputStream: OutputStream, lock: AnyRef ): Thread = {
-    new Thread(
-      new Runnable{
-        def run = {
-          val b = new BufferedInputStream( inputStream )
-          Iterator.continually{
-            b.read // block until and read next character
-          }.takeWhile(_ != -1).map{ c =>
-            lock.synchronized{ // synchronize with other invocations
-              outputStream.write(c)
-              Iterator
-                .continually( b.read )
-                .takeWhile( _ != -1 )
-                .map{ c =>
-                  try{
-                    outputStream.write(c)
-                    outputStream.flush
-                    (
-                      c != '\n' // release lock when new line was encountered, allowing other writers to slip in
-                      && b.available > 0 // also release when nothing is available to not block other outputs
-                    )
-                  } catch {
-                    case e: IOException if e.getMessage == "Stream closed" => false
-                  }
-                }
-                .takeWhile(identity)
-                .length // force entire iterator
-            }
-          }.length // force entire iterator
-        }
-      }
-    )
-  }
-
-  def asyncPipeCharacterStream( inputStream: InputStream, outputStream: OutputStream, continue: => Boolean ) = {
-    new Thread(
-      new Runnable{
-        def run = {
-          Iterator
-            .continually{ inputStream.read }
-            .takeWhile(_ != -1)
-            .map{ c =>
-              try{
-                outputStream.write(c)
-                outputStream.flush
-                true
-              } catch {
-                case e: IOException if e.getMessage == "Stream closed" => false
-              }
-            }
-            .takeWhile( identity )
-            .takeWhile( _ => continue )
-            .length // force entire iterator
-        }
-      }
-    )
-  }
-
-  def runWithIO( commandLine: Seq[String], directory: Option[File] = None ): ExitCode = {
-    val (out,err,in) = lib.getOutErrIn match { case (l,r, in) => (l.get,r.get, in) }
-    val pb = new ProcessBuilder( commandLine: _* )
-    val exitCode =
-      if( !NailgunLauncher.runningViaNailgun ){
-        pb.inheritIO.start.waitFor
-      } else {
-        val process = directory.map( pb.directory( _ ) ).getOrElse( pb )
-            .redirectInput(ProcessBuilder.Redirect.PIPE)
-            .redirectOutput(ProcessBuilder.Redirect.PIPE)
-            .redirectError(ProcessBuilder.Redirect.PIPE)
-            .start
-
-        val lock = new AnyRef
-
-        val t1 = lib.asyncPipeCharacterStreamSyncLines( process.getErrorStream, err, lock )
-        val t2 = lib.asyncPipeCharacterStreamSyncLines( process.getInputStream, out, lock )
-        val t3 = lib.asyncPipeCharacterStream( System.in, process.getOutputStream, process.isAlive )
-
-        t1.start
-        t2.start
-        t3.start
-
-        t1.join
-        t2.join
-
-        val e = process.waitFor
-        System.err.println( scala.Console.RESET + "Please press ENTER to continue..." )
-        t3.join
-        e
-      }
-
-    ExitCode( exitCode )
   }
 }
 

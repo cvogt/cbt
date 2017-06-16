@@ -319,4 +319,45 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   final def crossScalaVersionsArray = Array(scalaVersion)
 
   def publish: Seq[URL] = Seq()
+
+  def fork = false
+
+  def runForked: ExitCode = {
+    val ( pid, waitFor, destroy ) = runForkedHandles
+    waitFor()
+  }
+
+  /** currently only produces output when run via cbt direct */
+  def restart: Int = {
+    val pid = restart( mainClassOrFail.getName, context.args )
+    System.err.print("started process with pid: ")
+    pid
+  }
+
+  def restart( className: String, args: Seq[String] ): Int = {
+    val ( pid, waitFor, destroy ) = runForked( mainClassOrFail.getName, context.args )
+    lib.addProcessIdToKillList( context.cwd, pid )
+    pid
+  }
+
+  protected def runForkedHandles = runForked( mainClassOrFail.getName, context.args )
+
+  def runForked( className: String, args: Seq[String] ): ( Int, () => ExitCode, () => ExitCode ) =
+    lib.runMainForked(
+      className,
+      args,
+      classpath.string,
+      Some( context.workingDirectory ),
+      NailgunLauncher.runningViaNailgun.option(
+        lib.getOutErrIn match { case (l,r, in) => (l.get,r.get, in) }
+      )
+    )
+
+  override def runMain( className: String, args: Seq[String] ): ExitCode = {
+    if(fork){
+      runForked(className, args)._2()
+    } else {
+      super.runMain( className, args )
+    }
+  }
 }

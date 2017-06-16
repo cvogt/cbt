@@ -77,25 +77,16 @@ trait DependencyImplementation extends Dependency{
     )
   }
   */
-  def fork = false
 
-  def runMain( className: String, args: Seq[String] ): ExitCode = {
-    if(fork){
-      val java_exe = new File(System.getProperty("java.home")) / "bin" / "java"
-      lib.runWithIO(
-        java_exe.string +: "-cp" +: classpath.string +: className +: args
-      )
-    } else {
-      lib.getMain( classLoader.loadClass( className ) )( args )
-    }
-  }
+  def runMain( className: String, args: Seq[String] ): ExitCode =
+    lib.getMain( classLoader.loadClass( className ) )( args )
 
-  def runMain( args: Seq[String] ): ExitCode = {
-    val c = mainClass.getOrElse(
-      throw new RuntimeException( "No main class found in " + this )
-    )
-    runMain( c.getName, args )
-  }
+  def runMain( args: Seq[String] ): ExitCode =
+    runMain( mainClassOrFail.getName, args )
+
+  def mainClassOrFail = mainClass.getOrElse(
+    throw new RuntimeException( "No main class found in " + this )
+  )
 
   def mainClass = lib.pickOne(
     "Which one do you want to run?",
@@ -209,6 +200,7 @@ case class CbtDependencies(cbtLastModified: Long, mavenCache: File, nailgunTarge
     stage1Dependency +:
     MavenResolver(cbtLastModified, mavenCache,mavenCentral).bind(
       MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
+      MavenDependency("net.java.dev.jna", "jna-platform", "4.4.0"),
       MavenDependency("org.scala-lang","scala-compiler",constants.scalaVersion)
     )
   )
