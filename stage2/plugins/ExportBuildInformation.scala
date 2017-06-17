@@ -49,12 +49,13 @@ object BuildInformation {
     private class BuildInformationExporter(rootBuild: BaseBuild) {
       def exportBuildInformation(): Project = {
         val rootModule = exportModule(rootBuild)
-        val modules = (rootBuild +: rootBuild.transitiveDependencies)
+        val moduleBuilds = (rootBuild +: rootBuild.transitiveDependencies)
           .collect { case d: BaseBuild => d +: collectParentBuilds(d)}
           .flatten
-          .map(exportModule)
           .distinct
-        val libraries = rootBuild.transitiveDependencies
+        val modules = moduleBuilds.map(exportModule)
+        val libraries = moduleBuilds
+          .flatMap(_.transitiveDependencies)
           .collect { case d: BoundMavenDependency => exportLibrary(d)}
           .distinct
        
