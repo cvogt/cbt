@@ -258,7 +258,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
   }
 
   def recursive: ExitCode = {
-    recursiveUnsafe(context.args.lift(1))
+    recursiveUnsafe(context.args.lift(0))
   }
 
   def recursiveUnsafe(code: Option[String]): ExitCode = {
