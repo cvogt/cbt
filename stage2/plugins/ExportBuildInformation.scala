@@ -9,6 +9,8 @@ trait ExportBuildInformation { self: BaseBuild =>
 
   def buildInfoXml = 
     printer.format(BuildInformationSerializer.serialize(BuildInformation.Project(self)))
+
+  def a = self.transitiveDependencies.map(_.toString).mkString("\n")
 }
 
 object BuildInformation {
@@ -23,6 +25,7 @@ object BuildInformation {
   case class Module(
     name: String,
     root: File,
+    scalaVersion: String,
     sources: Seq[File],
     target: File,
     mavenDependencies: Seq[MavenDependency],
@@ -93,6 +96,7 @@ object BuildInformation {
         Module(
           name = moduleName(build),
           root = build.projectDirectory,
+          scalaVersion = build.scalaVersion,
           sources = sources,
           target = build.target,
           mavenDependencies = mavenDependencies,
@@ -136,6 +140,7 @@ object BuildInformationSerializer {
       <name>{module.name}</name>
       <root>{module.root}</root>
       <target>{module.target}</target>      
+      <scalaVersion>{module.scalaVersion}</scalaVersion>
       <sources>
         {module.sources.map(s => <source>{s}</source>)}
       </sources>
