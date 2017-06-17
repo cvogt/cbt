@@ -4,7 +4,7 @@ import cbt_internal._
 
 class Build(val context: Context) extends Shared with Scalariform with PublishLocal with CommandLineOverrides{
   override def name: String = "cbt"
-  override def version: String = "0.1"
+  override def version: String = "0.9-SNAPSHOT"
   override def description: String = "Fast, intuitive Build Tool for Scala"
   override def inceptionYear: Int = 2015
 
@@ -13,7 +13,7 @@ class Build(val context: Context) extends Shared with Scalariform with PublishLo
     super.dependencies ++ Resolver(mavenCentral).bind(
       MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
       ScalaDependency("org.scala-lang.modules","scala-xml",constants.scalaXmlVersion)
-    ) :+ libraries.cbt.reflect :+ libraries.cbt.eval
+    ) :+ libraries.cbt.reflect :+ libraries.cbt.eval :+ libraries.cbt.process
   }
 
   override def sources = Seq(

@@ -94,6 +94,7 @@ object Stage1{
       stage2.listFiles
       ++ (stage2 / "plugins").listOrFail
       ++ (cbtHome / "libraries" / "eval").listOrFail
+      ++ (cbtHome / "libraries" / "process").listOrFail
     ).filter(_.isFile).filter(_.toString.endsWith(".scala"))
 
     val cls = this.getClass.getClassLoader.loadClass("cbt.NailgunLauncher")

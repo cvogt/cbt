@@ -16,7 +16,10 @@ import scala.reflect.NameTransformer
 case class Developer(id: String, name: String, timezone: String, url: URL)
 
 /** Don't extend. Create your own libs :). */
-final class Lib(val logger: Logger) extends Stage1Lib(logger){
+final class Lib(val logger: Logger) extends
+  Stage1Lib(logger) with
+  _root_.cbt.process.Module
+{
   lib =>
 
   val buildFileName = "build.scala"

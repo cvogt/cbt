@@ -121,7 +121,7 @@ object DirectoryDependency {
         build.asInstanceOf[Dependency]
       } catch {
         case e: ClassCastException =>
-          throw new RuntimeException( "Your class " ++ lib.buildClassName ++ " needs to extend class BaseBuild in $buildFile", e )
+          throw new RuntimeException( "Your class " ++ lib.buildClassName ++ s" needs to extend class BaseBuild in $buildFile", e )
       }
     } )( context.logger, context.transientCache, context.classLoaderCache )
   }

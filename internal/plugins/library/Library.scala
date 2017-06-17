@@ -3,10 +3,11 @@ import cbt._
 import java.io._
 import scala.concurrent._
 import scala.concurrent.duration._
-trait Library extends Scalariform with GoogleJavaFormat with DynamicOverrides with AdvancedScala {
+trait Library extends PackageJars with Scalariform with GoogleJavaFormat with DynamicOverrides with AdvancedScala {
+  def groupId = "org.cvogt"
   def inceptionYear: Int
   def description: String
-  def version = ???
+  def version = "0.9-SNAPSHOT"
   override def compile = {
     googleJavaFormat()
     scalariform()
