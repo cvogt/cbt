@@ -28,7 +28,7 @@ object BuildInformation {
     scalaVersion: String,
     sources: Seq[File],
     target: File,
-    libraryDependencies: Seq[LibraryDependency],
+    binaryDependencies: Seq[BinaryDependency],
     moduleDependencies: Seq[ModuleDependency],
     classpaths: Seq[ClassPathItem],
     parentBuild: Option[String]
@@ -36,7 +36,7 @@ object BuildInformation {
 
   case class Library( name: String, jars: Seq[File] )
 
-  case class LibraryDependency( name: String )
+  case class BinaryDependency( name: String )
 
   case class ModuleDependency( name: String )
 
@@ -51,13 +51,13 @@ object BuildInformation {
         val moduleBuilds = transitiveBuilds(rootBuild)
         val libraries = moduleBuilds
           .flatMap(_.transitiveDependencies)
-          .collect { case d: BoundMavenDependency => exportLibrary(d)}
+          .collect { case d: BoundMavenDependency => exportLibrary(d) }
           .distinct
         val cbtLibraries = convertCbtLibraries
-        val cbtLibraryDependencies = cbtLibraries
-          .map(l => LibraryDependency(l.name))
-        val rootModule = exportModule(cbtLibraryDependencies)(rootBuild)
-        val modules = moduleBuilds.map(exportModule(cbtLibraryDependencies))
+        val cbtbinaryDependencies = cbtLibraries
+          .map(l => BinaryDependency(l.name))
+        val rootModule = exportModule(cbtbinaryDependencies)(rootBuild)
+        val modules = moduleBuilds.map(exportModule(cbtbinaryDependencies))
         Project(
           rootModule.name,
           rootModule.root,
@@ -75,7 +75,6 @@ object BuildInformation {
         }
         .map(exportLibrary)
         .distinct
-
           
       private def collectLazyBuilds(dependency: Dependency): Option[BaseBuild] = 
         dependency match {
@@ -115,7 +114,7 @@ object BuildInformation {
         .toSeq
         .flatten
 
-      private def exportModule(cbtLibraryDependencies: Seq[LibraryDependency])(build: BaseBuild): Module = {
+      private def exportModule(cbtbinaryDependencies: Seq[BinaryDependency])(build: BaseBuild): Module = {
         def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] = 
           dependencies
           .collect {
@@ -125,7 +124,7 @@ object BuildInformation {
           .flatten      
         val moduleDependencies = collectDependencies(build.dependencies)
         val mavenDependencies = build.dependencies
-          .collect { case d: BoundMavenDependency => LibraryDependency(fomatMavenDependency(d.mavenDependency))}
+          .collect { case d: BoundMavenDependency => BinaryDependency(fomatMavenDependency(d.mavenDependency))}
         val classpaths = build.dependencyClasspath.files
           .filter(_.isFile)
           .map(t => ClassPathItem(t))
@@ -138,7 +137,7 @@ object BuildInformation {
           scalaVersion = build.scalaVersion,
           sources = sources,
           target = build.target,
-          libraryDependencies = mavenDependencies ++ cbtLibraryDependencies,
+          binaryDependencies = mavenDependencies ++ cbtbinaryDependencies,
           moduleDependencies = moduleDependencies,
           classpaths = classpaths,
           parentBuild = build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild]))
@@ -177,7 +176,7 @@ object BuildInformationSerializer {
         {module.sources.map(s => <source>{s}</source>)}
       </sources>
       <dependencies>
-        {module.libraryDependencies.map(serialize)}     
+        {module.binaryDependencies.map(serialize)}     
         {module.moduleDependencies.map(serialize)}
       </dependencies>
       <classpath>
@@ -186,8 +185,8 @@ object BuildInformationSerializer {
       {module.parentBuild.map(p => <parentBuild>{p}</parentBuild>).getOrElse(NodeSeq.Empty)}
     </module>
 
-  private def serialize(libraryDependency: BuildInformation.LibraryDependency): Node = 
-    <libraryDependency>{libraryDependency.name}</libraryDependency>
+  private def serialize(binaryDependency: BuildInformation.BinaryDependency): Node = 
+    <binaryDependency>{binaryDependency.name}</binaryDependency>
 
   private def serialize(library: BuildInformation.Library): Node = 
     <library name = {library.name}>
