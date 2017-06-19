@@ -2,7 +2,9 @@ package cbt
 
 import cbt._
 import scala.xml._
+import scala.util._
 import java.io._
+import scala.collection.JavaConverters._
 
 trait ExportBuildInformation { self: BaseBuild =>
   lazy val printer = new scala.xml.PrettyPrinter(200, 2)
@@ -23,9 +25,10 @@ object BuildInformation {
   case class Module(
     name: String,
     root: File,
+    scalaVersion: String,
     sources: Seq[File],
     target: File,
-    mavenDependencies: Seq[MavenDependency],
+    binaryDependencies: Seq[BinaryDependency],
     moduleDependencies: Seq[ModuleDependency],
     classpaths: Seq[ClassPathItem],
     parentBuild: Option[String]
@@ -33,7 +36,7 @@ object BuildInformation {
 
   case class Library( name: String, jars: Seq[File] )
 
-  case class MavenDependency( name: String )
+  case class BinaryDependency( name: String )
 
   case class ModuleDependency( name: String )
 
@@ -43,59 +46,98 @@ object BuildInformation {
     def apply(build: BaseBuild) =   
      new BuildInformationExporter(build).exportBuildInformation  
 
-    private class BuildInformationExporter(rootBuild: BaseBuild) {
+    class BuildInformationExporter(rootBuild: BaseBuild) {
       def exportBuildInformation(): Project = {
-        val rootModule = exportModule(rootBuild)
-        val modules = (rootBuild +: rootBuild.transitiveDependencies)
-          .collect { case d: BaseBuild => d +: collectParentBuilds(d)}
-          .flatten
-          .map(exportModule)
+        val moduleBuilds = transitiveBuilds(rootBuild)
+        val libraries = moduleBuilds
+          .flatMap(_.transitiveDependencies)
+          .collect { case d: BoundMavenDependency => exportLibrary(d) }
           .distinct
-        val libraries = rootBuild.transitiveDependencies
-          .collect { case d: BoundMavenDependency => exportLibrary(d)}
-          .distinct
-       
+        val cbtLibraries = convertCbtLibraries
+        val cbtbinaryDependencies = cbtLibraries
+          .map(l => BinaryDependency(l.name))
+        val rootModule = exportModule(cbtbinaryDependencies)(rootBuild)
+        val modules = moduleBuilds.map(exportModule(cbtbinaryDependencies))
         Project(
           rootModule.name,
           rootModule.root,
           rootModule,
           modules,
-          libraries
+          libraries ++ cbtLibraries
         )
       }
+
+      private def convertCbtLibraries() = 
+        transitiveBuilds(DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild])
+        .collect {
+          case d: BoundMavenDependency => d.jar
+          case d: PackageJars => d.jar.get
+        }
+        .map(exportLibrary)
+        .distinct
+          
+      private def collectLazyBuilds(dependency: Dependency): Option[BaseBuild] = 
+        dependency match {
+          case l: LazyDependency =>         
+            l.dependency match {
+               case d: BaseBuild => Some(d)
+               case d: LazyDependency => collectLazyBuilds(d.dependency)
+               case _ => None
+            }
+          case d: BaseBuild => Some(d)
+          case _ => None
+        }
+
+
+      private def transitiveBuilds(build: BaseBuild): Seq[BaseBuild] =             
+        (build +: build.transitiveDependencies)
+        .collect {
+          case d: BaseBuild => d +: collectParentBuilds(d).flatMap(transitiveBuilds)
+          case d: LazyDependency => 
+            collectLazyBuilds(d.dependency)
+            .toSeq
+            .flatMap(transitiveBuilds)
+        }
+        .flatten
+        .distinct
 
       private def exportLibrary(mavenDependency: BoundMavenDependency) = 
         Library(fomatMavenDependency(mavenDependency.mavenDependency), mavenDependency.exportedJars)
 
-      private def collectParentBuilds(build: BaseBuild): Seq[BaseBuild] = 
-          build.context.parentBuild
-            .map(_.asInstanceOf[BaseBuild])
-            .map(b => b +: collectParentBuilds(b))
-            .toSeq
-            .flatten
+      private def exportLibrary(file: File) = 
+        Library("CBT:" + file.getName.stripSuffix(".jar"), Seq(file))
 
-      private def exportModule(build: BaseBuild): Module = {
-        val moduleDependencies = build.dependencies
-          .collect { case d: BaseBuild => ModuleDependency(moduleName(d)) }
+      private def collectParentBuilds(build: BaseBuild): Seq[BaseBuild] = 
+        build.context.parentBuild
+        .map(_.asInstanceOf[BaseBuild])
+        .map(b => b +: collectParentBuilds(b))
+        .toSeq
+        .flatten
+
+      private def exportModule(cbtbinaryDependencies: Seq[BinaryDependency])(build: BaseBuild): Module = {
+        def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] = 
+          dependencies
+          .collect {
+             case d: BaseBuild => Seq(ModuleDependency(moduleName(d)))
+             case d: LazyDependency => collectDependencies(Seq(d.dependency))
+           }
+          .flatten      
+        val moduleDependencies = collectDependencies(build.dependencies)
         val mavenDependencies = build.dependencies
-          .collect { case d: BoundMavenDependency => MavenDependency(fomatMavenDependency(d.mavenDependency))}
+          .collect { case d: BoundMavenDependency => BinaryDependency(fomatMavenDependency(d.mavenDependency))}
         val classpaths = build.dependencyClasspath.files
           .filter(_.isFile)
           .map(t => ClassPathItem(t))
-        val sources = {
-          val s = build.sources
-            .filter(s => s.exists && s.isDirectory)
-          if (s.isEmpty)
-            Seq(build.projectDirectory)
-          else
-            s
-        }
+        val sources = build.sources
+          .filter(s => s.exists && s.isDirectory) :+ build.projectDirectory       
+        
         Module(
           name = moduleName(build),
           root = build.projectDirectory,
+          scalaVersion = build.scalaVersion,
           sources = sources,
           target = build.target,
-          mavenDependencies = mavenDependencies,
+          binaryDependencies = mavenDependencies ++ cbtbinaryDependencies,
           moduleDependencies = moduleDependencies,
           classpaths = classpaths,
           parentBuild = build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild]))
@@ -106,23 +148,20 @@ object BuildInformation {
         s"${dependency.groupId}:${dependency.artifactId}:${dependency.version}"
 
       private def moduleName(build: BaseBuild) = 
-          if (rootBuild.projectDirectory == build.projectDirectory)
-            rootBuild.projectDirectory.getName
-          else
-            build.projectDirectory.getPath
-              .drop(rootBuild.projectDirectory.getPath.length)
-              .stripPrefix("/")
-              .replace("/", "-")
+        if (rootBuild.projectDirectory == build.projectDirectory)
+          rootBuild.projectDirectory.getName
+        else
+          build.projectDirectory.getPath
+          .drop(rootBuild.projectDirectory.getPath.length)
+          .stripPrefix("/")
+          .replace("/", "-")
     }
   }
 }
 
 object BuildInformationSerializer {
   def serialize(project: BuildInformation.Project): Node = 
-    <project>
-      <name>{project.name}</name>
-      <root>{project.root.toString}</root>
-      <rootModule>{project.rootModule.name}</rootModule>
+    <project name={project.name} root={project.root.toString} rootModule={project.rootModule.name}> 
       <modules>
         {project.modules.map(serialize)}
       </modules>
@@ -132,34 +171,26 @@ object BuildInformationSerializer {
     </project>
 
   private def serialize(module: BuildInformation.Module): Node = 
-    <module>
-      <name>{module.name}</name>
-      <root>{module.root}</root>
-      <target>{module.target}</target>      
+    <module name={module.name} root={module.root.toString} target={module.target.toString} scalaVersion={module.scalaVersion}>
       <sources>
         {module.sources.map(s => <source>{s}</source>)}
       </sources>
-      <mavenDependencies>
-        {module.mavenDependencies.map(serialize)}
-      </mavenDependencies>
-      <moduleDependencies>
+      <dependencies>
+        {module.binaryDependencies.map(serialize)}     
         {module.moduleDependencies.map(serialize)}
-      </moduleDependencies>
-      <classpaths>
+      </dependencies>
+      <classpath>
         {module.classpaths.map(serialize)}
-      </classpaths>
+      </classpath>
       {module.parentBuild.map(p => <parentBuild>{p}</parentBuild>).getOrElse(NodeSeq.Empty)}
     </module>
 
-  private def serialize(mavenDependency: BuildInformation.MavenDependency): Node = 
-    <mavenDependency>{mavenDependency.name}</mavenDependency>
+  private def serialize(binaryDependency: BuildInformation.BinaryDependency): Node = 
+    <binaryDependency>{binaryDependency.name}</binaryDependency>
 
   private def serialize(library: BuildInformation.Library): Node = 
-    <library>
-      <name>{library.name}</name>
-      <jars>
-        {library.jars.map(j => <jar>{j}</jar>)}
-      </jars>
+    <library name = {library.name}>
+      {library.jars.map(j => <jar>{j}</jar>)}
     </library>
 
   private def serialize(moduleDependency: BuildInformation.ModuleDependency): Node = 
