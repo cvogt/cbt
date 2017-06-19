@@ -96,8 +96,8 @@ object BuildInformation {
           case d: BaseBuild => d +: collectParentBuilds(d).flatMap(transitiveBuilds)
           case d: LazyDependency => 
             collectLazyBuilds(d.dependency)
-              .toSeq
-              .flatMap(transitiveBuilds)
+            .toSeq
+            .flatMap(transitiveBuilds)
         }
         .flatten
         .distinct
@@ -109,11 +109,11 @@ object BuildInformation {
         Library("CBT:" + file.getName.stripSuffix(".jar"), Seq(file))
 
       private def collectParentBuilds(build: BaseBuild): Seq[BaseBuild] = 
-          build.context.parentBuild
-            .map(_.asInstanceOf[BaseBuild])
-            .map(b => b +: collectParentBuilds(b))
-            .toSeq
-            .flatten
+        build.context.parentBuild
+        .map(_.asInstanceOf[BaseBuild])
+        .map(b => b +: collectParentBuilds(b))
+        .toSeq
+        .flatten
 
       private def exportModule(cbtLibraryDependencies: Seq[LibraryDependency])(build: BaseBuild): Module = {
         def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] = 
@@ -149,23 +149,20 @@ object BuildInformation {
         s"${dependency.groupId}:${dependency.artifactId}:${dependency.version}"
 
       private def moduleName(build: BaseBuild) = 
-          if (rootBuild.projectDirectory == build.projectDirectory)
-            rootBuild.projectDirectory.getName
-          else
-            build.projectDirectory.getPath
-              .drop(rootBuild.projectDirectory.getPath.length)
-              .stripPrefix("/")
-              .replace("/", "-")
+        if (rootBuild.projectDirectory == build.projectDirectory)
+          rootBuild.projectDirectory.getName
+        else
+          build.projectDirectory.getPath
+          .drop(rootBuild.projectDirectory.getPath.length)
+          .stripPrefix("/")
+          .replace("/", "-")
     }
   }
 }
 
 object BuildInformationSerializer {
   def serialize(project: BuildInformation.Project): Node = 
-    <project>
-      <name>{project.name}</name>
-      <root>{project.root.toString}</root>
-      <rootModule>{project.rootModule.name}</rootModule>
+    <project name={project.name} root={project.root.toString} rootModule={project.rootModule.name}> 
       <modules>
         {project.modules.map(serialize)}
       </modules>
@@ -175,23 +172,17 @@ object BuildInformationSerializer {
     </project>
 
   private def serialize(module: BuildInformation.Module): Node = 
-    <module>
-      <name>{module.name}</name>
-      <root>{module.root}</root>
-      <target>{module.target}</target>      
-      <scalaVersion>{module.scalaVersion}</scalaVersion>
+    <module name={module.name} root={module.root.toString} target={module.target.toString} scalaVersion={module.scalaVersion}>
       <sources>
         {module.sources.map(s => <source>{s}</source>)}
       </sources>
-      <libraryDependencies>
-        {module.libraryDependencies.map(serialize)}
-      </libraryDependencies>
-      <moduleDependencies>
+      <dependencies>
+        {module.libraryDependencies.map(serialize)}     
         {module.moduleDependencies.map(serialize)}
-      </moduleDependencies>
-      <classpaths>
+      </dependencies>
+      <classpath>
         {module.classpaths.map(serialize)}
-      </classpaths>
+      </classpath>
       {module.parentBuild.map(p => <parentBuild>{p}</parentBuild>).getOrElse(NodeSeq.Empty)}
     </module>
 
@@ -199,11 +190,8 @@ object BuildInformationSerializer {
     <libraryDependency>{libraryDependency.name}</libraryDependency>
 
   private def serialize(library: BuildInformation.Library): Node = 
-    <library>
-      <name>{library.name}</name>
-      <jars>
-        {library.jars.map(j => <jar>{j}</jar>)}
-      </jars>
+    <library name = {library.name}>
+      {library.jars.map(j => <jar>{j}</jar>)}
     </library>
 
   private def serialize(moduleDependency: BuildInformation.ModuleDependency): Node = 
