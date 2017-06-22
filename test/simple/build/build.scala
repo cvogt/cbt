@@ -7,6 +7,9 @@ class Build(val context: cbt.Context) extends BaseBuild{
     // FIXME: make the below less verbose
     Resolver( mavenCentral ).bind(
       ScalaDependency("com.typesafe.play", "play-json", "2.4.4"),
+      ScalaDependency("io.spray","spray-http","1.3.3"),
+      ScalaDependency( "com.lihaoyi", "scalatex-api", "0.3.6" ),
+      ScalaDependency( "com.lihaoyi", "scalatex-site", "0.3.6" ),
       MavenDependency("joda-time", "joda-time", "2.9.2"),
       // the below tests pom inheritance with dependencyManagement and variable substitution for pom properties
       MavenDependency("org.eclipse.jgit", "org.eclipse.jgit", "4.2.0.201601211800-r"),
@@ -16,15 +19,13 @@ class Build(val context: cbt.Context) extends BaseBuild{
       MavenDependency("cc.factorie","factorie_2.11","1.2"),
       // test recursive substitution. see https://github.com/cvogt/cbt/issues/434
       MavenDependency("com.amazonaws", "aws-java-sdk-s3", "1.11.86"),
-      // the dependency below uses a maven version range. Currently not supported.
+      // requires maven version ranges
+      MavenDependency("io.grpc", "grpc-netty", "1.2.0")
+      // the dependency below uses a maven version range with automatic minor version. Currently not supported.
       // TODO: put in a proper error message for version range not supported
-      //MavenDependency("com.github.nikita-volkov", "sext", "0.2.4")
+      // MavenDependency("com.github.nikita-volkov", "sext", "0.2.4")
       // currently breaks with can't find https://repo1.maven.org/maven2/org/apache/avro/avro-mapred/1.7.7/avro-mapred-1.7.7-hadoop2.pom.sha1
-      // org.apache.spark:spark-sql_2.11:1.6.1
-      // currently fails, let's see if because of a bug
-      // io.spray:spray-http:1.3.3
-      ScalaDependency( "com.lihaoyi", "scalatex-api", "0.3.6" ),
-      ScalaDependency( "com.lihaoyi", "scalatex-site", "0.3.6" )
+      // ScalaDependency("org.apache.spark","spark-sql_2.11","1.6.1")
     ) ++
     Resolver( mavenCentral, sonatypeReleases ).bind(
       "org.scalameta" %% "scalameta" % "1.1.0"

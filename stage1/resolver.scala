@@ -268,7 +268,10 @@ case class BoundMavenDependency(
     classpath.strings.map(new File(_).lastModified).max
   }
 
-  private lazy val base = "/" + groupId.split("\\.").mkString("/") + "/" + artifactId + "/" + version + "/" + artifactId + "-" + version
+  private lazy val base = {
+    val v = BoundMavenDependency.extractVersion(version)
+    "/" + groupId.split("\\.").mkString("/") + "/" + artifactId + "/" + v + "/" + artifactId + "-" + v
+  }
   protected[cbt] def basePath(useClassifier: Boolean) = // PERFORMANCE HOTSPOT
     base + (if (useClassifier && classifier.name.nonEmpty) "-" + classifier.name.get else "")
 
@@ -421,6 +424,16 @@ case class BoundMavenDependency(
   }
 }
 object BoundMavenDependency{
+  private lazy val versionRangeRegex = "^[\\[\\(]([^,\\]\\)]*)(,([^\\]\\)]*))?[\\]\\)]".r
+  def extractVersion( versionOrRange: String ) = {
+    versionOrRange match {
+      case versionRangeRegex(left,middle,right) if left != null || right != null => {
+        Option(left).filterNot(_ == "") getOrElse right
+      }
+      case version => version
+    }
+  }
+
   val ValidIdentifier = "^([A-Za-z0-9_\\-.]+)$".r // according to maven's DefaultModelValidator.java
   def semanticVersionLessThan(left: Array[Either[Int,String]], right: Array[Either[Int,String]]) = {
     // FIXME: this ignores ends when different size
