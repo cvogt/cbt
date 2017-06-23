@@ -146,7 +146,7 @@ public class NailgunLauncher{
   ) throws Throwable {
     _assert(TARGET != null, "environment variable TARGET not defined");
     String nailgunSources = cbtHome + "/" + NAILGUN + "src/cbt";
-    String nailgunTarget = nailgunSources + TARGET;
+    String nailgunTarget = cbtHome + "/" + NAILGUN + TARGET;
     String stage1Sources = cbtHome + "/" + STAGE1;
     String stage1Target = stage1Sources + TARGET;
     String compatibilitySources = cbtHome + "/compatibility/src/cbt";
