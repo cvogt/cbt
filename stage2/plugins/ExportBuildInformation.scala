@@ -2,6 +2,7 @@ package cbt
 
 import cbt._
 import java.io._
+import java.nio.file._
 import scala.xml._
 
 trait ExportBuildInformation { self: BaseBuild =>
@@ -100,10 +101,8 @@ object BuildInformation {
           val s = build.sources
             .filter(_.exists)
             .map(handleSource)
-            .filter(_.getName != "target") //Dirty hack for cbt's sources
-            .distinct
           if (s.nonEmpty)
-            s
+            commonParents(s)
           else
             Seq(build.projectDirectory)
         }
@@ -120,6 +119,21 @@ object BuildInformation {
           parentBuild = build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild])),
           scalacOptions = build.scalacOptions
         )
+      }
+
+      private def commonParents(paths: Seq[File]): Seq[File] = { //Too slow O(n^2)
+        val buffer = scala.collection.mutable.ListBuffer.empty[Path]
+        val sorted = paths
+          .map(_.toPath.toAbsolutePath)
+          .sortWith(_.getNameCount < _.getNameCount)
+        for (x <- sorted) {
+          if (!buffer.exists(x.startsWith)) {
+            buffer += x
+          }
+        }
+        buffer
+          .toList
+          .map(_.toFile)
       }
 
       private def collectLazyBuilds(dependency: Dependency): Option[BaseBuild] =
