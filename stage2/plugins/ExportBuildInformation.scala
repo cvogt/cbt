@@ -24,7 +24,7 @@ object BuildInformation {
     name: String,
     root: File,
     scalaVersion: String,
-    sources: Seq[File],
+    sourceDirs: Seq[File],
     target: File,
     binaryDependencies: Seq[BinaryDependency],
     moduleDependencies: Seq[ModuleDependency],
@@ -57,10 +57,9 @@ object BuildInformation {
         val modules = moduleBuilds
           .map(exportModule)
           .distinct
-
         val scalaCompilers = modules
           .map(_.scalaVersion)
-          .map(v => ScalaCompiler(v, scalaCompiler(rootBuild, v)))
+          .map(v => ScalaCompiler(v, resolveScalaCompiler(rootBuild, v)))
 
         Project(
           rootModule.name,
@@ -81,6 +80,47 @@ object BuildInformation {
           }
           .map(exportLibrary)
           .distinct
+
+      private def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] =
+        dependencies
+          .collect {
+            case d: BaseBuild => Seq(ModuleDependency(moduleName(d)))
+            case d: LazyDependency => collectDependencies(Seq(d.dependency))
+          }
+          .flatten
+
+      private def exportModule(build: BaseBuild): Module = {
+        val moduleDependencies = collectDependencies(build.dependencies)
+        val mavenDependencies = build.dependencies
+          .collect { case d: BoundMavenDependency => BinaryDependency(formatMavenDependency(d.mavenDependency)) }
+        val classpath = build.dependencyClasspath.files
+          .filter(_.isFile)
+          .distinct
+        val sourceDirs = {
+          val s = build.sources
+            .filter(_.exists)
+            .map(handleSource)
+            .filter(_.getName != "target") //Dirty hack for cbt's sources
+            .distinct
+          if (s.nonEmpty)
+            s
+          else
+            Seq(build.projectDirectory)
+        }
+
+        Module(
+          name = moduleName(build),
+          root = build.projectDirectory,
+          scalaVersion = build.scalaVersion,
+          sourceDirs = sourceDirs,
+          target = build.target,
+          binaryDependencies = mavenDependencies,
+          moduleDependencies = moduleDependencies,
+          classpath = classpath,
+          parentBuild = build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild])),
+          scalacOptions = build.scalacOptions
+        )
+      }
 
       private def collectLazyBuilds(dependency: Dependency): Option[BaseBuild] =
         dependency match {
@@ -124,52 +164,10 @@ object BuildInformation {
           .toSeq
           .flatten
 
-      private def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] =
-        dependencies
-          .collect {
-            case d: BaseBuild => Seq(ModuleDependency(moduleName(d)))
-            case d: LazyDependency => collectDependencies(Seq(d.dependency))
-          }
-          .flatten
-
-      private def exportModule(build: BaseBuild): Module = {
-        val moduleDependencies = collectDependencies(build.dependencies)
-        val mavenDependencies = build.dependencies
-          .collect { case d: BoundMavenDependency => BinaryDependency(formatMavenDependency(d.mavenDependency)) }
-        val classpath = build.dependencyClasspath.files
-          .filter(_.isFile)
-          .distinct
-        val sources = {
-          val s = build.sources
-            .filter(_.exists)
-            .map(handleSource)
-            .filter(_.getName != "target") //Dirty hack for cbt's sources
-            .distinct
-          if (s.nonEmpty)
-            s
-          else
-            Seq(build.projectDirectory)
-        }
-
-        Module(
-          name = moduleName(build),
-          root = build.projectDirectory,
-          scalaVersion = build.scalaVersion,
-          sources = sources,
-          target = build.target,
-          binaryDependencies = mavenDependencies,
-          moduleDependencies = moduleDependencies,
-          classpath = classpath,
-          parentBuild = build.context.parentBuild.map(b => moduleName(b.asInstanceOf[BaseBuild])),
-          scalacOptions = build.scalacOptions
-        )
-      }
-
-      private def scalaCompiler(build: BaseBuild, scalaVersion: String) =
+      private def resolveScalaCompiler(build: BaseBuild, scalaVersion: String) =
         build.Resolver(mavenCentral, sonatypeReleases).bindOne(
           MavenDependency("org.scala-lang", "scala-compiler", scalaVersion)
         ).classpath.files
-
 
       private def handleSource(source: File): File =
         if (source.isDirectory)
@@ -212,9 +210,9 @@ object BuildInformationSerializer {
 
   private def serialize(module: BuildInformation.Module): Node =
     <module name={module.name} root={module.root.toString} target={module.target.toString} scalaVersion={module.scalaVersion}>
-      <sources>
-        {module.sources.map(s => <source>{s}</source>)}
-      </sources>
+      <sourceDirs>
+        {module.sourceDirs.map(d => <dir>{d}</dir>)}
+      </sourceDirs>
       <scalacOptions>
         {module.scalacOptions.map(o => <option>{o}</option>)}
       </scalacOptions>
