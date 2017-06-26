@@ -2,7 +2,6 @@ package cbt
 import java.net._
 import java.io.{Console=>_,_}
 import java.nio.file._
-
 class ToolsTasks(
   lib: Lib,
   args: Seq[String],
