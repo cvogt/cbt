@@ -10,7 +10,7 @@ import java.util.jar._
 import java.lang.reflect.Method
 
 import scala.util._
-import scala.reflect.{ClassTag, NameTransformer}
+import scala.reflect.{api, ClassTag, NameTransformer}
 import scala.reflect.runtime.universe
 
 // pom model
@@ -57,8 +57,20 @@ final class Lib(val logger: Logger) extends
   }
 
   // task reflection helpers
-  def taskMethods[T: universe.TypeTag](cls: Class[T]) = {
-    implicit val ct = ClassTag[T](cls)
+  def taskMethods[T](cls: Class[T]) = {
+    implicit val reifiedTypeTag: universe.TypeTag[T] = {
+      val mirror = universe.runtimeMirror(cls.getClassLoader)  // obtain runtime mirror
+
+      val sym = mirror.classSymbol(cls)
+      val tpe = sym.selfType  // obtain type object for `c`
+      // create a type tag which contains above type object
+      universe.TypeTag(mirror, new api.TypeCreator {
+        def apply[U <: api.Universe with Singleton](m: api.Mirror[U]) =
+          if (m eq mirror) tpe.asInstanceOf[U # Type]
+          else throw new IllegalArgumentException(s"Type tag defined in $mirror cannot be migrated to other mirrors.")
+      })
+    }
+
     val mirror = universe.runtimeMirror(cls.getClassLoader)
 
     def declaredIn(tpe: universe.Type) = {
@@ -88,14 +100,14 @@ final class Lib(val logger: Logger) extends
     }
   }
 
-  def taskNames[T: universe.TypeTag](cls: Class[T]): Seq[String] = taskMethods(cls).keys.toVector.sorted
+  def taskNames(cls: Class[_]): Seq[String] = taskMethods(cls).keys.toVector.sorted
 
   def usage(buildClass: Class[_], show: String): String = {
     val baseTasks = Seq(
       classOf[BasicBuild],
       classOf[PackageJars],
       classOf[Publish]
-    ).flatMap(lib.taskNames(_)).distinct.sorted
+    ).flatMap(lib.taskNames).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks
     (
       s"Methods provided by $show\n\n"
