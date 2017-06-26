@@ -57,21 +57,23 @@ final class Lib(val logger: Logger) extends
   }
 
   // task reflection helpers
-  def taskMethods[T](cls: Class[T]) = {
-    implicit val reifiedTypeTag: universe.TypeTag[T] = {
-      val mirror = universe.runtimeMirror(cls.getClassLoader)  // obtain runtime mirror
-
-      val sym = mirror.classSymbol(cls)
-      val tpe = sym.selfType  // obtain type object for `c`
-      // create a type tag which contains above type object
-      universe.TypeTag(mirror, new api.TypeCreator {
-        def apply[U <: api.Universe with Singleton](m: api.Mirror[U]) =
-          if (m eq mirror) tpe.asInstanceOf[U # Type]
-          else throw new IllegalArgumentException(s"Type tag defined in $mirror cannot be migrated to other mirrors.")
-      })
-    }
-
+  def taskMethods(cls: Class[_]) = {
     val mirror = universe.runtimeMirror(cls.getClassLoader)
+
+    // implements ideas from https://stackoverflow.com/questions/23785439/getting-typetag-from-a-classname-string
+    val reifiedTypeTag: universe.TypeTag[_] = {
+      val sym = mirror.classSymbol(cls)
+      val tpe = sym.selfType
+
+      universe.TypeTag(
+        mirror,
+        new api.TypeCreator {
+          def apply[U <: api.Universe with Singleton](m: api.Mirror[U]) =
+            if (m eq mirror) tpe.asInstanceOf[U # Type]
+            else throw new IllegalArgumentException(s"Type tag defined in $mirror cannot be migrated to other mirrors.")
+        }
+      )
+    }
 
     def declaredIn(tpe: universe.Type) = {
       tpe
@@ -90,8 +92,7 @@ final class Lib(val logger: Logger) extends
         .toMap
     }
 
-    mirror
-      .typeOf[T]
+    reifiedTypeTag.tpe
       .baseClasses
       .dropRight(2) // drop … <: Object <: Any
       .foldLeft(Map.empty[String, AnyRef => AnyRef]) {
