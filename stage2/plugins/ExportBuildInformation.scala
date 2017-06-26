@@ -8,7 +8,7 @@ import scala.util._
 
 trait ExportBuildInformation { self: BaseBuild =>
   def buildInfoXml: String =
-    BuildInformationSerializer.serialize(BuildInformation.Project(self)).toString
+    BuildInformationSerializer.serialize(BuildInformation.Project(self, context.args)).toString
 }
 
 object BuildInformation {
@@ -52,10 +52,12 @@ object BuildInformation {
   }
 
   object Project {
-    def apply(build: BaseBuild): Project =
-     new BuildInformationExporter(build).exportBuildInformation
+    def apply(build: BaseBuild, args: Seq[String]): Project = {
+      val extraModuleNames: Seq[String] = args.lift(0).map(_.split(":").toSeq).getOrElse(Seq.empty)
+      new BuildInformationExporter(build, extraModuleNames).exportBuildInformation
+    }
 
-    class BuildInformationExporter(rootBuild: BaseBuild) {
+    class BuildInformationExporter(rootBuild: BaseBuild, extraModuleNames: Seq[String]) {
       def exportBuildInformation: Project = {
         val moduleBuilds = transitiveBuilds(rootBuild)
         val libraries = moduleBuilds
@@ -64,7 +66,13 @@ object BuildInformation {
           .distinct
         val cbtLibraries = convertCbtLibraries
         val rootModule = exportModule(rootBuild)
-        val modules = moduleBuilds
+
+        val extraModuleBuilds = extraModuleNames
+          .map(f => new File(f))
+          .filter(f => f.exists && f.isDirectory)
+          .map(f => DirectoryDependency(f)(rootBuild.context).dependency.asInstanceOf[BaseBuild])
+          .flatMap(transitiveBuilds)
+        val modules = (moduleBuilds ++ extraModuleBuilds)
           .map(exportModule)
           .distinct
         val scalaCompilers = modules
