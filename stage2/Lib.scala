@@ -3,14 +3,15 @@ package cbt
 import java.io._
 import java.net._
 import java.lang.reflect.InvocationTargetException
-import java.nio.file.{Path =>_,_}
+import java.nio.file.{Path => _, _}
 import java.nio.file.Files._
 import java.security.MessageDigest
 import java.util.jar._
 import java.lang.reflect.Method
 
 import scala.util._
-import scala.reflect.NameTransformer
+import scala.reflect.{ClassTag, NameTransformer}
+import scala.reflect.runtime.universe
 
 // pom model
 case class Developer(id: String, name: String, timezone: String, url: URL)
@@ -56,31 +57,45 @@ final class Lib(val logger: Logger) extends
   }
 
   // task reflection helpers
-  def taskMethods(cls:Class[_]): Map[String, Method] =
-    Stream
-      .iterate(cls.asInstanceOf[Class[Any]])(_.getSuperclass)
-      .takeWhile(_ != null)
-      .toVector
-      .dropRight(1) // drop Object
-      .reverse
-      .flatMap(
-        c =>
-          c
-          .getMethods
-          .filter( _.isPublic )
-          .filter( _.parameterTypes.length == 0 )
-          .map(m => NameTransformer.decode(m.getName) -> m)
-          .filterNot(_._1 contains "$")
-      ).toMap
+  def taskMethods[T: universe.TypeTag](cls: Class[T]) = {
+    implicit val ct = ClassTag[T](cls)
+    val mirror = universe.runtimeMirror(cls.getClassLoader)
 
-  def taskNames(cls: Class[_]): Seq[String] = taskMethods(cls).keys.toVector.sorted
+    def declaredIn(tpe: universe.Type) = {
+      tpe
+        .decls
+        .collect {
+          case m if
+          !m.isConstructor &&
+            m.isPublic &&
+            m.isMethod &&
+            !m.name.decodedName.toString.contains("$") &&
+            m.asMethod.paramLists.forall(_.isEmpty) =>
+
+            val methodF: AnyRef => AnyRef = instance => mirror.reflect(instance).reflectMethod(m.asMethod).apply().asInstanceOf[AnyRef]
+            m.name.decodedName.toString -> methodF
+        }
+        .toMap
+    }
+
+    mirror
+      .typeOf[T]
+      .baseClasses
+      .dropRight(2) // drop … <: Object <: Any
+      .foldLeft(Map.empty[String, AnyRef => AnyRef]) {
+      case (map, symbol) =>
+        map ++ declaredIn(symbol.typeSignature)
+    }
+  }
+
+  def taskNames[T: universe.TypeTag](cls: Class[T]): Seq[String] = taskMethods(cls).keys.toVector.sorted
 
   def usage(buildClass: Class[_], show: String): String = {
     val baseTasks = Seq(
       classOf[BasicBuild],
       classOf[PackageJars],
       classOf[Publish]
-    ).flatMap(lib.taskNames).distinct.sorted
+    ).flatMap(lib.taskNames(_)).distinct.sorted
     val thisTasks = lib.taskNames(buildClass) diff baseTasks
     (
       s"Methods provided by $show\n\n"
@@ -152,7 +167,7 @@ final class Lib(val logger: Logger) extends
         logger.lib("Calling task " ++ taskName.toString)
         taskMethods(obj.getClass).get(name).map{ method =>
           callInternal(
-            Option(trapExitCodeOrValue(method.invoke(obj)).merge /* null in case of Unit */ ).getOrElse(
+            Option(trapExitCodeOrValue(method(obj)).merge /* null in case of Unit */ ).getOrElse(
               ().asInstanceOf[AnyRef]
             ),
             members.tail,

@@ -2,6 +2,8 @@ package cbt
 import java.net._
 import java.io.{Console=>_,_}
 import java.nio.file._
+
+import scala.reflect.runtime.universe
 class ToolsTasks(
   lib: Lib,
   args: Seq[String],
@@ -9,8 +11,8 @@ class ToolsTasks(
   cache: File,
   cbtHome: File,
   cbtLastModified: Long
-)(implicit classLoaderCache: ClassLoaderCache){
-  def apply: String = "Available methods: " ++ lib.taskNames(getClass).mkString("  ")
+)(implicit classLoaderCache: ClassLoaderCache, typeTag: universe.TypeTag[ToolsTasks]){
+  def apply: String = "Available methods: " ++ lib.taskNames(classOf[ToolsTasks]).mkString("  ")
   override def toString = lib.usage(this.getClass, super.toString)
   private val paths = CbtPaths(cbtHome, cache)
   import paths._
