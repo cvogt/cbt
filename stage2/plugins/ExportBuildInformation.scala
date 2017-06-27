@@ -33,14 +33,22 @@ object BuildInformation {
     parentBuild: Option[String],
     scalacOptions: Seq[String]
   )
-
-  case class Library( name: String, jars: Seq[File] )
+ 
+  case class Library( name: String, jars: Seq[LibraryJar] )
 
   case class BinaryDependency( name: String )
 
   case class ModuleDependency( name: String )
 
   case class ScalaCompiler( version: String, jars: Seq[File] )
+
+  case class LibraryJar( jar: File, jarType: JarType.JarType )
+
+  object JarType extends Enumeration {
+    type JarType = Value
+    val Binary = Value("binary")
+    val Source = Value("source")
+  }
 
   object Project {
     def apply(build: BaseBuild): Project =
@@ -161,15 +169,25 @@ object BuildInformation {
           .flatten
           .distinct
 
-      private def exportLibrary(mavenDependency: BoundMavenDependency) = {
-        val name = formatMavenDependency(mavenDependency.mavenDependency)
-        val jars = (mavenDependency +: mavenDependency.transitiveDependencies)
-          .map(_.asInstanceOf[BoundMavenDependency].jar)
-        Library(name, jars)
+      private def exportLibrary(dependency: BoundMavenDependency) = {
+        val name = formatMavenDependency(dependency.mavenDependency)
+        val jars = (dependency +: dependency.transitiveDependencies)
+          .map(_.asInstanceOf[BoundMavenDependency])
+        val binaryJars = jars
+          .map(_.jar)
+          .map(LibraryJar(_, JarType.Binary))
+
+        implicit val logger: Logger = rootBuild.context.logger
+        implicit val transientCache: java.util.Map[AnyRef, AnyRef] = rootBuild.context.transientCache
+        implicit val classLoaderCache: ClassLoaderCache = rootBuild.context.classLoaderCache
+        val sourceJars = jars
+          .map { d => d.copy(mavenDependency = d.mavenDependency.copy(classifier = Classifier.sources)).jar }
+          .map(LibraryJar(_, JarType.Source))
+        Library(name, binaryJars ++ sourceJars)
       }
 
       private def exportLibrary(file: File) =
-        Library("CBT:" + file.getName.stripSuffix(".jar"), Seq(file))
+        Library("CBT:" + file.getName.stripSuffix(".jar"), Seq(LibraryJar(file, JarType.Binary)))
 
       private def collectParentBuilds(build: BaseBuild): Seq[BaseBuild] =
         build.context.parentBuild
@@ -245,7 +263,7 @@ object BuildInformationSerializer {
 
   private def serialize(library: BuildInformation.Library): Node =
     <library name={library.name}>
-      {library.jars.map(j => <jar>{j}</jar>)}
+      {library.jars.map(j => <jar type={j.jarType.toString}>{j.jar}</jar>)}
     </library>
 
   private def serialize(compiler: BuildInformation.ScalaCompiler): Node =
