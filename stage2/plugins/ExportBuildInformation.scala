@@ -191,9 +191,7 @@ object BuildInformation {
         implicit val classLoaderCache: ClassLoaderCache = rootBuild.context.classLoaderCache
         val sourceJars = jars
           .map { d => 
-            Try(  
-              d.copy(mavenDependency = d.mavenDependency.copy(classifier = Classifier.sources)).jar 
-            )
+            Try(d.copy(mavenDependency = d.mavenDependency.copy(classifier = Classifier.sources)).jar)
             }
           .flatMap {
             case Success(j) => Some(j)
