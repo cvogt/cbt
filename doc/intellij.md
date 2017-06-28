@@ -1,22 +1,40 @@
 # CBT Intellij scala-plugin (fork of orginal scala-plugin)
-Link: [scala.zip](https://www.dropbox.com/s/5o8fq8z6kh4stt0/Scala.zip?dl=0) (sha1: `3540583931867718e0b82d15f2038eef53d748e2`)
+Link: [scala-plugin.zip](https://www.dropbox.com/s/508v9ypypvrpni9/scala-plugin.zip?dl=0) (sha1: `a330220b831bedea8863b30ba15c7d8cdedfa740`)
 
 ### Features:
-* Creating cbt-based projects
-* Importing existing cbt-based projects
-* Running cbt-tasks (Default IDEA build task doesn't work so you have to disable it)
-![cbt-task](https://user-images.githubusercontent.com/16403337/27309036-75740d5c-555a-11e7-9c9a-60e756d5e0ca.png)
+* Creating CBT-based projects
+* Importing existing cbt-based projects 
+* Editting CBT source code (will be a little better when #536 will be accepted)
+
+    **Cache directory should be added to Excluded in root module setting**
+* Running cbt-tasks (You better do sibale IDEA default build task) ![cbt-task](https://user-images.githubusercontent.com/16403337/27309036-75740d5c-555a-11e7-9c9a-60e756d5e0ca.png)
+* Running and debugging CBT-based projects
+* Navigating through libraries sources
+
+
 
 ### Requirements:
 * Latest version of CBT from github
-* Cbt executable available within comandline
-* Intellij IDEA 2017.2 EAP Comunity (not sure about working on other versions)
+* CBT executable available within comandline
+* Intellij IDEA 2017.2 Community Public Preview (not sure about working on other versions)
 
 In order to install you need to remove existing intellij-scala plugin and then choose `Install plugin from disk` and point out to the downloaded zip
 
-### For editing CBT's source code `cache` directory should be added to `Excluded` in root module settings
+### Others
 
-![cbt](https://user-images.githubusercontent.com/16403337/27309553-3bf812fa-555d-11e7-968e-93e2c588ba6d.png)
+#### Refreshing a project
+To refresh o project you need to enable a `CBT tool panel`: just press `ctrl-shift-A` and then enter `cbt`:
+![image](https://user-images.githubusercontent.com/16403337/27643459-cdaee64c-5c29-11e7-8c9f-f233da861928.png)
+
+When done a tool panel will aperas at the right side: ![image](https://user-images.githubusercontent.com/16403337/27643788-b4d8998c-5c2a-11e7-929e-4e80724d4b6d.png)
+
+#### Creating extra modules
+For now IDEA assumes that all modules which you use are in dependencies(may be transitive) of a root module
+
+If you want to work on some module which is not you can right-click on the directory in the project tree view and then choose `Consider as CBT module` (directory should contains `build` directory with a correct build file)
+
+#### Correct build files
+For now plugin assumes that if you import some project(or may be just refresh it) all build files do not contain errors. Otherwise it would not just be imported/refreshed
 
 ------
 
