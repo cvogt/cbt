@@ -4,6 +4,7 @@ import cbt._
 import java.io._
 import java.nio.file._
 import scala.xml._
+import scala.util._ 
 
 trait ExportBuildInformation { self: BaseBuild =>
   def buildInfoXml: String =
@@ -181,7 +182,17 @@ object BuildInformation {
         implicit val transientCache: java.util.Map[AnyRef, AnyRef] = rootBuild.context.transientCache
         implicit val classLoaderCache: ClassLoaderCache = rootBuild.context.classLoaderCache
         val sourceJars = jars
-          .map { d => d.copy(mavenDependency = d.mavenDependency.copy(classifier = Classifier.sources)).jar }
+          .map { d => 
+            Try(  
+              d.copy(mavenDependency = d.mavenDependency.copy(classifier = Classifier.sources)).jar 
+            )
+            }
+          .flatMap {
+            case Success(j) => Some(j)
+            case Failure(e) =>
+              logger.log("ExportBuildInformation", s"Can not load a $name library sources. Skipping")
+              None 
+          }
           .map(LibraryJar(_, JarType.Source))
         Library(name, binaryJars ++ sourceJars)
       }
