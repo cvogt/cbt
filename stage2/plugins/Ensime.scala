@@ -172,22 +172,6 @@ object Ensime {
     }
   }
 
-  final case class EnsimeConfig(
-    scalaCompilerJars: Seq[File],
-    ensimeServerJars: Seq[File],
-    ensimeServerVersion: String,
-    rootDir: File,
-    cacheDir: File,
-    javaHome: File,
-    name: String,
-    scalaVersion: String,
-    javaSources: Seq[File],
-    javaFlags: Seq[String],
-    projects: Seq[EnsimeProject]
-  ) {
-    def toSexp: String = sexp(this)
-  }
-
   final case class EnsimeProjectId(
     project: String,
     config: String
@@ -206,7 +190,7 @@ object Ensime {
   )
 
   /* EnsimeModules are required for backwards-compatibility with clients.
-   * They can automatically be derived from projects (see method below). */
+   * They can automatically be derived from projects (see method EnsimeModule.fromProjects). */
   private final case class EnsimeModule(
     name: String,
     mainRoots: Set[File],
@@ -220,76 +204,96 @@ object Ensime {
     sourceJars: Set[File],
     docJars: Set[File]
   )
-
-  private def ensimeProjectsToModule(p: Iterable[EnsimeProject]): EnsimeModule = {
-    val name = p.head.id.project
-    val deps = for {
-      s <- p
-      d <- s.depends
-      if d.project != name
-    } yield d.project
-    val (mains, tests) = p.toSet.partition(_.id.config == "compile")
-    val mainSources = mains.flatMap(_.sources)
-    val mainTargets = mains.flatMap(_.targets)
-    val mainJars = mains.flatMap(_.libraryJars)
-    val testSources = tests.flatMap(_.sources)
-    val testTargets = tests.flatMap(_.targets)
-    val testJars = tests.flatMap(_.libraryJars).toSet -- mainJars
-    val sourceJars = p.flatMap(_.librarySources).toSet
-    val docJars = p.flatMap(_.libraryDocs).toSet
-    EnsimeModule(
-      name, mainSources, testSources, mainTargets, testTargets, deps.toSet,
-      mainJars, Set.empty, testJars, sourceJars, docJars
-    )
+  private object EnsimeModule {
+    def fromProjects(p: Iterable[EnsimeProject]): EnsimeModule = {
+      val name = p.head.id.project
+      val deps = for {
+        s <- p
+        d <- s.depends
+        if d.project != name
+      } yield d.project
+      val (mains, tests) = p.toSet.partition(_.id.config == "compile")
+      val mainSources = mains.flatMap(_.sources)
+      val mainTargets = mains.flatMap(_.targets)
+      val mainJars = mains.flatMap(_.libraryJars)
+      val testSources = tests.flatMap(_.sources)
+      val testTargets = tests.flatMap(_.targets)
+      val testJars = tests.flatMap(_.libraryJars).toSet -- mainJars
+      val sourceJars = p.flatMap(_.librarySources).toSet
+      val docJars = p.flatMap(_.libraryDocs).toSet
+      EnsimeModule(
+        name, mainSources, testSources, mainTargets, testTargets, deps.toSet,
+        mainJars, Set.empty, testJars, sourceJars, docJars
+      )
+    }
   }
 
-  private def sexp(value: Any): String = value match {
-    case s: String => s""""$s""""
-    case f: File => sexp(f.getAbsolutePath)
-    case (k, v) => s":$k ${sexp(v)}\n"
-    case xss: Traversable[_] if xss.isEmpty => "nil"
-    case xss: Traversable[_] => xss.map(sexp(_)).mkString("(", " ", ")")
-    case EnsimeProjectId(project, config) => sexp(List(
-      "project" -> project,
-      "config" -> config
-    ))
-    case proj: EnsimeProject => sexp(List(
-      "id" -> proj.id,
-      "depends" -> proj.depends,
-      "sources" -> proj.sources,
-      "targets" -> proj.targets,
-      "scalac-options" -> proj.scalacOptions,
-      "javac-options" -> proj.javacOptions,
-      "library-jars" -> proj.libraryJars,
-      "library-sources" -> proj.librarySources,
-      "library-docs" -> proj.libraryDocs
-    ))
-    case conf: EnsimeConfig => sexp(List(
-      "root-dir" -> conf.rootDir,
-      "cache-dir" -> conf.cacheDir,
-      "scala-compiler-jars" -> conf.scalaCompilerJars,
-      "ensime-server-jars" -> conf.ensimeServerJars,
-      "ensime-server-version" -> conf.ensimeServerVersion,
-      "name" -> conf.name,
-      "scala-version" -> conf.scalaVersion,
-      "java-home" -> conf.javaHome,
-      "java-flags" -> conf.javaFlags,
-      "java-sources" -> conf.javaSources,
-      "projects" -> conf.projects,
-      "subprojects" -> List(ensimeProjectsToModule(conf.projects))
-    ))
-    case module: EnsimeModule => sexp(List(
-      "name" -> module.name,
-      "source-roots" -> (module.mainRoots ++ module.testRoots),
-      "targets" -> module.targets,
-      "test-targets" -> module.testTargets,
-      "depends-on-modules" -> module.dependsOnNames,
-      "compile-deps" -> module.compileJars,
-      "runtime-deps" -> module.runtimeJars,
-      "test-deps" -> module.testJars,
-      "doc-jars"-> module.docJars,
-      "reference-source-roots" -> module.sourceJars
-    ))
+  final case class EnsimeConfig(
+    scalaCompilerJars: Seq[File],
+    ensimeServerJars: Seq[File],
+    ensimeServerVersion: String,
+    rootDir: File,
+    cacheDir: File,
+    javaHome: File,
+    name: String,
+    scalaVersion: String,
+    javaSources: Seq[File],
+    javaFlags: Seq[String],
+    projects: Seq[EnsimeProject]
+  ) {
+    def toSexp: String = EnsimeConfig.sexp(this)
+  }
+  object EnsimeConfig {
+    private def sexp(value: Any): String = value match {
+      case s: String => s""""$s""""
+      case f: File => sexp(f.getAbsolutePath)
+      case (k, v) => s":$k ${sexp(v)}\n"
+      case xss: Traversable[_] if xss.isEmpty => "nil"
+      case xss: Traversable[_] => xss.map(sexp(_)).mkString("(", " ", ")")
+      case EnsimeProjectId(project, config) => sexp(List(
+        "project" -> project,
+        "config" -> config
+      ))
+      case proj: EnsimeProject => sexp(List(
+        "id" -> proj.id,
+        "depends" -> proj.depends,
+        "sources" -> proj.sources,
+        "targets" -> proj.targets,
+        "scalac-options" -> proj.scalacOptions,
+        "javac-options" -> proj.javacOptions,
+        "library-jars" -> proj.libraryJars,
+        "library-sources" -> proj.librarySources,
+        "library-docs" -> proj.libraryDocs
+      ))
+      case conf: EnsimeConfig => sexp(List(
+        "root-dir" -> conf.rootDir,
+        "cache-dir" -> conf.cacheDir,
+        "scala-compiler-jars" -> conf.scalaCompilerJars,
+        "ensime-server-jars" -> conf.ensimeServerJars,
+        "ensime-server-version" -> conf.ensimeServerVersion,
+        "name" -> conf.name,
+        "scala-version" -> conf.scalaVersion,
+        "java-home" -> conf.javaHome,
+        "java-flags" -> conf.javaFlags,
+        "java-sources" -> conf.javaSources,
+        "projects" -> conf.projects,
+        // subprojects are required for backwards-compatibility with older clients
+        // (ensime-server does not require them)
+        "subprojects" -> List(EnsimeModule.fromProjects(conf.projects))
+      ))
+      case module: EnsimeModule => sexp(List(
+        "name" -> module.name,
+        "source-roots" -> (module.mainRoots ++ module.testRoots),
+        "targets" -> module.targets,
+        "test-targets" -> module.testTargets,
+        "depends-on-modules" -> module.dependsOnNames,
+        "compile-deps" -> module.compileJars,
+        "runtime-deps" -> module.runtimeJars,
+        "test-deps" -> module.testJars,
+        "doc-jars"-> module.docJars,
+        "reference-source-roots" -> module.sourceJars
+      ))
+    }
   }
 
 }
