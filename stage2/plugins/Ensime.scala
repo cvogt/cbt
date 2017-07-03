@@ -20,48 +20,34 @@ import scala.util.control.NonFatal
   * (https://github.com/ensime/ensime-sbt). Licensed under the Apache 2.0 License.
   */
 trait Ensime extends BaseBuild {
-  import Ensime._
-
-  /** The Java (JDK, not JRE) root directory that will be used to launch ENSIME. */
-  def ensimeJavaHome: File = jdkHome
-
-  /** Flags to be passed to ENSIME JVM process. */
-  def ensimeJavaFlags: Seq[String] = baseJavaFlags(ensimeServerVersion)
 
   /** The version of ensime to use. */
   def ensimeServerVersion: String = "2.0.0-SNAPSHOT"
 
-  /** All jars required to launch ENSIME-server, including its dependencies. */
-  def ensimeServerJars: Seq[File] = {
-    val deps = Dependencies(Resolver(mavenCentral, sonatypeReleases, sonatypeSnapshots).bind(
-      MavenDependency("org.ensime", s"server_$scalaMajorVersion", ensimeServerVersion)
-    ))
-    (deps.dependencies ++ deps.transitiveDependencies).flatMap(_.exportedClasspathArray)
-  }
-
-  /** Version of Scala that ENSIME will assume is used in this build. */
-  def ensimeScalaVersion: String = defaultScalaVersion
-
-  /** The scala compiler's jars. */
-  def ensimeScalaJars: Seq[File] = new ScalaDependencies(
-    context.cbtLastModified,
-    context.paths.mavenCache,
-    scalaVersion
-  ).dependencies.flatMap(_.exportedClasspathArray)
-
   /** ENSIME server and client configuration. */
-  def ensimeConfig: EnsimeConfig = EnsimeConfig(
-    scalaCompilerJars = ensimeScalaJars,
-    ensimeServerJars = ensimeServerJars,
-    ensimeServerVersion = ensimeServerVersion,
+  def ensimeConfig: Ensime.EnsimeConfig = Ensime.EnsimeConfig(
+    scalaCompilerJars = {
+      new ScalaDependencies(
+        context.cbtLastModified,
+        context.paths.mavenCache,
+        scalaVersion
+      ).dependencies.flatMap(_.exportedClasspathArray)
+    },
+    ensimeServerJars = {
+      val deps = Dependencies(Resolver(mavenCentral, sonatypeReleases, sonatypeSnapshots).bind(
+        MavenDependency("org.ensime", s"server_$scalaMajorVersion", ensimeServerVersion)
+      ))
+      (deps.dependencies ++ deps.transitiveDependencies).flatMap(_.exportedClasspathArray)
+    },
+    ensimeServerVersion = scalaVersion,
     rootDir = projectDirectory,
     cacheDir = projectDirectory / ".ensime_cache",
-    javaHome = ensimeJavaHome,
+    javaHome = Ensime.jdkHome,
     name = name,
-    scalaVersion = ensimeScalaVersion,
-    javaSources = jdkSource.toSeq,
-    javaFlags = ensimeJavaFlags,
-    projects = findProjects(this)
+    scalaVersion = scalaVersion,
+    javaSources = Ensime.jdkSource.toSeq,
+    javaFlags = Ensime.baseJavaFlags(ensimeServerVersion),
+    projects = Ensime.findProjects(this)
   )
 
   /** Generate an ENSIME configuration file for this build. */
@@ -97,7 +83,7 @@ object Ensime {
     if (src.exists) Some(src) else None
   }
 
-  def baseJavaFlags(serverVersion: String) = {
+  def baseJavaFlags(serverVersion: String): Seq[String] = {
     val raw = ManagementFactory.getRuntimeMXBean.getInputArguments.asScala.toList
 
     // WORKAROUND https://github.com/ensime/ensime-sbt/issues/91
