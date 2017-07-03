@@ -21,9 +21,6 @@ import scala.util.control.NonFatal
   */
 trait Ensime extends BaseBuild {
 
-  /** The version of ensime to use. */
-  def ensimeServerVersion: String = "2.0.0-SNAPSHOT"
-
   /** ENSIME server and client configuration. */
   def ensimeConfig: Ensime.EnsimeConfig = Ensime.EnsimeConfig(
     scalaCompilerJars = {
@@ -35,18 +32,18 @@ trait Ensime extends BaseBuild {
     },
     ensimeServerJars = {
       val deps = Dependencies(Resolver(mavenCentral, sonatypeReleases, sonatypeSnapshots).bind(
-        MavenDependency("org.ensime", s"server_$scalaMajorVersion", ensimeServerVersion)
+        MavenDependency("org.ensime", s"server_$scalaMajorVersion", "2.0.0-SNAPSHOT")
       ))
       (deps.dependencies ++ deps.transitiveDependencies).flatMap(_.exportedClasspathArray)
     },
-    ensimeServerVersion = scalaVersion,
+    ensimeServerVersion = "2.0.0-SNAPSHOT",
     rootDir = projectDirectory,
     cacheDir = projectDirectory / ".ensime_cache",
     javaHome = Ensime.jdkHome,
     name = name,
     scalaVersion = scalaVersion,
     javaSources = Ensime.jdkSource.toSeq,
-    javaFlags = Ensime.baseJavaFlags(ensimeServerVersion),
+    javaFlags = Ensime.baseJavaFlags,
     projects = Ensime.findProjects(this)
   )
 
@@ -83,7 +80,7 @@ object Ensime {
     if (src.exists) Some(src) else None
   }
 
-  def baseJavaFlags(serverVersion: String): Seq[String] = {
+  def baseJavaFlags: Seq[String] = {
     val raw = ManagementFactory.getRuntimeMXBean.getInputArguments.asScala.toList
 
     // WORKAROUND https://github.com/ensime/ensime-sbt/issues/91
@@ -102,28 +99,18 @@ object Ensime {
     val memory = Seq(
       "-Xss2m",
       "-Xms512m",
-      "-Xmx4g"
+      "-Xmx4g",
+      "-XX:MaxMetaspaceSize=256m",
+      // these improve ensime-server performance
+      "-XX:StringTableSize=1000003",
+      "-XX:+UnlockExperimentalVMOptions",
+      "-XX:SymbolTableSize=1000003"
     )
-
-    val server = serverVersion.substring(0, 3)
-    val java = sys.props("java.version").substring(0, 3)
-    val versioned = (java, server) match {
-      case (_, "1.0") | ("1.6" | "1.7", _) => Seq(
-        "-XX:MaxPermSize=256m"
-      )
-      case _ => List(
-        "-XX:MaxMetaspaceSize=256m",
-        // these improve ensime-server performance
-        "-XX:StringTableSize=1000003",
-        "-XX:+UnlockExperimentalVMOptions",
-        "-XX:SymbolTableSize=1000003"
-      )
-    }
 
     // WORKAROUND: https://github.com/scala/scala/pull/5592
     val zipFix = Seq("-Dscala.classpath.closeZip=true")
 
-    corrected ++ memory ++ versioned ++ zipFix
+    corrected ++ memory ++ zipFix
   }
 
   /** Attempt to download a maven dependency with a given classifer. Warn if it is not available. */
