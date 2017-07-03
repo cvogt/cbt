@@ -506,6 +506,11 @@ object Main{
       assert(res.exit0)
     }
 
+    {
+      val res = runCbt("../examples/package-example", Seq("run"))
+      assert(res.exit0)
+    }
+
     /*
     // currently fails with
     // java.lang.UnsupportedOperationException: scalafix.rewrite.ScalafixMirror.fromMirror $anon#typeSignature requires the semantic api
