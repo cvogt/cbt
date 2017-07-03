@@ -257,6 +257,13 @@ final class Lib(val logger: Logger) extends
     m
   }
 
+  /** Create a jar from the given files and optionally make it
+    * executable by providing a main class.
+    *
+    * Note that all build-time related information is stripped from
+    * the jar, in order to make it reproducible on an independent
+    * system. See https://reproducible-builds.org/ for more
+    * information on reproducible builds. */
   def createJar( jarFile: File, files: Seq[File], mainClass: Option[String] = None ): Option[File] = {
     deleteIfExists(jarFile.toPath)
     if( files.isEmpty ){
@@ -264,13 +271,19 @@ final class Lib(val logger: Logger) extends
     } else {
       jarFile.getParentFile.mkdirs
       logger.lib("Start packaging "++jarFile.string)
-      val jar = new JarOutputStream(new FileOutputStream(jarFile), createManifest(mainClass))
+      val jar = new JarOutputStream(new FileOutputStream(jarFile))
       try{
+        val manifestEntry = new JarEntry( "META-INF/MANIFEST.MF" )
+        manifestEntry.setTime(0l)
+        jar.putNextEntry(manifestEntry)
+        createManifest(mainClass).write(jar)
+        jar.closeEntry
+
         assert( files.forall(_.exists) )
         autoRelative(files).collect{
           case (file, relative) if file.isFile =>
             val entry = new JarEntry( relative )
-            entry.setTime(file.lastModified)
+            entry.setTime(0l)
             jar.putNextEntry(entry)
             jar.write( readAllBytes( file.toPath ) )
             jar.closeEntry
