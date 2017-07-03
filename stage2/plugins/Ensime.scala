@@ -61,20 +61,7 @@ trait Ensime extends BaseBuild {
     scalaVersion = ensimeScalaVersion,
     javaSources = jdkSource.toSeq,
     javaFlags = ensimeJavaFlags,
-    projects = EnsimeProject(
-      id = EnsimeProjectId(
-        project = name,
-        config = "compile"
-      ),
-      depends = Nil, // currently only one project is supported
-      sources = sources.filter(_.isDirectory),
-      targets = Seq(compileTarget),
-      scalacOptions = scalacOptions.toList,
-      javacOptions = Nil,
-      libraryJars = transitiveDependencies.flatMap(_.exportedClasspathArray).toList,
-      librarySources = resolveWithClassifier(transitiveDependencies, Classifier.sources),
-      libraryDocs = resolveWithClassifier(transitiveDependencies, Classifier.javadoc)
-    ) :: Nil
+    projects = findProjects(this)
   )
 
   /** Generate an ENSIME configuration file for this build. */
@@ -169,6 +156,30 @@ object Ensime {
             s"ensime: could not find $classifierName of ${dependency.mavenDependency.serialize}")
           Seq.empty
       }
+    }
+  }
+
+  /** Find and convert all (transitive) dependencies of a build to a sequence of ENSIME projects. */
+  def findProjects(root: BaseBuild)(implicit logger: Logger, cache: JMap[AnyRef, AnyRef], classLoaderCache: ClassLoaderCache): Seq[EnsimeProject] = {
+    def asProject(base: BaseBuild) = EnsimeProject(
+      id = EnsimeProjectId(
+        project = base.name,
+        config = "compile"
+      ),
+      depends = base.transitiveDependencies.collect{
+        case b: BaseBuild => EnsimeProjectId(b.name, "compile")
+      },
+      sources = base.sources.filter(_.isDirectory),
+      targets = Seq(base.compileTarget),
+      scalacOptions = base.scalacOptions.toList,
+      javacOptions = Nil, // TODO get javac options from base build
+      libraryJars = base.transitiveDependencies.flatMap(_.exportedClasspathArray).toList,
+      librarySources = resolveWithClassifier(base.transitiveDependencies, Classifier.sources),
+      libraryDocs = resolveWithClassifier(base.transitiveDependencies, Classifier.javadoc)
+    )
+
+    Seq(asProject(root)) ++ root.transitiveDependencies.collect{ case b: BaseBuild =>
+      asProject(b)
     }
   }
 
@@ -279,7 +290,7 @@ object Ensime {
         "projects" -> conf.projects,
         // subprojects are required for backwards-compatibility with older clients
         // (ensime-server does not require them)
-        "subprojects" -> List(EnsimeModule.fromProjects(conf.projects))
+        "subprojects" -> conf.projects.groupBy(_.id.project).mapValues(EnsimeModule.fromProjects)//conf.projects.flatMap(proj => EnsimeModule.fromProjects(conf.projects))
       ))
       case module: EnsimeModule => sexp(List(
         "name" -> module.name,
