@@ -43,12 +43,13 @@ object BuildInformation {
 
   case class ScalaCompiler( version: String, jars: Seq[File] )
 
-  case class LibraryJar( jar: File, jarType: JarType.JarType )
+  case class LibraryJar( jar: File, jarType: JarType )
 
-  object JarType extends Enumeration {
-    type JarType = Value
-    val Binary = Value("binary")
-    val Source = Value("source")
+  case class JarType( name: String )
+
+  object JarType {
+    object Binary extends JarType( "binary" )
+    object Source extends JarType( "source" )
   }
 
   object Project {
@@ -80,13 +81,13 @@ object BuildInformation {
           .map(v => ScalaCompiler(v, resolveScalaCompiler(rootBuild, v)))
 
         Project(
-          rootModule.name,
-          rootModule.root,
-          rootModule,
-          modules,
-          libraries,
-          cbtLibraries,
-          scalaCompilers
+          name = rootModule.name,
+          root= rootModule.root,
+          rootModule = rootModule,
+          modules = modules,
+          libraries = libraries,
+          cbtLibraries = cbtLibraries,
+          scalaCompilers =  scalaCompilers
         )
       }
 
@@ -222,7 +223,7 @@ object BuildInformation {
         if (source.isDirectory)
           source
         else
-          source.getParentFile //Let's asume that for now
+          source.getParentFile //Let's assume that for now
 
 
       private def formatMavenDependency(dependency: cbt.MavenDependency) =
@@ -242,7 +243,7 @@ object BuildInformation {
 
 object BuildInformationSerializer {
   def serialize(project: BuildInformation.Project): Node =
-    <project name={project.name} root={project.root.toString} rootModule={project.rootModule.name}>
+    <project name={project.name} root={project.root.getPath} rootModule={project.rootModule.name}>
       <modules>
         {project.modules.map(serialize)}
       </modules>
@@ -258,21 +259,21 @@ object BuildInformationSerializer {
     </project>
 
   private def serialize(module: BuildInformation.Module): Node =
-    <module name={module.name} root={module.root.toString} target={module.target.toString} scalaVersion={module.scalaVersion}>
+    <module name={module.name} root={module.root.getPath} target={module.target.getPath} scalaVersion={module.scalaVersion}>
       <sourceDirs>
-        {module.sourceDirs.map(d => <dir>{d}</dir>)}
+        {module.sourceDirs.map(d => <dir>{d.getPath: String}</dir>)}
       </sourceDirs>
       <scalacOptions>
-        {module.scalacOptions.map(o => <option>{o}</option>)}
+        {module.scalacOptions.map(o => <option>{o: String}</option>)}
       </scalacOptions>
       <dependencies>
         {module.binaryDependencies.map(serialize)}
         {module.moduleDependencies.map(serialize)}
       </dependencies>
       <classpath>
-        {module.classpath.map(c => <classpathItem>{c.toString}</classpathItem>)}
+        {module.classpath.map(c => <classpathItem>{c.getPath: String}</classpathItem>)}
       </classpath>
-      {module.parentBuild.map(p => <parentBuild>{p}</parentBuild>).getOrElse(NodeSeq.Empty)}
+      {module.parentBuild.map(p => <parentBuild>{p: String}</parentBuild>).getOrElse(NodeSeq.Empty)}
     </module>
 
   private def serialize(binaryDependency: BuildInformation.BinaryDependency): Node =
@@ -280,14 +281,14 @@ object BuildInformationSerializer {
 
   private def serialize(library: BuildInformation.Library): Node =
     <library name={library.name}>
-      {library.jars.map(j => <jar type={j.jarType.toString}>{j.jar}</jar>)}
+      {library.jars.map(j => <jar type={j.jarType.name}>{j.jar.getPath: String}</jar>)}
     </library>
 
   private def serialize(compiler: BuildInformation.ScalaCompiler): Node =
     <compiler version={compiler.version}>
-      {compiler.jars.map(j => <jar>{j}</jar>)}
+      {compiler.jars.map(j => <jar>{j.getPath: String}</jar>)}
     </compiler>
 
   private def serialize(moduleDependency: BuildInformation.ModuleDependency): Node =
-    <moduleDependency>{moduleDependency.name}</moduleDependency>
+    <moduleDependency>{moduleDependency.name: String}</moduleDependency>
 }
