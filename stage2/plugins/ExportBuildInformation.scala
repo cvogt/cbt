@@ -61,21 +61,21 @@ object BuildInformation {
     class BuildInformationExporter(rootBuild: BaseBuild, extraModuleNames: Seq[String]) {
       def exportBuildInformation: Project = {
         val moduleBuilds = transitiveBuilds(rootBuild)
-        val libraries = moduleBuilds
-          .flatMap(_.transitiveDependencies)
-          .collect { case d: BoundMavenDependency => exportLibrary(d) }
-          .distinct
-        val cbtLibraries = convertCbtLibraries
-        val rootModule = exportModule(rootBuild)
-
         val extraModuleBuilds = extraModuleNames
           .map(f => new File(f))
           .filter(f => f.exists && f.isDirectory)
           .map(f => DirectoryDependency(f)(rootBuild.context).dependency.asInstanceOf[BaseBuild])
           .flatMap(transitiveBuilds)
+        val rootModule = exportModule(rootBuild)       
         val modules = (moduleBuilds ++ extraModuleBuilds)
           .map(exportModule)
           .distinct
+
+        val libraries = (moduleBuilds ++ extraModuleBuilds)
+          .flatMap(_.transitiveDependencies)
+          .collect { case d: BoundMavenDependency => exportLibrary(d) }
+          .distinct
+        val cbtLibraries = convertCbtLibraries
         val scalaCompilers = modules
           .map(_.scalaVersion)
           .map(v => ScalaCompiler(v, resolveScalaCompiler(rootBuild, v)))
