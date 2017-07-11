@@ -4,11 +4,15 @@ import cbt._
 import java.io._
 import java.nio.file._
 import scala.xml._
-import scala.util._ 
+import scala.util._
 
 trait ExportBuildInformation { self: BaseBuild =>
   def buildInfoXml: String =
-    BuildInformationSerializer.serialize(BuildInformation.Project(self, context.args)).toString
+    BuildInformationSerializer.serialize(
+      BuildInformation.BuildInformationExporter.fromArgs(self, context.args).exportBuildInformation
+    ).toString
+  def convertCbtLibraries =
+    BuildInformation.BuildInformationExporter.fromArgs(self, context.args).convertCbtLibraries
 }
 
 object BuildInformation {
@@ -34,7 +38,7 @@ object BuildInformation {
     parentBuild: Option[String],
     scalacOptions: Seq[String]
   )
- 
+
   case class Library( name: String, jars: Seq[LibraryJar] )
 
   case class BinaryDependency( name: String )
@@ -51,11 +55,13 @@ object BuildInformation {
     val Source = Value("source")
   }
 
-  object Project {
-    def apply(build: BaseBuild, args: Seq[String]): Project = {
-      val extraModuleNames: Seq[String] = args.lift(0).map(_.split(":").toSeq).getOrElse(Seq.empty)
-      new BuildInformationExporter(build, extraModuleNames).exportBuildInformation
-    }
+  object BuildInformationExporter{
+    def fromArgs(build: BaseBuild, args: Seq[String]) =
+      new BuildInformationExporter(
+        build,
+        args.lift(0).map(_.split(":").toSeq).getOrElse(Seq.empty)
+      )
+  }
 
     class BuildInformationExporter(rootBuild: BaseBuild, extraModuleNames: Seq[String]) {
       def exportBuildInformation: Project = {
@@ -90,7 +96,7 @@ object BuildInformation {
         )
       }
 
-      private def convertCbtLibraries =
+      def convertCbtLibraries =
         transitiveBuilds(DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild])
           .collect {
             case d: BoundMavenDependency => d.jar
@@ -237,7 +243,6 @@ object BuildInformation {
             .stripPrefix("/")
             .replace("/", "-")
     }
-  }
 }
 
 object BuildInformationSerializer {
