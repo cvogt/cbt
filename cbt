@@ -147,13 +147,15 @@ JAVA_OPTS_CBT=($DEBUG -Xmx1536m -Xss10M "-XX:MaxJavaStackTraceDepth=-1" -XX:+Tie
 # ng-nailgun on unbuntu, install via apt-get install nailgun
 NG_EXECUTABLE=$(which ng 2>/dev/null|| env which ng-nailgun 2>/dev/null)
 
-# on osx, install via brew install nailgun, /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar
-# on unbuntu, install via apt-get install nailgun, /usr/share/java/nailgun.jar
-# on debian, install via apt-get install nailgun, /usr/share/java/nailgun-server.jar
+# on osx: install via brew install nailgun. /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar
+# on unbuntu: install via apt-get install nailgun. /usr/share/java/nailgun.jar
+# on debian: install via apt-get install nailgun. /usr/share/java/nailgun-server.jar
+# on fedora: install via dnf install nailgun. /usr/share/java/nailgun/nailgun-server.jar
 NG_SERVER_JAR=$( \
 	find /usr/local/Cellar/nailgun/*/libexec/nailgun-server-*.jar 2>/dev/null \
 	|| find /usr/share/java/nailgun.jar 2>/dev/null \
 	|| find /usr/share/java/nailgun-server.jar 2>/dev/null \
+	|| find /usr/share/java/nailgun/nailgun-server.jar 2>/dev/null \
 )
 
 nailgun_installed=0
