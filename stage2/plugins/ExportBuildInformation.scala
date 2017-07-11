@@ -78,7 +78,7 @@ object BuildInformation {
         val cbtLibraries = convertCbtLibraries
         val scalaCompilers = modules
           .map(_.scalaVersion)
-          .map(v => ScalaCompiler(v, resolveScalaCompiler(rootBuild, v)))
+          .map(v => ScalaCompiler(v, resolveScalaCompiler(v)))
 
         Project(
           name = rootModule.name,
@@ -181,7 +181,7 @@ object BuildInformation {
               .foldLeft(build +: visited)(traverse)  
 
         builds.foldLeft(Seq.empty[BaseBuild])(traverse)
-       }
+      }
 
       private def exportLibrary(dependency: BoundMavenDependency) = {
         val name = formatMavenDependency(dependency.mavenDependency)
@@ -224,10 +224,8 @@ object BuildInformation {
           }
           .toSeq
       
-
-
-      private def resolveScalaCompiler(build: BaseBuild, scalaVersion: String) =
-        build.Resolver(mavenCentral, sonatypeReleases).bindOne(
+      private def resolveScalaCompiler(scalaVersion: String) =
+        rootBuild.Resolver(mavenCentral, sonatypeReleases).bindOne(
           MavenDependency("org.scala-lang", "scala-compiler", scalaVersion)
         ).classpath.files
 
@@ -236,7 +234,6 @@ object BuildInformation {
           source
         else
           source.getParentFile //Let's assume that for now
-
 
       private def formatMavenDependency(dependency: cbt.MavenDependency) =
         s"${dependency.groupId}:${dependency.artifactId}:${dependency.version}"
