@@ -4,7 +4,7 @@ import cbt._
 import java.io._
 import java.nio.file._
 import scala.xml._
-import scala.util._ 
+import scala.util._
 
 trait ExportBuildInformation { self: BaseBuild =>
   def buildInfoXml: String =
@@ -34,7 +34,7 @@ object BuildInformation {
     parentBuild: Option[String],
     scalacOptions: Seq[String]
   )
- 
+
   case class Library( name: String, jars: Seq[LibraryJar] )
 
   case class BinaryDependency( name: String )
@@ -66,7 +66,7 @@ object BuildInformation {
           .filter(f => f.exists && f.isDirectory)
           .map(f => DirectoryDependency(f)(rootBuild.context).dependency.asInstanceOf[BaseBuild])
           .flatMap(transitiveBuilds)
-        val rootModule = exportModule(rootBuild)       
+        val rootModule = exportModule(rootBuild)
         val modules = (moduleBuilds ++ extraModuleBuilds)
           .map(exportModule)
           .distinct
@@ -91,7 +91,8 @@ object BuildInformation {
         )
       }
 
-      private def convertCbtLibraries =
+      private def convertCbtLibraries =  {
+        println("convertCbtLibraries")
         transitiveBuilds(DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild])
           .collect {
             case d: BoundMavenDependency => d.jar
@@ -99,6 +100,7 @@ object BuildInformation {
           }
           .map(exportLibrary)
           .distinct
+      }
 
       private def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] =
         dependencies
@@ -154,30 +156,45 @@ object BuildInformation {
           .map(_.toFile)
       }
 
-      private def collectLazyBuilds(dependency: Dependency): Option[BaseBuild] =
+      private def lazyBuild(dependency: Dependency): Seq[BaseBuild] =
         dependency match {
           case l: LazyDependency =>
             l.dependency match {
-              case d: BaseBuild => Some(d)
-              case d: LazyDependency => collectLazyBuilds(d.dependency)
-              case _ => None
+              case d: BaseBuild => Seq(d)
+              case d: LazyDependency => lazyBuild(d.dependency)
+              case _ => Seq.empty
             }
-          case d: BaseBuild => Some(d)
-          case _ => None
+          case d: BaseBuild => Seq(d)
+          case _ => Seq.empty
         }
 
+      private def isDefaultBuild(build: BaseBuild): Boolean = 
+        // build.projectDirectory.toPath.startsWith
+        false
 
-      private def transitiveBuilds(build: BaseBuild): Seq[BaseBuild] =
-        (build +: build.transitiveDependencies)
-          .collect {
-            case d: BaseBuild => d +: collectParentBuilds(d).flatMap(transitiveBuilds)
-            case d: LazyDependency =>
-              collectLazyBuilds(d.dependency)
-                .toSeq
-                .flatMap(transitiveBuilds)
+      private def transitiveBuilds(build: BaseBuild): Seq[BaseBuild] = {
+        def traverse(visited: Seq[BaseBuild], build: BaseBuild): Seq[BaseBuild] = {
+          visited.contains(build) match {
+            case true => visited
+            case false =>
+               (build +: build.transitiveDependencies)
+                .map { d => println("TDep: ", d); d }
+                .collect {
+                  case d: BaseBuild => 
+                    Seq(d) ++ parentBuild(d) ++ testBuild(d)
+                  case d: LazyDependency =>
+                    lazyBuild(d.dependency)
+                }
+                .flatten
+                .distinct
+                .map { d => println(d); d }
+                .filterNot(visited.contains)
+                .foldLeft(build +: visited)(traverse)                
           }
-          .flatten
-          .distinct
+        }
+        traverse(Seq.empty, build)
+       }
+
 
       private def exportLibrary(dependency: BoundMavenDependency) = {
         val name = formatMavenDependency(dependency.mavenDependency)
@@ -191,14 +208,14 @@ object BuildInformation {
         implicit val transientCache: java.util.Map[AnyRef, AnyRef] = rootBuild.context.transientCache
         implicit val classLoaderCache: ClassLoaderCache = rootBuild.context.classLoaderCache
         val sourceJars = jars
-          .map { d => 
+          .map { d =>
             Try(d.copy(mavenDependency = d.mavenDependency.copy(classifier = Classifier.sources)).jar)
             }
           .flatMap {
             case Success(j) => Some(j)
             case Failure(e) =>
               logger.log("ExportBuildInformation", s"Can not load a $name library sources. Skipping")
-              None 
+              None
           }
           .map(LibraryJar(_, JarType.Source))
         Library(name, binaryJars ++ sourceJars)
@@ -207,12 +224,23 @@ object BuildInformation {
       private def exportLibrary(file: File) =
         Library("CBT:" + file.getName.stripSuffix(".jar"), Seq(LibraryJar(file, JarType.Binary)))
 
-      private def collectParentBuilds(build: BaseBuild): Seq[BaseBuild] =
+      private def parentBuild(build: BaseBuild): Seq[BaseBuild] =
         build.context.parentBuild
           .map(_.asInstanceOf[BaseBuild])
-          .map(b => b +: collectParentBuilds(b))
           .toSeq
-          .flatten
+
+      private def testBuild(build: BaseBuild): Seq[BaseBuild] = {
+        if (isDefaultBuild(build))
+          Seq.empty
+        else 
+          Try(build.test).toOption
+          .flatMap {
+            case testBuild: BaseBuild  => { println(testBuild.projectDirectory) ; Some(testBuild) }
+            case _ => None
+          }
+          .toSeq
+      }
+
 
       private def resolveScalaCompiler(build: BaseBuild, scalaVersion: String) =
         build.Resolver(mavenCentral, sonatypeReleases).bindOne(
