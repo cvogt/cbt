@@ -13,16 +13,23 @@ trait PackageJars extends BaseBuild with ArtifactInfo{
   def jarFilePrefix = artifactId++"_"++scalaMajorVersion++"-"++version
 
   def jar: Option[File] = taskCache[PackageJars]("jar").memoize{
-    lib.createJar( jarTarget / jarFilePrefix++".jar", exportedClasspath.files )
+    val file = jarTarget / jarFilePrefix++".jar"
+    if( file.lastModified < lastModified )
+      lib.createJar( file, exportedClasspath.files )
+    else Some( file )
   }
 
   def srcJar: Option[File] = taskCache[PackageJars]("srcJar").memoize{
-    lib.createJar(
-      jarTarget / jarFilePrefix++"-sources.jar", nonEmptySourceFiles
-    )
+    val file = jarTarget / jarFilePrefix++"-sources.jar"
+    if( file.lastModified < lastModified )
+      lib.createJar( file, nonEmptySourceFiles )
+    else Some( file )
   }
 
   def docJar: Option[File] = taskCache[PackageJars]("docJar").memoize{
-    lib.createJar( jarTarget / jarFilePrefix++"-javadoc.jar", scaladoc.toSeq )
+    val file = jarTarget / jarFilePrefix++"-javadoc.jar"
+    if( file.lastModified < lastModified )
+      lib.createJar( file, scaladoc.toSeq )
+    else Some( file )
   }
 }
