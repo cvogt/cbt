@@ -63,8 +63,13 @@ object BuildInformation {
     private object ExportParameters {
       def apply(args: Seq[String]): ExportParameters = {
         val argumentParser = new ArgumentParser(args)
-        val extraModulePaths: Seq[String] = argumentParser.value("extraModules").map(_.split(":").toSeq).getOrElse(Seq.empty)
-        val needCbtLibs: Boolean = argumentParser.value("needCbtLibs").map(_.toBoolean).getOrElse(true)
+        val extraModulePaths: Seq[String] = argumentParser.value("extraModules")
+          .map(_.split(":").toSeq)
+          .getOrElse(Seq.empty)
+          .filterNot(_.isEmpty)
+        val needCbtLibs: Boolean = argumentParser.value("needCbtLibs")
+          .map(_.toBoolean)
+          .getOrElse(true)
         ExportParameters(extraModulePaths, needCbtLibs)
       }
     }
@@ -230,12 +235,13 @@ object BuildInformation {
           .toSeq
 
       private def testBuild(build: BaseBuild): Seq[BaseBuild] = 
-         Try(build.test).toOption
-          .flatMap {
-            case testBuild: BaseBuild  => { println(testBuild.projectDirectory) ; Some(testBuild) }
-            case _ => None
-          }
+         Try(build.test)
+          .toOption
           .toSeq
+          .flatMap {
+            case testBuild: BaseBuild  => Seq(testBuild)
+            case _ => Seq.empty
+          }
       
       private def resolveScalaCompiler(scalaVersion: String) =
         rootBuild.Resolver(mavenCentral, sonatypeReleases).bindOne(
@@ -317,9 +323,18 @@ object BuildInformationSerializer {
 
 
 class ArgumentParser(arguments: Seq[String]) {
-  val argumentsMap = 
-    arguments.grouped(2).map{ case Seq(k,v) => k.stripPrefix("--").stripSuffix("=") -> v }.toMap
+  val argumentsMap =  (arguments :+ "")
+    .sliding(2)
+    .map(_.toList)
+    .foldLeft(Map.empty[String, Option[String]]) { 
+      case (m, Seq(k, v)) if k.startsWith("--") && !v.startsWith("--") => m + (k -> Some(v))
+      case (m, k::_) if k.startsWith("--") => m + (k -> None)
+      case (m, s) => m
+    }
 
   def value(key: String): Option[String] = 
-    argumentsMap.get(key)
+    argumentsMap.get(key).flatten
+
+  def persists(key: String) = 
+    argumentsMap.isDefinedAt(key)
 }
