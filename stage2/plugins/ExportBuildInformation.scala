@@ -60,18 +60,18 @@ object BuildInformation {
 
     class BuildInformationExporter(rootBuild: BaseBuild, extraModuleNames: Seq[String]) {
       def exportBuildInformation: Project = {
-        val moduleBuilds = transitiveBuilds(rootBuild)
         val extraModuleBuilds = extraModuleNames
           .map(f => new File(f))
           .filter(f => f.exists && f.isDirectory)
           .map(f => DirectoryDependency(f)(rootBuild.context).dependency.asInstanceOf[BaseBuild])
-          .flatMap(transitiveBuilds)
+
+        val builds = transitiveBuilds(rootBuild +: extraModuleBuilds)
         val rootModule = exportModule(rootBuild)
-        val modules = (moduleBuilds ++ extraModuleBuilds)
+        val modules = builds
           .map(exportModule)
           .distinct
 
-        val libraries = (moduleBuilds ++ extraModuleBuilds)
+        val libraries = builds
           .flatMap(_.transitiveDependencies)
           .collect { case d: BoundMavenDependency => exportLibrary(d) }
           .distinct
@@ -82,25 +82,23 @@ object BuildInformation {
 
         Project(
           name = rootModule.name,
-          root= rootModule.root,
+          root = rootModule.root,
           rootModule = rootModule,
           modules = modules,
           libraries = libraries,
           cbtLibraries = cbtLibraries,
-          scalaCompilers =  scalaCompilers
+          scalaCompilers = scalaCompilers
         )
       }
 
-      private def convertCbtLibraries =  {
-        println("convertCbtLibraries")
-        transitiveBuilds(DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild])
+      private def convertCbtLibraries = 
+        transitiveBuilds(Seq(DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild]))
           .collect {
             case d: BoundMavenDependency => d.jar
             case d: PackageJars => d.jar.get
           }
           .map(exportLibrary)
           .distinct
-      }
 
       private def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] =
         dependencies
@@ -168,33 +166,22 @@ object BuildInformation {
           case _ => Seq.empty
         }
 
-      private def isDefaultBuild(build: BaseBuild): Boolean = 
-        // build.projectDirectory.toPath.startsWith
-        false
+      private def transitiveBuilds(builds: Seq[BaseBuild]): Seq[BaseBuild] = { // More effectivly to call on a all builds at once rather than on one per time
+        def traverse(visited: Seq[BaseBuild], build: BaseBuild): Seq[BaseBuild] = 
+           (build +: build.transitiveDependencies)
+              .collect {
+                case d: BaseBuild => 
+                  Seq(d) ++ parentBuild(d) ++ testBuild(d)
+                case d: LazyDependency =>
+                  lazyBuild(d.dependency)
+              }
+              .flatten
+              .distinct
+              .filterNot(visited.contains)
+              .foldLeft(build +: visited)(traverse)  
 
-      private def transitiveBuilds(build: BaseBuild): Seq[BaseBuild] = {
-        def traverse(visited: Seq[BaseBuild], build: BaseBuild): Seq[BaseBuild] = {
-          visited.contains(build) match {
-            case true => visited
-            case false =>
-               (build +: build.transitiveDependencies)
-                .map { d => println("TDep: ", d); d }
-                .collect {
-                  case d: BaseBuild => 
-                    Seq(d) ++ parentBuild(d) ++ testBuild(d)
-                  case d: LazyDependency =>
-                    lazyBuild(d.dependency)
-                }
-                .flatten
-                .distinct
-                .map { d => println(d); d }
-                .filterNot(visited.contains)
-                .foldLeft(build +: visited)(traverse)                
-          }
-        }
-        traverse(Seq.empty, build)
+        builds.foldLeft(Seq.empty[BaseBuild])(traverse)
        }
-
 
       private def exportLibrary(dependency: BoundMavenDependency) = {
         val name = formatMavenDependency(dependency.mavenDependency)
@@ -229,17 +216,14 @@ object BuildInformation {
           .map(_.asInstanceOf[BaseBuild])
           .toSeq
 
-      private def testBuild(build: BaseBuild): Seq[BaseBuild] = {
-        if (isDefaultBuild(build))
-          Seq.empty
-        else 
-          Try(build.test).toOption
+      private def testBuild(build: BaseBuild): Seq[BaseBuild] = 
+         Try(build.test).toOption
           .flatMap {
             case testBuild: BaseBuild  => { println(testBuild.projectDirectory) ; Some(testBuild) }
             case _ => None
           }
           .toSeq
-      }
+      
 
 
       private def resolveScalaCompiler(build: BaseBuild, scalaVersion: String) =
