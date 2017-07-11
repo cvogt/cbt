@@ -54,13 +54,26 @@ object BuildInformation {
 
   object Project {
     def apply(build: BaseBuild, args: Seq[String]): Project = {
-      val extraModuleNames: Seq[String] = args.lift(0).map(_.split(":").toSeq).getOrElse(Seq.empty)
-      new BuildInformationExporter(build, extraModuleNames).exportBuildInformation
+      val parameters = ExportParameters(args)
+      new BuildInformationExporter(build, parameters).exportBuildInformation
     }
 
-    class BuildInformationExporter(rootBuild: BaseBuild, extraModuleNames: Seq[String]) {
+    private case class ExportParameters( extraModulePaths: Seq[String], needCbtLibs: Boolean )
+
+    private object ExportParameters {
+      def apply(args: Seq[String]): ExportParameters = {
+        val argumentParser = new ArgumentParser(args)
+        val extraModulePaths: Seq[String] = argumentParser.value("extraModules").map(_.split(":").toSeq).getOrElse(Seq.empty)
+        val needCbtLibs: Boolean = argumentParser.value("needCbtLibs").map(_.toBoolean).getOrElse(true)
+        ExportParameters(extraModulePaths, needCbtLibs)
+      }
+    }
+
+    class BuildInformationExporter(rootBuild: BaseBuild, parameters: ExportParameters) {
+      import parameters._
+
       def exportBuildInformation: Project = {
-        val extraModuleBuilds = extraModuleNames
+        val extraModuleBuilds = extraModulePaths
           .map(f => new File(f))
           .filter(f => f.exists && f.isDirectory)
           .map(f => DirectoryDependency(f)(rootBuild.context).dependency.asInstanceOf[BaseBuild])
@@ -75,7 +88,7 @@ object BuildInformation {
           .flatMap(_.transitiveDependencies)
           .collect { case d: BoundMavenDependency => exportLibrary(d) }
           .distinct
-        val cbtLibraries = convertCbtLibraries
+        val cbtLibraries = if (needCbtLibs) convertCbtLibraries else Seq.empty[Library]
         val scalaCompilers = modules
           .map(_.scalaVersion)
           .map(v => ScalaCompiler(v, resolveScalaCompiler(v)))
@@ -300,4 +313,13 @@ object BuildInformationSerializer {
 
   private def serialize(moduleDependency: BuildInformation.ModuleDependency): Node =
     <moduleDependency>{moduleDependency.name: String}</moduleDependency>
+}
+
+
+class ArgumentParser(arguments: Seq[String]) {
+  val argumentsMap = 
+    arguments.grouped(2).map{ case Seq(k,v) => k.stripPrefix("--").stripSuffix("=") -> v }.toMap
+
+  def value(key: String): Option[String] = 
+    argumentsMap.get(key)
 }
