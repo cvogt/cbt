@@ -56,11 +56,6 @@ object BuildInformation {
 
     private case class ExportParameters( extraModulePaths: Seq[String], needCbtLibs: Boolean )
 
-    def apply(build: BaseBuild, args: Seq[String]): Project = {
-      val parameters = ExportParameters(args)
-      new BuildInformationExporter(build, parameters).exportBuildInformation
-    }
-
     private object ExportParameters {
       def apply(args: Seq[String]): ExportParameters = {
         val argumentParser = new ArgumentParser(args)
@@ -74,6 +69,13 @@ object BuildInformation {
         ExportParameters(extraModulePaths, needCbtLibs)
       }
     }
+
+    def apply(build: BaseBuild, args: Seq[String]): Project = {
+      val parameters = ExportParameters(args)
+      println(s"Params is $parameters")
+      new BuildInformationExporter(build, parameters).exportBuildInformation
+    }
+  
 
     class BuildInformationExporter(rootBuild: BaseBuild, parameters: ExportParameters) {
       import parameters._
@@ -328,13 +330,13 @@ class ArgumentParser(arguments: Seq[String]) {
     .sliding(2)
     .map(_.toList)
     .foldLeft(Map.empty[String, Option[String]]) { 
-      case (m, Seq(k, v)) if k.startsWith("--") && !v.startsWith("--") => m + (k -> Some(v))
-      case (m, k::_) if k.startsWith("--") => m + (k -> None)
+      case (m, Seq(k, v)) if k.startsWith("--") && !v.startsWith("--") => m + (k.stripPrefix("--") -> Some(v))
+      case (m, k::_) if k.startsWith("--") => m + (k.stripPrefix("--") -> None)
       case (m, _) => m
     }
-
+  
   def value(key: String): Option[String] = 
-    argumentsMap.get(key).flatten
+    argumentsMap.get(key.stripPrefix("--")).flatten
 
   def persists(key: String) = 
     argumentsMap.isDefinedAt(key)
