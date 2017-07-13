@@ -12,6 +12,7 @@ trait ExportBuildInformation { self: BaseBuild =>
 }
 
 object BuildInformation {
+
   case class Project(
     name: String,
     root: File,
@@ -53,29 +54,10 @@ object BuildInformation {
   }
 
   object Project {
-
-    private case class ExportParameters( extraModulePaths: Seq[String], needCbtLibs: Boolean )
-
-    private object ExportParameters {
-      def apply(args: Seq[String]): ExportParameters = {
-        val argumentParser = new ArgumentParser(args)
-        val extraModulePaths: Seq[String] = argumentParser.value("extraModules")
-          .map(_.split(":").toSeq)
-          .getOrElse(Seq.empty)
-          .filterNot(_.isEmpty)
-        val needCbtLibs: Boolean = argumentParser.value("needCbtLibs")
-          .map(_.toBoolean)
-          .getOrElse(true)
-        ExportParameters(extraModulePaths, needCbtLibs)
-      }
-    }
-
     def apply(build: BaseBuild, args: Seq[String]): Project = {
       val parameters = ExportParameters(args)
-      println(s"Params is $parameters")
       new BuildInformationExporter(build, parameters).exportBuildInformation
     }
-  
 
     class BuildInformationExporter(rootBuild: BaseBuild, parameters: ExportParameters) {
       import parameters._
@@ -112,14 +94,17 @@ object BuildInformation {
         )
       }
 
-      private def convertCbtLibraries = 
-        transitiveBuilds(Seq(DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild]))
+      private def convertCbtLibraries = {
+        val cbtBuild =
+          DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild]
+        transitiveBuilds(Seq(cbtBuild))
           .collect {
             case d: BoundMavenDependency => d.jar
             case d: PackageJars => d.jar.get
           }
           .map(exportLibrary)
           .distinct
+      }
 
       private def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] =
         dependencies
@@ -187,19 +172,20 @@ object BuildInformation {
           case _ => Seq.empty
         }
 
-      private def transitiveBuilds(builds: Seq[BaseBuild]): Seq[BaseBuild] = { // More effectivly to call on a all builds at once rather than on one per time
-        def traverse(visited: Seq[BaseBuild], build: BaseBuild): Seq[BaseBuild] = 
-           (build +: build.transitiveDependencies)
-              .collect {
-                case d: BaseBuild => 
-                  Seq(d) ++ parentBuild(d) ++ testBuild(d)
-                case d: LazyDependency =>
-                  lazyBuild(d.dependency)
-              }
-              .flatten
-              .distinct
-              .filterNot(visited.contains)
-              .foldLeft(build +: visited)(traverse)  
+      // More effectively to call on a all builds at once rather than on one per time
+      private def transitiveBuilds(builds: Seq[BaseBuild]): Seq[BaseBuild] = {
+        def traverse(visited: Seq[BaseBuild], build: BaseBuild): Seq[BaseBuild] =
+          (build +: build.transitiveDependencies)
+            .collect {
+              case d: BaseBuild =>
+                Seq(d) ++ parentBuild(d) ++ testBuild(d)
+              case d: LazyDependency =>
+                lazyBuild(d.dependency)
+            }
+            .flatten
+            .distinct
+            .filterNot(visited.contains)
+            .foldLeft(build +: visited)(traverse)
 
         builds.foldLeft(Seq.empty[BaseBuild])(traverse)
       }
@@ -218,7 +204,7 @@ object BuildInformation {
         val sourceJars = jars
           .map { d =>
             Try(d.copy(mavenDependency = d.mavenDependency.copy(classifier = Classifier.sources)).jar)
-            }
+          }
           .flatMap {
             case Success(j) => Some(j)
             case Failure(e) =>
@@ -237,15 +223,15 @@ object BuildInformation {
           .map(_.asInstanceOf[BaseBuild])
           .toSeq
 
-      private def testBuild(build: BaseBuild): Seq[BaseBuild] = 
-         Try(build.test)
+      private def testBuild(build: BaseBuild): Seq[BaseBuild] =
+        Try(build.test)
           .toOption
           .toSeq
           .flatMap {
-            case testBuild: BaseBuild  => Seq(testBuild)
+            case testBuild: BaseBuild => Seq(testBuild)
             case _ => Seq.empty
           }
-      
+
       private def resolveScalaCompiler(scalaVersion: String) =
         rootBuild.Resolver(mavenCentral, sonatypeReleases).bindOne(
           MavenDependency("org.scala-lang", "scala-compiler", scalaVersion)
@@ -269,7 +255,23 @@ object BuildInformation {
             .stripPrefix("/")
             .replace("/", "-")
     }
+
+    private case class ExportParameters(extraModulePaths: Seq[String], needCbtLibs: Boolean)
+
+    private object ExportParameters {
+      def apply(args: Seq[String]): ExportParameters = {
+        val argumentParser = new ArgumentParser(args)
+        val extraModulePaths: Seq[String] = argumentParser.value("extraModules")
+          .map(_.split(":").toSeq)
+          .getOrElse(Seq.empty)
+          .filterNot(_.isEmpty)
+        val needCbtLibs: Boolean = argumentParser.value("needCbtLibs").forall(_.toBoolean)
+        ExportParameters(extraModulePaths, needCbtLibs)
+      }
+    }
+
   }
+
 }
 
 object BuildInformationSerializer {
@@ -315,29 +317,33 @@ object BuildInformationSerializer {
       {library.jars.map(j => <jar type={j.jarType.name}>{j.jar.getPath: String}</jar>)}
     </library>
 
+  private def serialize(moduleDependency: BuildInformation.ModuleDependency): Node =
+    <moduleDependency>
+      {moduleDependency.name: String}
+    </moduleDependency>
+
   private def serialize(compiler: BuildInformation.ScalaCompiler): Node =
     <compiler version={compiler.version}>
       {compiler.jars.map(j => <jar>{j.getPath: String}</jar>)}
     </compiler>
-
-  private def serialize(moduleDependency: BuildInformation.ModuleDependency): Node =
-    <moduleDependency>{moduleDependency.name: String}</moduleDependency>
 }
 
 
 class ArgumentParser(arguments: Seq[String]) {
-  val argumentsMap =  (arguments :+ "")
+  private val argumentsMap = (arguments :+ "")
     .sliding(2)
     .map(_.toList)
-    .foldLeft(Map.empty[String, Option[String]]) { 
-      case (m, Seq(k, v)) if k.startsWith("--") && !v.startsWith("--") => m + (k.stripPrefix("--") -> Some(v))
-      case (m, k::_) if k.startsWith("--") => m + (k.stripPrefix("--") -> None)
+    .foldLeft(Map.empty[String, Option[String]]) {
+      case (m, Seq(k: String, v: String)) if k.startsWith("--") && !v.startsWith("--") =>
+        m + (k.stripPrefix("--") -> Some(v))
+      case (m, (k: String) :: _) if k.startsWith("--") =>
+        m + (k.stripPrefix("--") -> None)
       case (m, _) => m
     }
-  
-  def value(key: String): Option[String] = 
+
+  def value(key: String): Option[String] =
     argumentsMap.get(key.stripPrefix("--")).flatten
 
-  def persists(key: String) = 
+  def persists(key: String): Boolean =
     argumentsMap.isDefinedAt(key)
 }
