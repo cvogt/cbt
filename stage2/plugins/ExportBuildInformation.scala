@@ -97,13 +97,13 @@ object BuildInformation {
       private def convertCbtLibraries = {
         val cbtBuild =
           DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild]
-        transitiveBuilds(Seq(cbtBuild))
-          .collect {
-            case d: BoundMavenDependency => d.jar
-            case d: PackageJars => d.jar.get
-          }
-          .map(exportLibrary)
-          .distinct
+          transitiveBuilds(Seq(cbtBuild), skipTests = true)
+            .collect {
+              case d: BoundMavenDependency => d.jar
+              case d: PackageJars => d.jar.get
+            }
+            .map(exportLibrary)
+            .distinct
       }
 
       private def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] =
@@ -173,12 +173,12 @@ object BuildInformation {
         }
 
       // More effectively to call on a all builds at once rather than on one per time
-      private def transitiveBuilds(builds: Seq[BaseBuild]): Seq[BaseBuild] = {
+      private def transitiveBuilds(builds: Seq[BaseBuild], skipTests: Boolean = false): Seq[BaseBuild] = {
         def traverse(visited: Seq[BaseBuild], build: BaseBuild): Seq[BaseBuild] =
           (build +: build.transitiveDependencies)
             .collect {
               case d: BaseBuild =>
-                Seq(d) ++ parentBuild(d) ++ testBuild(d)
+                Seq(d) ++ parentBuild(d) ++ (if (!skipTests) testBuild(d) else Seq.empty)
               case d: LazyDependency =>
                 lazyBuild(d.dependency)
             }
