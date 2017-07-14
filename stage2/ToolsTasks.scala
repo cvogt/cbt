@@ -29,6 +29,7 @@ class ToolsTasks(
     val giter = DirectoryDependency(cbtHome / "tools" / "giter8").dependency
     lib.callReflective(giter, Some("createTemplate"), context)
   }
+  def g8 = giter8
   def gui = NailgunLauncher.main(Array(
     "0.0",
     (cbtHome / "tools" / "gui").getAbsolutePath,
