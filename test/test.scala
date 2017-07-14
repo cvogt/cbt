@@ -321,6 +321,8 @@ object Main{
     }
     compile("../examples/uber-jar-example")
 
+    compile("../tools/giter8")
+
     if( compat && fork ){ // FIXME: this should not be excluded in forking
       val res = task("docJar","simple-fixed-cbt")
       assert( res.out endsWith "simple-fixed-cbt_2.11-0.1-javadoc.jar\n", res.out )
@@ -504,6 +506,21 @@ object Main{
     {
       val res = runCbt("../examples/kindprojector-example", Seq())
       assert(res.exit0)
+    }
+
+    {
+      def deleteRecursively(file: File): Unit = {
+        if (file.isDirectory)
+          file.listFiles.foreach(deleteRecursively)
+        if (file.exists && !file.delete)
+          throw new Exception(s"Unable to delete ${file.getAbsolutePath}")
+      }
+      val res = runCbt("../tools/giter8", Seq("createTemplate", "scala/scala-seed.g8", "test/temp", "--name=template"))
+      assert(res.exit0)
+      println(res.out contains "Template applied")
+      val templateDir = cbtHome / "test" / "temp" / "template"
+      assert(templateDir.exists)
+      deleteRecursively(templateDir)
     }
 
     /*
