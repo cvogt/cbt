@@ -24,9 +24,8 @@ class ToolsTasks(
   ))
 
   def giter8 = {
-    implicit val context: Context = FakeContext(stage2Args).copy(args = args.drop(1))
-
-    val giter = DirectoryDependency(cbtHome / "tools" / "giter8").dependency
+    val context: Context = FakeContext(stage2Args).copy(args = args.drop(1))
+    val giter = DirectoryDependency(cbtHome / "tools" / "giter8")(context).dependency
     lib.callReflective(giter, Some("createTemplate"), context)
   }
   def g8 = giter8
