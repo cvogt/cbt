@@ -98,6 +98,7 @@ object BuildInformation {
         val scalaCompilers = modules
           .map(_.scalaVersion)
           .map(v => ScalaCompiler(v, resolveScalaCompiler(v)))
+          .distinct
 
         Project(
           name = rootModule.name,
