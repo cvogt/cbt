@@ -7,8 +7,17 @@ import scala.xml._
 import scala.util._
 
 trait ExportBuildInformation { self: BaseBuild =>
-  def buildInfoXml: String =
-    BuildInformationSerializer.serialize(BuildInformation.Project(self, context.args)).toString
+  def buildInfoXml: String = {
+    val parameters = BuildInformation.Project.ExportParameters(context.args)
+    val xml = BuildInformationSerializer.serialize(BuildInformation.Project(self, parameters))
+    parameters.outputFile match {
+      case None => 
+        xml.toString
+      case Some(file) =>
+        XML.save(file.getPath, xml)
+        s"Saved to ${file.getPath}"
+    }
+  }
 }
 
 object BuildInformation {
@@ -64,8 +73,7 @@ object BuildInformation {
   }
 
   object Project {
-    def apply(build: BaseBuild, args: Seq[String]): Project = {
-      val parameters = ExportParameters(args)
+    def apply(build: BaseBuild, parameters: ExportParameters): Project = {
       new BuildInformationExporter(build, parameters).exportBuildInformation
     }
 
@@ -265,9 +273,9 @@ object BuildInformation {
             .replace("/", "-")
     }
 
-    private case class ExportParameters(extraModulePaths: Seq[File], needCbtLibs: Boolean)
+    case class ExportParameters(extraModulePaths: Seq[File], needCbtLibs: Boolean, outputFile: Option[File])
 
-    private object ExportParameters {
+    object ExportParameters {
       def apply(args: Seq[String]): ExportParameters = {
         val argumentParser = new ArgumentParser(args)
         val extraModulePaths = argumentParser.value("extraModules")
@@ -276,7 +284,8 @@ object BuildInformation {
           .map(p => new File(p))
           .filter(f => f.exists && f.isDirectory)
         val needCbtLibs: Boolean = argumentParser.value("needCbtLibs").forall(_.toBoolean)
-        ExportParameters(extraModulePaths, needCbtLibs)
+        val outputFile = argumentParser.value("outputFile").map(p => new File(p))
+        ExportParameters(extraModulePaths, needCbtLibs, outputFile)
       }
     }
 
