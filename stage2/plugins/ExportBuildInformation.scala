@@ -28,6 +28,7 @@ object BuildInformation {
     root: File,
     scalaVersion: String,
     sourceDirs: Seq[File],
+    moduleType: ModuleType,
     target: File,
     binaryDependencies: Seq[BinaryDependency],
     moduleDependencies: Seq[ModuleDependency],
@@ -53,6 +54,15 @@ object BuildInformation {
     object Source extends JarType( "source" )
   }
 
+  case class ModuleType( name: String )
+
+  object ModuleType {
+    object Default extends ModuleType( "default" )
+    object Extra extends ModuleType( "extra" )
+    object Test extends ModuleType( "test" )
+    object Build extends ModuleType( "build" )
+  }
+
   object Project {
     def apply(build: BaseBuild, args: Seq[String]): Project = {
       val parameters = ExportParameters(args)
@@ -64,17 +74,15 @@ object BuildInformation {
 
       def exportBuildInformation: Project = {
         val extraModuleBuilds = extraModulePaths
-          .map(f => new File(f))
-          .filter(f => f.exists && f.isDirectory)
           .map(f => DirectoryDependency(f)(rootBuild.context).dependency.asInstanceOf[BaseBuild])
-
-        val builds = transitiveBuilds(rootBuild +: extraModuleBuilds)
-        val rootModule = exportModule(rootBuild)
+        val builds = transitiveBuilds((rootBuild, ModuleType.Default) +: extraModuleBuilds.map(b => (b, ModuleType.Extra)))
+        val rootModule = exportModule(rootBuild, ModuleType.Default)
         val modules = builds
-          .map(exportModule)
+          .map(m => exportModule(m._1, m._2))
           .distinct
 
         val libraries = builds
+          .map(_._1)
           .flatMap(_.transitiveDependencies)
           .collect { case d: BoundMavenDependency => exportLibrary(d) }
           .distinct
@@ -94,16 +102,18 @@ object BuildInformation {
         )
       }
 
+
       private def convertCbtLibraries = {
         val cbtBuild =
           DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild]
-          transitiveBuilds(Seq(cbtBuild), skipTests = true)
-            .collect {
-              case d: BoundMavenDependency => d.jar
-              case d: PackageJars => d.jar.get
-            }
-            .map(exportLibrary)
-            .distinct
+        transitiveBuilds(Seq((cbtBuild, ModuleType.Default)), skipTests = true)
+          .map(_._1)
+          .collect {
+            case d: BoundMavenDependency => d.jar
+            case d: PackageJars => d.jar.get
+          }
+          .map(exportLibrary)
+          .distinct
       }
 
       private def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] =
@@ -114,7 +124,7 @@ object BuildInformation {
           }
           .flatten
 
-      private def exportModule(build: BaseBuild): Module = {
+      private def exportModule(build: BaseBuild, moduleType: ModuleType): Module = {
         val moduleDependencies = collectDependencies(build.dependencies)
         val mavenDependencies = build.dependencies
           .collect { case d: BoundMavenDependency => BinaryDependency(formatMavenDependency(d.mavenDependency)) }
@@ -137,6 +147,7 @@ object BuildInformation {
           scalaVersion = build.scalaVersion,
           sourceDirs = sourceDirs,
           target = build.target,
+          moduleType = moduleType,
           binaryDependencies = mavenDependencies,
           moduleDependencies = moduleDependencies,
           classpath = classpath,
@@ -161,26 +172,31 @@ object BuildInformation {
       }
 
       // More effectively to call on a all builds at once rather than on one per time
-      private def transitiveBuilds(builds: Seq[BaseBuild], skipTests: Boolean = false): Seq[BaseBuild] = {
-        def traverse(visited: Seq[BaseBuild], build: BaseBuild): Seq[BaseBuild] =
+      private def transitiveBuilds(builds: Seq[(BaseBuild, ModuleType)], skipTests: Boolean = false): Seq[(BaseBuild, ModuleType)] = {
+        def traverse(visitedProd: (Seq[BaseBuild], Seq[ModuleType]), buildProd: (BaseBuild, ModuleType)): (Seq[BaseBuild], Seq[ModuleType]) = {
+          val (visited, moduleTypes) = visitedProd
+          val (build, moduleType) = buildProd
           if (visited.contains(build))
-            visited
-          else
-            (Seq(build) ++ 
-              build.transitiveDependencies ++ 
-              parentBuild(build) ++ 
-              (if (!skipTests) testBuild(build) else Seq.empty)
+            (visited, moduleTypes)
+          else {
+            val testBuildSeq = if (!skipTests) testBuild(build) else Seq.empty           
+            (build.transitiveDependencies.map(d => (d, ModuleType.Default)) ++ 
+              parentBuild(build).map(d => (d, ModuleType.Build)) ++ 
+              testBuildSeq.map(d => (d, ModuleType.Test))
             )
               .collect {
-                case d: BaseBuild =>
-                  d
-                case d: LazyDependency if d.dependency.isInstanceOf[BaseBuild] =>
-                  d.dependency.asInstanceOf[BaseBuild]
+                case (d: BaseBuild, t) =>
+                  (d, t)
+                case (d: LazyDependency, t) if d.dependency.isInstanceOf[BaseBuild] =>
+                  (d.dependency.asInstanceOf[BaseBuild], t)
               }
-              .filterNot(visited.contains)
-              .foldLeft(build +: visited)(traverse)
-
-        builds.foldLeft(Seq.empty[BaseBuild])(traverse)
+              .filterNot(b => visited.contains(b._1))
+              .foldLeft(build +: visited, moduleType +: moduleTypes)(traverse)
+          }
+        }    
+        val (collectedBuilds, collectedTypes) = builds
+          .foldLeft(Seq.empty[BaseBuild], Seq.empty[ModuleType])(traverse)
+        collectedBuilds.zip(collectedTypes)
       }
 
       private def exportLibrary(dependency: BoundMavenDependency) = {
@@ -249,15 +265,16 @@ object BuildInformation {
             .replace("/", "-")
     }
 
-    private case class ExportParameters(extraModulePaths: Seq[String], needCbtLibs: Boolean)
+    private case class ExportParameters(extraModulePaths: Seq[File], needCbtLibs: Boolean)
 
     private object ExportParameters {
       def apply(args: Seq[String]): ExportParameters = {
         val argumentParser = new ArgumentParser(args)
-        val extraModulePaths: Seq[String] = argumentParser.value("extraModules")
+        val extraModulePaths = argumentParser.value("extraModules")
           .map(_.split(":").toSeq)
           .getOrElse(Seq.empty)
-          .filterNot(_.isEmpty)
+          .map(p => new File(p))
+          .filter(f => f.exists && f.isDirectory)
         val needCbtLibs: Boolean = argumentParser.value("needCbtLibs").forall(_.toBoolean)
         ExportParameters(extraModulePaths, needCbtLibs)
       }
@@ -285,7 +302,7 @@ object BuildInformationSerializer {
     </project>
 
   private def serialize(module: BuildInformation.Module): Node =
-    <module name={module.name} root={module.root.getPath} target={module.target.getPath} scalaVersion={module.scalaVersion}>
+    <module name={module.name} root={module.root.getPath} target={module.target.getPath} scalaVersion={module.scalaVersion} type={module.moduleType.name}>
       <sourceDirs>
         {module.sourceDirs.map(d => <dir>{d.getPath: String}</dir>)}
       </sourceDirs>
