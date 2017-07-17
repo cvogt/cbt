@@ -506,6 +506,17 @@ object Main{
       assert(res.exit0)
     }
 
+    if (slow) {
+      import scala.xml._
+      val expected = 
+        (cbtHome / "examples" / "export-build-information" / "expected.xml").readAsString.replaceAll("CBT_HOME", cbtHome.getPath)
+      val expectedXml = Utility.trim(XML.loadString(expected))
+      val res = runCbt("../examples/export-build-information", Seq("buildInfoXml"))
+      assert(res.exit0)
+      val resultXml = Utility.trim(XML.loadString(res.out))
+      assert(resultXml == expectedXml)
+    }
+
     /*
     // currently fails with
     // java.lang.UnsupportedOperationException: scalafix.rewrite.ScalafixMirror.fromMirror $anon#typeSignature requires the semantic api
