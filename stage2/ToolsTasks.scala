@@ -26,7 +26,15 @@ class ToolsTasks(
   def giter8 = {
     val context: Context = FakeContext(stage2Args).copy(args = args.drop(1))
     val giter = DirectoryDependency(cbtHome / "tools" / "giter8")(context).dependency
-    lib.callReflective(giter, Some("createTemplate"), context)
+    try{
+      lib.redirectOutToErr(lib.callReflective(giter, Some("createTemplate"), context))
+      ExitCode.Success
+    } catch {
+      case e: Throwable => 
+        System.err.println(e.getCause.getMessage)
+        ExitCode.Failure
+    }
+    
   }
   def g8 = giter8
   def gui = NailgunLauncher.main(Array(
