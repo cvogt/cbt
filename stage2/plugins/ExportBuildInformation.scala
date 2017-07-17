@@ -53,12 +53,13 @@ object BuildInformation {
   }
 
   object Project {
+
+    private case class ExportParameters( extraModulePaths: Seq[String], needCbtLibs: Boolean )
+
     def apply(build: BaseBuild, args: Seq[String]): Project = {
       val parameters = ExportParameters(args)
       new BuildInformationExporter(build, parameters).exportBuildInformation
     }
-
-    private case class ExportParameters( extraModulePaths: Seq[String], needCbtLibs: Boolean )
 
     private object ExportParameters {
       def apply(args: Seq[String]): ExportParameters = {
@@ -329,7 +330,7 @@ class ArgumentParser(arguments: Seq[String]) {
     .foldLeft(Map.empty[String, Option[String]]) { 
       case (m, Seq(k, v)) if k.startsWith("--") && !v.startsWith("--") => m + (k -> Some(v))
       case (m, k::_) if k.startsWith("--") => m + (k -> None)
-      case (m, s) => m
+      case (m, _) => m
     }
 
   def value(key: String): Option[String] = 
