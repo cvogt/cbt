@@ -160,32 +160,25 @@ object BuildInformation {
           .map(_.toFile)
       }
 
-      private def lazyBuild(dependency: Dependency): Seq[BaseBuild] =
-        dependency match {
-          case l: LazyDependency =>
-            l.dependency match {
-              case d: BaseBuild => Seq(d)
-              case d: LazyDependency => lazyBuild(d.dependency)
-              case _ => Seq.empty
-            }
-          case d: BaseBuild => Seq(d)
-          case _ => Seq.empty
-        }
-
       // More effectively to call on a all builds at once rather than on one per time
       private def transitiveBuilds(builds: Seq[BaseBuild], skipTests: Boolean = false): Seq[BaseBuild] = {
         def traverse(visited: Seq[BaseBuild], build: BaseBuild): Seq[BaseBuild] =
-          (build +: build.transitiveDependencies)
-            .collect {
-              case d: BaseBuild =>
-                Seq(d) ++ parentBuild(d) ++ (if (!skipTests) testBuild(d) else Seq.empty)
-              case d: LazyDependency =>
-                lazyBuild(d.dependency)
-            }
-            .flatten
-            .distinct
-            .filterNot(visited.contains)
-            .foldLeft(build +: visited)(traverse)
+          if (visited.contains(build))
+            visited
+          else
+            (Seq(build) ++ 
+              build.transitiveDependencies ++ 
+              parentBuild(build) ++ 
+              (if (!skipTests) testBuild(build) else Seq.empty)
+            )
+              .collect {
+                case d: BaseBuild =>
+                  d
+                case d: LazyDependency if d.dependency.isInstanceOf[BaseBuild] =>
+                  d.dependency.asInstanceOf[BaseBuild]
+              }
+              .filterNot(visited.contains)
+              .foldLeft(build +: visited)(traverse)
 
         builds.foldLeft(Seq.empty[BaseBuild])(traverse)
       }
