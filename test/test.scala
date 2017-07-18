@@ -515,11 +515,11 @@ object Main{
         if (file.exists && !file.delete)
           throw new Exception(s"Unable to delete ${file.getAbsolutePath}")
       }
-      val res = runCbt("../tools/giter8", Seq("createTemplate", "scala/scala-seed.g8", "test/temp", "--name=template"))
+      val templateDir = cbtHome / "test" / "temp" 
+      val res = runCbt("../tools/giter8", Seq("createTemplate", "scala/scala-seed.g8", templateDir.getPath, "--name=template"))
       assert(res.exit0)
       println(res.out contains "Template applied")
-      val templateDir = cbtHome / "test" / "temp" / "template"
-      assert(templateDir.exists)
+      assert((templateDir / "template").exists)
       deleteRecursively(templateDir)
     }
 
