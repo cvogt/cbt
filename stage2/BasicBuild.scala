@@ -216,6 +216,16 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
 
   def run: ExitCode = runMain( context.args )
 
+  def runMain: ExitCode = {
+    context.args.headOption match {
+      case Some(className) => 
+        runMain(className, context.args.drop(1))
+      case None =>
+        System.err.println("No classname is specified")
+        ExitCode.Failure
+    }
+  }
+
   def test: Dependency = {
     val testDirectory = projectDirectory / "test"
     if( (testDirectory / lib.buildDirectoryName / lib.buildFileName).exists ){
