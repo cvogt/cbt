@@ -221,7 +221,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
       case Some(className) => 
         runMain(className, context.args.drop(1))
       case None =>
-        System.err.println("No classname is specified")
+        System.err.println("Usage: cbt runMain <class name>")
         ExitCode.Failure
     }
   }
