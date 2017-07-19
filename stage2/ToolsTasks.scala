@@ -1,15 +1,14 @@
 package cbt
+import java.io.{Console => _, _}
 import java.net._
-import java.io.{Console=>_,_}
-import java.nio.file._
 class ToolsTasks(
   lib: Lib,
   args: Seq[String],
-  cwd: File,
-  cache: File,
-  cbtHome: File,
-  cbtLastModified: Long
-)(implicit classLoaderCache: ClassLoaderCache){
+  stage2Args: Stage2Args
+){
+  import stage2Args.{args => _, stage2LastModified => _, _}
+  private val cbtLastModified = stage2Args.stage2LastModified
+
   def apply: String = "Available methods: " ++ lib.taskNames(getClass).mkString("  ")
   override def toString = lib.usage(this.getClass, super.toString)
   private val paths = CbtPaths(cbtHome, cache)
@@ -23,6 +22,21 @@ class ToolsTasks(
   def `search-class` = java.awt.Desktop.getDesktop().browse(new URI(
     "http://search.maven.org/#search%7Cga%7C1%7Cc%3A%22" ++ URLEncoder.encode(args(1),"UTF-8") ++ "%22"
   ))
+
+  def giter8 = {
+    val context: Context = FakeContext(stage2Args).copy(args = args.drop(1))
+    val giter = DirectoryDependency(cbtHome / "tools" / "giter8")(context).dependency
+    try{
+      lib.redirectOutToErr(lib.callReflective(giter, Some("createTemplate"), context))
+      ExitCode.Success
+    } catch {
+      case e: Throwable => 
+        System.err.println(e.getCause.getMessage)
+        ExitCode.Failure
+    }
+    
+  }
+  def g8 = giter8
   def gui = NailgunLauncher.main(Array(
     "0.0",
     (cbtHome / "tools" / "gui").getAbsolutePath,
