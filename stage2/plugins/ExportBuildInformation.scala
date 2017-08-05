@@ -241,7 +241,8 @@ object BuildInformation {
               "test",
               "libraries",
               ".git",
-              ".circleci"
+              ".circleci",
+              "_site"
             )
         val files = f.listFiles
           .filter(_.isDirectory)
