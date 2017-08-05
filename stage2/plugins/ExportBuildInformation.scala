@@ -233,8 +233,32 @@ object BuildInformation {
         Library(name, binaryJars ++ sourceJars)
       }
 
-      private def exportLibrary(file: File) =
-        Library("CBT:" + file.getName.stripSuffix(".jar"), Seq(LibraryJar(file, JarType.Binary)))
+      def recursiveListFiles(f: File): Seq[File] = {
+        val ignoredDirs = 
+          Seq("cache",
+              "target",
+              "examples",
+              "test",
+              "libraries",
+              ".git",
+              ".circleci"
+            )
+        val files = f.listFiles
+          .filter(_.isDirectory)
+          .filterNot(f => ignoredDirs.contains(f.getName))
+        files ++ 
+          files          
+          .flatMap(recursiveListFiles)
+      }
+      
+      private def exportLibrary(file: File) = {
+        val name = "CBT:" + file.getName.stripSuffix(".jar")
+        val binaryJar = LibraryJar(file, JarType.Binary)    
+        val sourceJars = 
+          recursiveListFiles(file.getParentFile.getParentFile.getParentFile)
+            .map(LibraryJar(_, JarType.Source))
+        Library(name, binaryJar +: sourceJars)
+      }
 
       private def parentBuild(build: BaseBuild): Seq[BaseBuild] =
         build.context.parentBuild
