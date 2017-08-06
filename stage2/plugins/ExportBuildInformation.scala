@@ -111,20 +111,6 @@ object BuildInformation {
         )
       }
 
-
-      private def convertCbtLibraries = {
-        val cbtBuild =
-          DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild]
-        transitiveBuilds(Seq((cbtBuild, ModuleType.Default)), skipTests = true)
-          .map(_._1)
-          .collect {
-            case d: BoundMavenDependency => d.jar
-            case d: PackageJars => d.jar.get
-          }
-          .map(exportLibrary)
-          .distinct
-      }
-
       private def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] =
         dependencies
           .collect {
@@ -233,32 +219,26 @@ object BuildInformation {
         Library(name, binaryJars ++ sourceJars)
       }
 
-      def recursiveListFiles(f: File): Seq[File] = {
-        val ignoredDirs = 
-          Seq("cache",
-              "target",
-              "examples",
-              "test",
-              "libraries",
-              ".git",
-              ".circleci",
-              "_site"
+      private def convertCbtLibraries = {
+        val cbtHome = rootBuild.context.cbtHome
+        val cbtSourceDirs = //TODO add sth else here ??
+          Seq(cbtHome / "stage1",
+              cbtHome / "stage2",
+              cbtHome / "compatibility",
+              cbtHome / "libraries" / "common-0",
+              cbtHome / "libraries" / "common-1",
+              cbtHome / "libraries" / "file",
+              cbtHome / "libraries" / "process",
+              cbtHome / "nailgun_launcher" / "process",
+              cbtHome / "plugins" / "sonatype-release"
             )
-        val files = f.listFiles
-          .filter(_.isDirectory)
-          .filterNot(f => ignoredDirs.contains(f.getName))
-        files ++ 
-          files          
-          .flatMap(recursiveListFiles)
-      }
-      
-      private def exportLibrary(file: File) = {
-        val name = "CBT:" + file.getName.stripSuffix(".jar")
-        val binaryJar = LibraryJar(file, JarType.Binary)    
-        val sourceJars = 
-          recursiveListFiles(file.getParentFile.getParentFile.getParentFile)
+        val sourceJars = cbtSourceDirs
             .map(LibraryJar(_, JarType.Source))
-        Library(name, binaryJar +: sourceJars)
+        val binaryJars = (cbtHome +: cbtSourceDirs)
+          .map(_ / "target" / "scala-2.11" / "classes")
+          .filter(_.exists)
+          .map(LibraryJar(_, JarType.Binary))
+        Seq(Library("CBT", binaryJars ++ sourceJars))
       }
 
       private def parentBuild(build: BaseBuild): Seq[BaseBuild] =
