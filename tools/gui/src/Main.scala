@@ -88,7 +88,9 @@ object Main {
       }
     }
     server.start()
-    java.awt.Desktop.getDesktop.browse(new java.net.URI(s"http://localhost:$uiPort/"))
+    if(!java.awt.GraphicsEnvironment.isHeadless()) {
+      java.awt.Desktop.getDesktop.browse(new java.net.URI(s"http://localhost:$uiPort/"))
+    }
 
     println("Press Enter to stop UI server.")
     while (Source.stdin.getLines().next().nonEmpty) {}
