@@ -35,5 +35,7 @@ The source code is here: [source](https://github.com/darthorimar/intellij-scala)
 
 This a fork of a *JetBrains* [intellij-scala](https://github.com/jetbrains/intellij-scala) and soon should be merged into it
 
+Releated PR in IDEA Scala Plugin [here](https://github.com/JetBrains/intellij-scala/pull/383)
+
 **Use and leave feedback** :metal: 
 
