@@ -81,22 +81,8 @@
     </library>
       </libraries>
       <cbtLibraries>
-        <library name="CBT:process_2.11-0.9-SNAPSHOT">
-      <jar type="binary">CBT_HOME/libraries/process/target/scala-2.11/process_2.11-0.9-SNAPSHOT.jar</jar>
-    </library><library name="CBT:eval_2.11-0.9-SNAPSHOT">
-      <jar type="binary">CBT_HOME/libraries/eval/target/scala-2.11/eval_2.11-0.9-SNAPSHOT.jar</jar>
-    </library><library name="CBT:interfaces_2.11-0.9-SNAPSHOT">
-      <jar type="binary">CBT_HOME/libraries/interfaces/target/scala-2.11/interfaces_2.11-0.9-SNAPSHOT.jar</jar>
-    </library><library name="CBT:common-0_2.11-0.9-SNAPSHOT">
-      <jar type="binary">CBT_HOME/libraries/common-0/target/scala-2.11/common-0_2.11-0.9-SNAPSHOT.jar</jar>
-    </library><library name="CBT:common-1_2.11-0.9-SNAPSHOT">
-      <jar type="binary">CBT_HOME/libraries/common-1/target/scala-2.11/common-1_2.11-0.9-SNAPSHOT.jar</jar>
-    </library><library name="CBT:file_2.11-0.9-SNAPSHOT">
-      <jar type="binary">CBT_HOME/libraries/file/target/scala-2.11/file_2.11-0.9-SNAPSHOT.jar</jar>
-    </library><library name="CBT:reflect_2.11-0.9-SNAPSHOT">
-      <jar type="binary">CBT_HOME/libraries/reflect/target/scala-2.11/reflect_2.11-0.9-SNAPSHOT.jar</jar>
-    </library><library name="CBT:cbt_2.11-0.9-SNAPSHOT">
-      <jar type="binary">CBT_HOME/target/scala-2.11/cbt_2.11-0.9-SNAPSHOT.jar</jar>
+        <library name="CBT">
+      <jar type="binary">CBT_HOME/target/scala-2.11/classes</jar><jar type="binary">CBT_HOME/stage1/target/scala-2.11/classes</jar><jar type="binary">CBT_HOME/stage2/target/scala-2.11/classes</jar><jar type="binary">CBT_HOME/compatibility/target/scala-2.11/classes</jar><jar type="binary">CBT_HOME/libraries/common-0/target/scala-2.11/classes</jar><jar type="binary">CBT_HOME/libraries/common-1/target/scala-2.11/classes</jar><jar type="binary">CBT_HOME/libraries/file/target/scala-2.11/classes</jar><jar type="binary">CBT_HOME/libraries/process/target/scala-2.11/classes</jar><jar type="binary">CBT_HOME/plugins/sonatype-release/target/scala-2.11/classes</jar><jar type="source">CBT_HOME/stage1</jar><jar type="source">CBT_HOME/stage2</jar><jar type="source">CBT_HOME/compatibility</jar><jar type="source">CBT_HOME/libraries/common-0</jar><jar type="source">CBT_HOME/libraries/common-1</jar><jar type="source">CBT_HOME/libraries/file</jar><jar type="source">CBT_HOME/libraries/process</jar><jar type="source">CBT_HOME/nailgun_launcher/process</jar><jar type="source">CBT_HOME/plugins/sonatype-release</jar>
     </library>
       </cbtLibraries>
       <scalaCompilers>

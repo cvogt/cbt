@@ -111,20 +111,6 @@ object BuildInformation {
         )
       }
 
-
-      private def convertCbtLibraries = {
-        val cbtBuild =
-          DirectoryDependency(rootBuild.context.cbtHome)(rootBuild.context).dependenciesArray.head.asInstanceOf[BaseBuild]
-        transitiveBuilds(Seq((cbtBuild, ModuleType.Default)), skipTests = true)
-          .map(_._1)
-          .collect {
-            case d: BoundMavenDependency => d.jar
-            case d: PackageJars => d.jar.get
-          }
-          .map(exportLibrary)
-          .distinct
-      }
-
       private def collectDependencies(dependencies: Seq[Dependency]): Seq[ModuleDependency] =
         dependencies
           .collect {
@@ -233,8 +219,27 @@ object BuildInformation {
         Library(name, binaryJars ++ sourceJars)
       }
 
-      private def exportLibrary(file: File) =
-        Library("CBT:" + file.getName.stripSuffix(".jar"), Seq(LibraryJar(file, JarType.Binary)))
+      private def convertCbtLibraries = {
+        val cbtHome = rootBuild.context.cbtHome
+        val cbtSourceDirs = //TODO add sth else here ??
+          Seq(cbtHome / "stage1",
+              cbtHome / "stage2",
+              cbtHome / "compatibility",
+              cbtHome / "libraries" / "common-0",
+              cbtHome / "libraries" / "common-1",
+              cbtHome / "libraries" / "file",
+              cbtHome / "libraries" / "process",
+              cbtHome / "nailgun_launcher" / "process",
+              cbtHome / "plugins" / "sonatype-release"
+            )
+        val sourceJars = cbtSourceDirs
+            .map(LibraryJar(_, JarType.Source))
+        val binaryJars = (cbtHome +: cbtSourceDirs)
+          .map(_ / "target" / "scala-2.11" / "classes")
+          .filter(_.exists)
+          .map(LibraryJar(_, JarType.Binary))
+        Seq(Library("CBT", binaryJars ++ sourceJars))
+      }
 
       private def parentBuild(build: BaseBuild): Seq[BaseBuild] =
         build.context.parentBuild
