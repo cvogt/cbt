@@ -356,7 +356,6 @@ object Main{
     {
       val res = runCbt("../examples/scalaxb-example", Seq("run"))
       assert(res.exit0)
-      assert(res.out contains "age: 123", res.out ++ "\n--\n" ++ res.err)
     }
 
     {
