@@ -354,6 +354,12 @@ object Main{
     }
 
     {
+      val res = runCbt("../examples/scalaxb-example", Seq("run"))
+      assert(res.exit0)
+      assert(res.out contains "age: 123", res.out ++ "\n--\n" ++ res.err)
+    }
+
+    {
       val res = runCbt("broken-build/build-class-with-wrong-arguments", Seq("run"))
       assert(!res.exit0)
       assert(res.err contains s"Expected class ${lib.buildClassName}(val context: Context), but found different constructor", res.err)
@@ -508,7 +514,7 @@ object Main{
 
     if (slow) {
       import scala.xml._
-      val expected = 
+      val expected =
         (cbtHome / "examples" / "export-build-information" / "expected.xml").readAsString.replaceAll("CBT_HOME", cbtHome.getPath)
       val expectedXml = Utility.trim(XML.loadString(expected))
       val res = runCbt("../examples/export-build-information", Seq("buildInfoXml"))
