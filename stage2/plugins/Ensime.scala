@@ -21,6 +21,8 @@ import scala.util.control.NonFatal
   */
 trait Ensime extends BaseBuild {
 
+  def ensimeServerVersion = "2.0.0-M4"
+
   /** ENSIME server and client configuration. */
   def ensimeConfig: Ensime.EnsimeConfig = Ensime.EnsimeConfig(
     scalaCompilerJars = {
@@ -32,11 +34,11 @@ trait Ensime extends BaseBuild {
     },
     ensimeServerJars = {
       val deps = Dependencies(Resolver(mavenCentral, sonatypeReleases, sonatypeSnapshots).bind(
-        MavenDependency("org.ensime", s"server_$scalaMajorVersion", "2.0.0-SNAPSHOT")
+        MavenDependency("org.ensime", s"server_$scalaMajorVersion", ensimeServerVersion)
       ))
       (deps.dependencies ++ deps.transitiveDependencies).flatMap(_.exportedClasspathArray)
     },
-    ensimeServerVersion = "2.0.0-SNAPSHOT",
+    ensimeServerVersion = ensimeServerVersion,
     rootDir = projectDirectory,
     cacheDir = projectDirectory / ".ensime_cache",
     javaHome = Ensime.jdkHome,
