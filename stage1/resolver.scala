@@ -112,7 +112,7 @@ trait DependencyImplementation extends Dependency{
       lib.classLoaderRecursion(
         this,
         (this +: transitiveDependencies).collect{
-          case d: ArtifactInfo => d 
+          case d: ArtifactInfo => d
         }.groupBy(
           d => (d.groupId,d.artifactId)
         ).mapValues(_.head)
@@ -169,8 +169,8 @@ case class BinaryDependency( paths: Seq[File], dependencies: Seq[Dependency] )(i
 case class Dependencies( dependencies: Seq[Dependency] )(implicit val logger: Logger, val transientCache: java.util.Map[AnyRef,AnyRef], val classLoaderCache: ClassLoaderCache) extends DependencyImplementation{
   override def lastModified = dependencies.map(_.lastModified).maxOption.getOrElse(0)
   override lazy val moduleKey = this.getClass.getName + "(" + dependencies.map(_.moduleKey).mkString(", ") + ")" // PERFORMANCE HOTSPOT
-  def targetClasspath = ClassPath() 
-  def exportedClasspath = ClassPath() 
+  def targetClasspath = ClassPath()
+  def exportedClasspath = ClassPath()
   override def show: String = this.getClass.getSimpleName + "( " + dependencies.map(_.show).mkString(", ") + " )"
 }
 
@@ -334,6 +334,23 @@ case class BoundMavenDependency(
     }.flatMap(_.transitivePom) :+ this
   }
 
+  private lazy val imports : Seq[BoundMavenDependency] =
+    (pomXml \ "dependencyManagement" \ "dependencies" \ "dependency").collect {
+      case dependencyXml if (lookup(dependencyXml, _ \ "scope").exists(_ == "import")) =>
+        BoundMavenDependency(
+          cbtLastModified: Long,
+          mavenCache,
+          MavenDependency(
+            lookup(dependencyXml,_ \ "groupId").get,
+            lookup(dependencyXml,_ \ "artifactId").get,
+            lookup(dependencyXml,_ \ "version").get
+          ),
+          repositories,
+          replace
+        )(logger, transientCache, classLoaderCache)
+    }.flatMap (importPom => importPom.transitivePom :+ importPom)
+
+
   private lazy val properties: Map[String, String] = (
     transitivePom.flatMap{ d =>
       val props = (d.pomXml \ "properties").flatMap(_.child).map{
@@ -344,8 +361,11 @@ case class BoundMavenDependency(
     }
   ).toMap
 
+  private lazy val transitiveAndImportsPom =
+    transitivePom ++ transitivePom.flatMap(_.imports)
+
   private lazy val dependencyVersions: Map[String, (String,String)] =
-    transitivePom.flatMap(
+    transitiveAndImportsPom.flatMap(
       p =>
       (p.pomXml \ "dependencyManagement" \ "dependencies" \ "dependency").map{
         xml =>
@@ -466,7 +486,7 @@ object BoundMavenDependency{
          .last
       )
     deps.map{
-      d => 
+      d =>
         val l = latest((d.groupId,d.artifactId))
         if(d != l) logger.resolver("outdated: "++d.show)
         l
