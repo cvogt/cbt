@@ -103,3 +103,9 @@ representing the operation, e.g. `compile` or `doc`. If there
 is only one inner case class inside of anothe case class,
 call it `config`, give it a name representing the operation,
 e.g. `compile` or `doc`.
+
+### Finalizing your plugin
+
+Add your plugin to stage2/plugins.scala
+
+Create a test project, and then test it in test/test.scala

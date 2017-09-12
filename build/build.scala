@@ -2,7 +2,7 @@ package cbt_build.cbt
 import cbt._
 import cbt_internal._
 
-class Build(val context: Context) extends Shared with Scalariform with PublishLocal with CommandLineOverrides{
+class Build(val context: Context) extends Shared with Scalariform with PublishLocal with CommandLineOverrides with Ensime {
   override def name: String = "cbt"
   override def version: String = "0.9-SNAPSHOT"
   override def description: String = "Fast, intuitive Build Tool for Scala"
