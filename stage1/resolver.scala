@@ -350,9 +350,8 @@ case class BoundMavenDependency(
         )(logger, transientCache, classLoaderCache)
     }.flatMap (importPom => importPom.transitivePom :+ importPom)
 
-
-  private lazy val properties: Map[String, String] = (
-    transitivePom.flatMap{ d =>
+  private def propertiesIn(scope : Seq[BoundMavenDependency]): Map[String, String] = (
+    scope.flatMap{ d =>
       val props = (d.pomXml \ "properties").flatMap(_.child).map{
         tag => tag.label -> tag.text
       }
@@ -361,17 +360,22 @@ case class BoundMavenDependency(
     }
   ).toMap
 
-  private lazy val transitiveAndImportsPom =
-    transitivePom ++ transitivePom.flatMap(_.imports)
+  private lazy val properties = propertiesIn(transitivePom)
+
+  // order matters
+  private lazy val transitiveAndImportsPom : Seq[BoundMavenDependency] =
+    transitivePom.map(_.imports).zip(transitivePom).map {
+      case (importPoms, currentPom) => importPoms.+:(currentPom)
+    }.flatten
 
   private lazy val dependencyVersions: Map[String, (String,String)] =
     transitiveAndImportsPom.flatMap(
       p =>
       (p.pomXml \ "dependencyManagement" \ "dependencies" \ "dependency").map{
         xml =>
-          val groupId = p.lookup(xml,_ \ "groupId").get
-          val artifactId = p.lookup(xml,_ \ "artifactId").get
-          val version = p.lookup(xml,_ \ "version").get
+          val groupId = p.lookupIn(transitiveAndImportsPom)(xml,_ \ "groupId").get
+          val artifactId = p.lookupIn(transitiveAndImportsPom)(xml,_ \ "artifactId").get
+          val version = p.lookupIn(transitiveAndImportsPom)(xml,_ \ "version").get
           artifactId -> (groupId, version)
       }
     ).toMap
@@ -387,13 +391,13 @@ case class BoundMavenDependency(
           case xml if ( (xml \ "scope").text == "" || (xml \ "scope").text == "compile" ) && (xml \ "optional").text != "true" =>
               val artifactId = lookup(xml,_ \ "artifactId").get
               val groupId =
-                lookup(xml,_ \ "groupId").getOrElse(
+                lookup(xml,_ \ "groupId").getOrElse{
                   dependencyVersions
                     .get(artifactId).map(_._1)
                     .getOrElse(
                       throw new Exception(s"$artifactId not found in \n$dependencyVersions")
                     )
-                )
+                }
               val version =
                 lookup(xml,_ \ "version").getOrElse(
                   dependencyVersions
@@ -411,14 +415,14 @@ case class BoundMavenDependency(
       BoundMavenDependency( cbtLastModified, mavenCache, _, repositories, replace )
     ).toVector
   }
-  def lookup( xml: Node, accessor: Node => NodeSeq ): Option[String] = {
+  private def lookupIn(scope : Seq[BoundMavenDependency])(xml: Node, accessor: Node => NodeSeq ): Option[String] = {
     // println("lookup in " + xml)
     val Substitution = "\\$\\{([^\\}]+)\\}".r
 
     def matcherFunc(matcher: scala.util.matching.Regex.Match): String = {
       val path = matcher.group(1)
-      val ret = properties.get(path).orElse(
-        transitivePom.reverse.flatMap{ d =>
+      val ret = propertiesIn(scope).get(path).orElse(
+        scope.reverse.flatMap{ d =>
           Some(path.split("\\.").toList).collect{
             case "project" :: path =>
               path.foldLeft(d.pomXml:NodeSeq){ case (xml,tag) => xml \ tag }.text
@@ -426,7 +430,7 @@ case class BoundMavenDependency(
         }.headOption
       )
         .getOrElse(
-          throw new Exception(s"Can't find $path in \n$properties.\n\npomParents: $transitivePom\n\n pomXml:\n$pomXml" )
+          throw new Exception(s"Can't find $path in \n$properties.\n\nscope: ${scope.mkString("\n")}\n\n pomXml:\n$pomXml" )
         )
 
       Substitution.replaceAllIn(
@@ -442,7 +446,11 @@ case class BoundMavenDependency(
       )
     }
   }
+
+  def lookup = lookupIn(transitivePom) _
+
 }
+
 object BoundMavenDependency{
   private lazy val versionRangeRegex = "^[\\[\\(]([^,\\]\\)]*)(,([^\\]\\)]*))?[\\]\\)]".r
   def extractVersion( versionOrRange: String ) = {
