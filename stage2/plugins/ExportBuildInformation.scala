@@ -251,7 +251,10 @@ object BuildInformation {
           .toOption
           .toSeq
           .flatMap {
-            case testBuild: BaseBuild => Seq(testBuild)
+            case lasyDep: LazyDependency 
+              if lasyDep.dependency.isInstanceOf[BaseBuild] => 
+                Seq(lasyDep.dependency.asInstanceOf[BaseBuild])
+            case build: BaseBuild => Seq(build)
             case _ => Seq.empty
           }
 
