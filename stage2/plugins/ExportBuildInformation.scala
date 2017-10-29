@@ -229,6 +229,7 @@ object BuildInformation {
               cbtHome / "libraries" / "common-1",
               cbtHome / "libraries" / "file",
               cbtHome / "libraries" / "process",
+              cbtHome / "nailgun_launcher",
               cbtHome / "nailgun_launcher" / "process",
               cbtHome / "plugins" / "sonatype-release"
             )
