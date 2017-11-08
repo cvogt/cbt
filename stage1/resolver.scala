@@ -88,9 +88,11 @@ trait DependencyImplementation extends Dependency{
     throw new RuntimeException( "No main class found in " + this )
   )
 
+  def mainClasses = classes.filter( lib.findMain(_).nonEmpty )
+
   def mainClass = lib.pickOne(
     "Which one do you want to run?",
-    classes.filter( lib.findMain(_).nonEmpty )
+    mainClasses
   )( _.name.stripSuffix( "$" ) )
 
   def classes = exportedClasspath.files.flatMap(
