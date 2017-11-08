@@ -109,8 +109,8 @@ class Stage1Lib( logger: Logger ) extends
           None
         }
       }.getOrElse{
-        System.err.println("System.console() == null. Use `cbt direct <task>` or see https://github.com/cvogt/cbt/issues/236")
-        None
+        throw new Exception("System.console() == null. Use `cbt direct <task>` or see https://github.com/cvogt/cbt/issues/236")
+        //None
       }
     }
   }

@@ -88,9 +88,11 @@ trait DependencyImplementation extends Dependency{
     throw new RuntimeException( "No main class found in " + this )
   )
 
+  def mainClasses = classes.filter( lib.findMain(_).nonEmpty )
+
   def mainClass = lib.pickOne(
     "Which one do you want to run?",
-    classes.filter( lib.findMain(_).nonEmpty )
+    mainClasses
   )( _.name.stripSuffix( "$" ) )
 
   def classes = exportedClasspath.files.flatMap(
@@ -294,7 +296,7 @@ case class BoundMavenDependency(
     file
   }
 
-  private def resolveHash(suffix: String, useClassifier: Boolean) = {
+  private def resolveHash(suffix: String, useClassifier: Boolean): String = {
     val path = resolve( suffix ++ ".sha1", None, useClassifier ).toPath
     Option( classLoaderCache.hashMap.get("hash:"+path) ).map(_.asInstanceOf[String]).getOrElse{
       val result = Files.readAllLines(
