@@ -508,13 +508,22 @@ object Main{
 
     if (slow) {
       import scala.xml._
-      val expected = 
-        (cbtHome / "examples" / "export-build-information" / "expected.xml").readAsString.replaceAll("CBT_HOME", cbtHome.getPath)
-      val expectedXml = Utility.trim(XML.loadString(expected))
+      val expectedXml = Utility.trim(XML.loadString(
+        (cbtHome / "examples" / "export-build-information" / "expected.xml")
+          .readAsString.replaceAll("CBT_HOME", cbtHome.getPath)
+      ))
       val res = runCbt("../examples/export-build-information", Seq("buildInfoXml"))
       assert(res.exit0)
       val resultXml = Utility.trim(XML.loadString(res.out))
-      assert(resultXml == expectedXml)
+      assert(resultXml == expectedXml, {
+          val pp = new PrettyPrinter(120, 2)
+          val (expected, actual) = ( pp.format(expectedXml) zip pp.format(resultXml) ).dropWhile{
+            case (left, right) => left == right
+          }.take(800).unzip
+
+          "\n" + expected.mkString + "\n----\n" + actual.mkString + "\n"
+        }
+      )
     }
 
     /*

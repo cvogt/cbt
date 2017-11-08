@@ -10,9 +10,10 @@ trait ExportBuildInformation { self: BaseBuild =>
   def buildInfoXml: String = {
     val parameters = BuildInformation.Project.ExportParameters(context.args)
     val xml = BuildInformationSerializer.serialize(BuildInformation.Project(self, parameters))
+    val pp = new PrettyPrinter(2000, 2)
     parameters.outputFile match {
-      case None => 
-        xml.toString
+      case None =>
+        pp.format(xml)
       case Some(file) =>
         XML.save(file.getPath, xml)
         s"Saved to ${file.getPath}"
@@ -188,7 +189,7 @@ object BuildInformation {
               .filterNot(b => visited.contains(b._1))
               .foldLeft(build +: visited, moduleType +: moduleTypes)(traverse)
           }
-        }    
+        }
         val (collectedBuilds, collectedTypes) = builds
           .foldLeft(Seq.empty[BaseBuild], Seq.empty[ModuleType])(traverse)
         collectedBuilds.zip(collectedTypes)
@@ -222,22 +223,31 @@ object BuildInformation {
       private def convertCbtLibraries = {
         val cbtHome = rootBuild.context.cbtHome
         val cbtSourceDirs = //TODO add sth else here ??
-          Seq(cbtHome / "stage1",
-              cbtHome / "stage2",
-              cbtHome / "compatibility",
-              cbtHome / "libraries" / "common-0",
-              cbtHome / "libraries" / "common-1",
-              cbtHome / "libraries" / "file",
-              cbtHome / "libraries" / "process",
-              cbtHome / "nailgun_launcher",
-              cbtHome / "nailgun_launcher" / "process",
-              cbtHome / "plugins" / "sonatype-release"
-            )
+          Seq(
+            cbtHome / "stage1",
+            cbtHome / "stage2",
+            cbtHome / "compatibility",
+            cbtHome / "libraries" / "common-0",
+            cbtHome / "libraries" / "common-1",
+            cbtHome / "libraries" / "file",
+            cbtHome / "libraries" / "process",
+            cbtHome / "nailgun_launcher",
+            cbtHome / "plugins" / "sonatype-release"
+          ).sorted
+
+        // fail fast in case of wrong assumption
+        cbtSourceDirs.foreach(d => assert(d.exists, d.getPath))
+
+        val binaryDirs =
+          (cbtHome +: cbtSourceDirs)
+            .map(_ / "target" / "scala-2.11" / "classes")
+
+        // make sure all these exist (may not yet), so IntelliJ is happy
+        binaryDirs.foreach(_.mkdirs)
+
         val sourceJars = cbtSourceDirs
             .map(LibraryJar(_, JarType.Source))
-        val binaryJars = (cbtHome +: cbtSourceDirs)
-          .map(_ / "target" / "scala-2.11" / "classes")
-          .filter(_.exists)
+        val binaryJars = binaryDirs
           .map(LibraryJar(_, JarType.Binary))
         Seq(Library("CBT", binaryJars ++ sourceJars))
       }
