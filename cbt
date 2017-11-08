@@ -267,19 +267,23 @@ stage1 () {
 				log "Checking if nailgun is up yet." "$@"
 				$NG cbt.NailgunLauncher check-alive >> "$nailgun_out" 2>> "$nailgun_err"
 				alive=$?
-				if [ $alive -eq 131 ] || [ $alive -eq 33 ]; then
-				# the 33 is not working right now
-				#	echo "Nailgun call failed. Try 'cbt kill' and check the error log cbt/nailgun_launcher/target/nailgun.stderr.log" 1>&2
-				#elif [ $alive -eq 33 ]; then
+				if [ $alive -eq 33 ]; then
+					# 33 is sent by NailgunLauncher on success
+					# if Nailgun can't launch the class, it's returning
+					# 133 which triggers the else branch
 					break
 				else
-					log "Nope. Sleeping for 0.5 seconds" "$@"
+					log "Nope. Sleeping for 0.2 seconds" "$@"
 					#if [ "$i" -gt 1 ]; then
 					#	echo "Waiting for nailgun to start... (In case of problems try -Dlog=nailgun or check logs in cbt/nailgun_launcher/target/*.log)" 1>&2
 					#fi
 				fi
-				sleep 0.3
+				sleep 0.2
 			done
+			if [ $i -eq 9 ]; then
+				echo "Nailgun call failed. Try 'cbt kill' and check the error log cbt/nailgun_launcher/target/nailgun.stderr.log" 1>&2
+				exit $alive
+			fi
 			log "Running CBT via Nailgun." "$@"
 			$NG cbt.NailgunLauncher "$(time_taken)" "$CWD" "$loop" "$@"
 			exitCode=$?
