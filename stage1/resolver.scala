@@ -296,7 +296,7 @@ case class BoundMavenDependency(
     file
   }
 
-  private def resolveHash(suffix: String, useClassifier: Boolean) = {
+  private def resolveHash(suffix: String, useClassifier: Boolean): String = {
     val path = resolve( suffix ++ ".sha1", None, useClassifier ).toPath
     Option( classLoaderCache.hashMap.get("hash:"+path) ).map(_.asInstanceOf[String]).getOrElse{
       val result = Files.readAllLines(
