@@ -1,6 +1,6 @@
 import cbt._
 
-// cbt:https://github.com/cvogt/cbt.git#f11b8318b85f16843d8cfa0743f64c1576614ad6
+// cbt:https://github.com/cvogt/cbt.git#2ab3402e4899e722905a3a5a0825c5af38706303
 class Build(val context: Context) extends BaseBuild with PackageJars{
   def groupId = "cbt.test"
   def version = "0.1"
