@@ -56,9 +56,6 @@ If you want to work on some module which is not you can right-click on the direc
 
 ------
 
-## Current viersion of plugin
-Until Pull Request is note merged here is a Plugin with a **CBT** support: 
-Link to the built project: [scala-plugin.zip](https://goo.gl/9vqurz) (sha1: `dedb029d3c4b378f85cf62a10da6425cbd1f102b`)
-
-In order to install you need to remove existing intellij-scala plugin and then choose `Install plugin from disk` and point out to the downloaded zip
+## Current version of plugin
+Currently [IntelliJ EAP](https://www.jetbrains.com/idea/nextversion/) is suggested to be used along with the nightly build for the Scala Plugin (this can be selected after installing the plugin from the Scala Pugin's settings within IntelliJ).
 
