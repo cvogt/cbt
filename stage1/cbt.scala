@@ -11,7 +11,7 @@ object `package`{
   implicit class CbtBooleanOps( val condition: Boolean ) extends AnyVal with common_1.ops.CbtBooleanOps
   implicit class CbtStringOps( val string: String ) extends AnyVal with common_1.ops.CbtStringOps
 
-  implicit class CbtFileOps( val file: File ) extends file.ops.CbtFileOps
+  implicit class CbtFileOps( val file: File ) extends cbt.file.ops.CbtFileOps
 
   implicit class CbtClassOps( val c: Class[_] ) extends AnyVal with reflect.ops.CbtClassOps
   implicit class CbtConstructorOps( val c: Constructor[_] ) extends AnyVal with reflect.ops.CbtConstructorOps

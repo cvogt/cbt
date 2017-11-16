@@ -225,7 +225,7 @@ stage1 () {
 	log "Checking for changes in cbt/nailgun_launcher" "$@"
 	NAILGUN_INDICATOR=$NAILGUN$TARGET../classes.last-success
 	changed=1
-	NAILGUN_SOURCES=("$NAILGUN"*.java "$CBT_HOME"/libraries/common-0/*.java)
+	NAILGUN_SOURCES=("$NAILGUN"/src/cbt/*.java "$CBT_HOME"/libraries/common-0/src/cbt/reflect/*.java)
 	for file in "${NAILGUN_SOURCES[@]}"; do
 		if [ "$file" -nt "$NAILGUN_INDICATOR" ]; then changed=0; fi
 	done
