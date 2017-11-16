@@ -145,11 +145,11 @@ public class NailgunLauncher{
     final String compatibilityTarget, final ClassLoaderCache classLoaderCache, File cwd, boolean loop
   ) throws Throwable {
     _assert(TARGET != null, "environment variable TARGET not defined");
-    String nailgunSources = cbtHome + "/" + NAILGUN;
+    String nailgunSources = cbtHome + "/" + NAILGUN + "src/cbt";
     String nailgunTarget = nailgunSources + TARGET;
     String stage1Sources = cbtHome + "/" + STAGE1;
     String stage1Target = stage1Sources + TARGET;
-    String compatibilitySources = cbtHome + "/compatibility";
+    String compatibilitySources = cbtHome + "/compatibility/src/cbt";
     String mavenCache = cache + "maven";
     String mavenUrl = "https://repo1.maven.org/maven2";
     File loopFile = new File(cwd + "/target/.cbt-loop.tmp");
@@ -176,7 +176,7 @@ public class NailgunLauncher{
       compatibilitySourceFiles = new ArrayList<File>();
       for( String d: new String[]{
         compatibilitySources,
-        cbtHome + "/libraries/interfaces"
+        cbtHome + "/libraries/interfaces/src/cbt/interfaces"
       } ){
         for( File f: new File(d).listFiles() ){
           if( f.isFile() && f.toString().endsWith(".java") ){
@@ -218,6 +218,7 @@ public class NailgunLauncher{
       stage1Sources,
       cbtHome + "/libraries/reflect",
       cbtHome + "/libraries/common-1",
+      cbtHome + "/libraries/common-1/src/cbt",
       cbtHome + "/libraries/file"
     } ){
       for( File f: new File(d).listFiles() ){
