@@ -137,8 +137,8 @@ $ cbt run
 
 You should see how CBT first compiles your project, then runs it and prints
 `Hello World`. CBT created the file `Main.scala` top-level in your directory.
-You can alternatively place `.scala` or `.java` files in `src/`
-or any of its subdirectories.
+If you wish to place `.scala` or `.java` files under a directory-based package 
+hierarchy, the should go under `src/` or any of its subdirectories.
 
 ### Creating a build file
 
