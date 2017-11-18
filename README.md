@@ -399,6 +399,14 @@ Known bugs
   and try to see if any of the above recommendations help
 
 
+IDE Support
+-------------------
+
+### IntelliJ
+
+CBT support has recently been added to the Scala Plugin for IntelliJ. See details [in the docs](doc/intellij-gsoc.md), 
+and [view/submit](https://youtrack.jetbrains.com/issues?q=CBT) issues on the JetBrains issue tracker.
+
 Shell completions
 -------------------
 
