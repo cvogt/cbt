@@ -7,7 +7,6 @@ class plugins( context: Context, scalaVersion: String ) {
     ),
     None
   )
-  final lazy val gitter = plugin( "giter8" )
   final lazy val googleJavaFormat = plugin( "google-java-format" )
   final lazy val proguard = plugin( "proguard" )
   final lazy val sbtLayout = plugin( "sbt_layout" )
