@@ -72,7 +72,7 @@ mkdir %NAILGUN%%TARGET% > nul 2>&1
 mkdir %STAGE1%%TARGET%  > nul 2>&1
 
 SET nailgun_out=%NAILGUN%\target\nailgun.stdout.log
-SET nailgun_err=%NAILGUN%\target\nailgun.strerr.log
+SET nailgun_err=%NAILGUN%\target\nailgun.stderr.log
 
 where nc > nul 2>&1
 

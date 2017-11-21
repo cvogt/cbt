@@ -113,7 +113,7 @@ export TARGET=target/scala-2.11/classes/
 mkdir -p "$NAILGUN$TARGET"
 
 nailgun_out="$NAILGUN/target/nailgun.stdout.log"
-nailgun_err="$NAILGUN/target/nailgun.strerr.log"
+nailgun_err="$NAILGUN/target/nailgun.stderr.log"
 
 DEBUG=""
 foo(){
