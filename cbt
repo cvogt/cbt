@@ -18,7 +18,7 @@ nanos() {
 	if [ "$n" = "N" ]; then
 		n=$(gdate +"%N" 2>/dev/null)
 	fi
-	if [ "$n" = "" ]; then
+	if [ -z "$n" ]; then
 		n="0"
 	fi
 	echo 1$n
@@ -94,10 +94,10 @@ fi
 CWD=$(pwd)
 
 CBT_SCRIPT="$(readlink "$0")"
-if [ "$CBT_SCRIPT" = "" ]; then
+if [ -z "$CBT_SCRIPT" ]; then
 	CBT_SCRIPT="$0"
 fi
-if [ "$CBT_SCRIPT" = "" ]; then
+if [ -z "$CBT_SCRIPT" ]; then
 	echo "cannot locate cbt launcher" 1>&2
 	exit 252
 fi
@@ -137,7 +137,7 @@ foo(){
 
 foo "$@"
 
-if [ ! "$DEBUG" == "" ]; then
+if [ -n "$DEBUG" ]; then
 	shift
 fi
 
@@ -159,7 +159,7 @@ NG_SERVER_JAR=$( \
 )
 
 nailgun_installed=0
-if ([ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER_JAR" == "" ]) && [ "$1" != "direct" ]; then
+if ([ -z "$NG_EXECUTABLE" ] || [ -z "$NG_SERVER_JAR" ]) && [ ! "$1" = "direct" ]; then
 	nailgun_installed=1
 	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun' or 'apt-get install nailgun'.)" 1>&2
 fi
@@ -192,12 +192,12 @@ if [  "$1" = "direct" ]; then
 	shift
 fi
 loop=1
-if [ "$1" == "loop" ]; then
+if [ "$1" = "loop" ]; then
 	loop=0
 	shift
 fi
 clearScreen=1
-if [ "$1" == "clear" ]; then
+if [ "$1" = "clear" ]; then
 	clearScreen=0
 	shift
 fi
@@ -206,7 +206,7 @@ if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ]; then
 	use_nailgun=1
 fi
 
-if [ $use_nailgun -eq 0 ] && [ $server_up -eq 0 ] && [ ! "$DEBUG" == "" ]; then
+if [ $use_nailgun -eq 0 ] && [ $server_up -eq 0 ] && [ -n "$DEBUG" ]; then
 	echo "Can't use \`-debug\` (without \`direct\`) when nailgun is already running. If you started it up with \`-debug\` you can still connect to it. Otherwise use \`cbt kill\` to kill it."
 	exit 1
 fi
@@ -215,7 +215,7 @@ if [ $use_nailgun -eq 0 ] && [ ! $server_up -eq 0 ]; then
 	log "Starting background process (nailgun)" "$@"
 	# try to start nailgun-server, just in case it's not up
 	java "${options[@]}" "${JAVA_OPTS_CBT[@]}" -jar "$NG_SERVER_JAR" 127.0.0.1:$NAILGUN_PORT >> "$nailgun_out" 2>> "$nailgun_err" &
-	if [ ! "$DEBUG" == "" ]; then
+	if [ -n "$DEBUG" ]; then
 		echo "Started nailgun server in debug mode"
 		exit 1
 	fi
@@ -324,24 +324,24 @@ while true; do
 			echo "$file" >> "$CBT_LOOP_FILE"
 		done
 		files=
-		if [ -f "$CBT_LOOP_FILE" ]; then
+		if [ -e "$CBT_LOOP_FILE" ]; then
 			files=($(sort "$CBT_LOOP_FILE"))
 		fi
 		pids=
-		if [ -f "$CBT_KILL_FILE" ]; then
+		if [ -e "$CBT_KILL_FILE" ]; then
 			pids=($(cat "$CBT_KILL_FILE")) # FIXME: should we uniq here?
 			#rm "$CBT_LOOP_FILE"
 		fi
 		echo ""
 		echo "Watching for file changes... (ctrl+c short press for loop, long press for abort)"
 		for file in "${files[@]}"; do
-			if [ $file == "" ]; then
+			if [ -z "$file" ]; then
 				echo "warning: empty file found in loop file list" 1>&2
 			fi
 		done
 		fswatch --one-event "${files[@]}"
 		for pid in "${pids[@]}"; do
-			if [ $pid == "" ]; then
+			if [ -z "$pid" ]; then
 				echo "warning: empty pid found in pid kill list" 1>&2
 			else
 				log "killing process $pid"
