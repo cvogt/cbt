@@ -21,7 +21,7 @@ import scala.util.control.NonFatal
   */
 trait Ensime extends BaseBuild {
 
-  def ensimeServerVersion = "2.0.0-M4"
+  def ensimeServerVersion = "2.0.0"
 
   /** ENSIME server and client configuration. */
   def ensimeConfig: Ensime.EnsimeConfig = Ensime.EnsimeConfig(
