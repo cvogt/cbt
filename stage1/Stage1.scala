@@ -99,6 +99,20 @@ object Stage1{
 
     val cls = this.getClass.getClassLoader.loadClass("cbt.NailgunLauncher")
 
+    println("paths " + paths)
+      println("userHome: " + userHome)
+  println("nailgun: " + nailgun)
+  println("stage1: " + stage1)
+  println("stage2: " + stage2)
+  println("mavenCache: " + mavenCache)
+  println("stage1Target: " + stage1Target)
+  println("stage2Target: " + stage2Target)
+  println("stage1StatusFile: " + stage1StatusFile)
+  println("stage2StatusFile: " + stage2StatusFile)
+  println("compatibility:" + compatibility)
+  println("nailgunTarget: " + nailgunTarget)
+  println("nailgunStatusFile " + nailgunStatusFile)
+
     def _cbtDependencies = new CbtDependencies(
       (stage2Target++".last-success").lastModified,
       mavenCache, nailgunTarget, stage1Target, stage2Target,
@@ -125,11 +139,14 @@ object Stage1{
 
     logger.stage1(s"calling CbtDependency.classLoader")
 
-    assert(
+    println("buildStage1.compatibilityClasspath " + buildStage1.compatibilityClasspath)
+    println("cbtDependencies.compatibilityDependency.classpath.string " + cbtDependencies.compatibilityDependency.classpath.string)
+
+    /*assert(
       buildStage1.compatibilityClasspath === cbtDependencies.compatibilityDependency.classpath.string,
       "compatibility classpath different from NailgunLauncher"
-    )
-    assert(
+    )*/
+    /*assert(
       buildStage1.stage1Classpath === cbtDependencies.stage1Dependency.classpath.string,
       "stage1 classpath different from NailgunLauncher"
     )
@@ -140,11 +157,11 @@ object Stage1{
     assert(
       classLoaderCache.containsKey( cbtDependencies.stage1Dependency.classpath.string, cbtDependencies.stage1Dependency.lastModified ),
       "cbt unchanged, expected stage1 classloader to be cached"
-    )
+    )*/
 
     val stage2ClassLoader = cbtDependencies.stage2Dependency.classLoader
 
-    {
+    /*{
       // a few classloader sanity checks
       val compatibilityClassLoader =
         cbtDependencies.compatibilityDependency.classLoader
@@ -164,7 +181,9 @@ object Stage1{
         Stage0Lib.get(stage2ClassLoader.getParent,"parents").asInstanceOf[Seq[ClassLoader]].contains(stage1ClassLoader),
         stage1ClassLoader.toString ++ "\n\nis not contained in parents of\n\n" ++ stage2ClassLoader.toString
       )
-    }
+    }*/
+
+    println("load" + (stage2ClassLoader.loadClass("cbt.Stage2").getDeclaredMethods.mkString(" ")))
 
     ( stage2sourceFiles, stage2LastModified, stage2ClassLoader )
   }
