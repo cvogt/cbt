@@ -14,10 +14,15 @@ REM - nailgun   http://martiansoftware.com/nailgun/
 
 REM 0 is true, 1 is false
 
+REM TODO 
+REM   time_taken function
+REM   fswatch
+REM   kill
+REM
+
 SETLOCAL EnableExtensions EnableDelayedExpansion
 
 REM < INIT >
-REM TODO 
 SET time_taken=1.1
 
 SET SCALA_VER_MAJOR=2
@@ -110,7 +115,6 @@ REM </ NCAT >
 
 
 REM < MAIN >
-ECHO [DEBUG] entered main
 CALL :set_debug %*
 if not "%debug%"=="" shift
 
@@ -177,7 +181,6 @@ if %loop% equ 0 (
 )
 
 :main_loop_while
-  ECHO [DEBUG] entered main_loop_while
 	if %clear_screen% EQU 0 ( CLS )
   
 	if exist %CBT_LOOP_FILE% ( DEL %CBT_LOOP_FILE% )
@@ -234,7 +237,6 @@ REM < FUNCTIONS >
 
 REM first stage of CBT
 :stage1
-  ECHO [DEBUG] entered stage1
 	CALL :log "Checking for changes in cbt\nailgun_launcher" %*
 	
 	SET changed=1
@@ -278,14 +280,6 @@ REM first stage of CBT
   if not %use_nailgun% EQU 0 (
     CALL :log "Running JVM directly" %*
     SET options=%JAVA_OPTS%
-    
-    ECHO [DEBUG] options %options%
-    ECHO [DEBUG] JAVA_OPTS_CBT %JAVA_OPTS_CBT%
-    ECHO [DEBUG] NAILGUN_TARGET %NAILGUN_TARGET%
-    ECHO [DEBUG] time_taken %time_taken%
-    ECHO [DEBUG] CWD %CWD%
-    ECHO [DEBUG] loop %loop%
-    ECHO [DEBUG] all args %*
     
     REM JVM options to improve startup time. See https://github.com/cvogt/cbt/pull/262
     java %options% %JAVA_OPTS_CBT% -cp %NAILGUN_TARGET% cbt.NailgunLauncher %time_taken% %CWD% %loop% %*
@@ -371,7 +365,7 @@ REM utility function to log message to stderr with stating the time
     )
 	if %enabled% EQU 0 (
 		SET delta=1
-    REM TODO delta=$(time_taken)
+    REM delta=$(time_taken)
 		echo [%delta%] %msg%
 	)
 GOTO :EOF
