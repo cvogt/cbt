@@ -245,14 +245,12 @@ REM first stage of CBT
   for %%f in (%NAILGUN_INDICATOR%) do (
     CALL :date_to_yyyy_mm_dd "%%~tf"
     SET ng_ind_last_mod=!date_formatted!
-    ECHO ng_indicator %%f
   )
   
   for %%f in (%nailgun_sources%) do (
     CALL :date_to_yyyy_mm_dd "%%~tf"
     SET ng_source_last_mod=!date_formatted!
     if "!ng_source_last_mod!" GTR "!ng_ind_last_mod!" ( SET changed=0 )
-    ECHO nailgun_source %%f
   )
   
 	SET exit_code=0

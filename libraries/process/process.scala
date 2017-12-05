@@ -82,11 +82,12 @@ trait Module {
     f
   }
 
-  import com.sun.jna.{ Library, Native }
+  import com.sun.jna.{ Library, Native, Platform }
   private trait CLibrary extends Library {
     def getpid: Int
   }
-  private val CLibraryInstance: CLibrary = Native.loadLibrary( "c", classOf[CLibrary] ).asInstanceOf[CLibrary]
+  val nativeLib = if(Platform.isWindows()) "msvcrt" else "c"
+  private val CLibraryInstance: CLibrary = Native.loadLibrary( nativeLib, classOf[CLibrary] ).asInstanceOf[CLibrary]
 
   def currentProcessId: Int = {
     if ( Option( System.getProperty( "os.name" ) ).exists( _.startsWith( "Windows" ) ) ) {
