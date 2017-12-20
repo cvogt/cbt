@@ -7,7 +7,7 @@ often unanswered when trying to understand a new tool.
 
 ## Why does CBT use inheritance?
 
-First of all CBT uses classes, because needs some place to put tasks and
+First of all CBT uses classes, because it needs some place to put tasks and
 name them. Methods in classes are one way to do it. Methods calling each
 other allows to effectively build a graph of dependent tasks.
 
@@ -17,7 +17,7 @@ graph is what you do with sbt andso with CBT via inheritance/overrides.
 
 This was also discussed in gitter here: https://gitter.im/cvogt/cbt?at=58a95663de50490822e869e5
 
-Taking a graph an contrinuously patching it can be confusing, which is
+Taking a graph and continuously patching it can be confusing, which is
 why inheritance is confusing. You can even build non-terminating call
 cycles. CBT's logic is not coupled to the inheritance layer. You can
 write CBT builds without inheritance. They require a bit more code, but
@@ -25,7 +25,7 @@ may end up easier to maintain and understand.
 
 ## Task composition and aborting failed tasks and dependents
 
-In CBT build tasks are methods. Task can depend on each
+In CBT build tasks are methods. Tasks can depend on each
 other by invoking each other. E.g. `package` is a method that invokes `compile`.
 Build tasks can fail. By convention, if a task fails it is expected to throw
 an Exception in order to also abort the execution of dependent tasks. When
