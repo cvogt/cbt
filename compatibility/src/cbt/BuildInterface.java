@@ -2,7 +2,7 @@ package cbt;
 import java.io.*;
 
 public interface BuildInterface extends Dependency{
-  // needed to propagage through build builds. Maybe we can get rid of this.
+  // needed to propagate through build builds. Maybe we can get rid of this.
   public default BuildInterface finalBuild(File current){
     return finalBuild(); // legacy forwarder
   }
