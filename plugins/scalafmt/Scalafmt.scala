@@ -10,26 +10,36 @@ import java.nio.file._
 
 /** This plugin provides scalafmt support for cbt. */
 trait Scalafmt extends BaseBuild {
+  private def userHome = Option( System.getProperty("user.home") ).map(Paths.get(_))
+
   /** Reformat scala source code according to `scalafmtConfig` rules */
   def scalafmt = {
+    val configFile =
+      Stream
+        .iterate( projectDirectory )( _.getParentFile )
+        .map( Option( _ ) )
+        .takeWhile( _.nonEmpty )
+        .flatten
+        .map( _.toPath )
+        .flatMap( Scalafmt.loadConfig( _ ) )
+        .headOption
+
+    val fallback = userHome flatMap ( Scalafmt.loadConfig( _ ) )
+
     Scalafmt.apply( lib, sourceFiles.filter(_.string endsWith ".scala") ).config(
-      Scalafmt.loadConfig(
-        projectDirectory.toPath
-      ) getOrElse ScalafmtConfig.default
+      configFile orElse fallback getOrElse ScalafmtConfig.default
     )
   }
 }
 
 object Scalafmt{
-  def userHome = Option( System.getProperty("user.home") ).map(Paths.get(_))
-
-  /** Tries to load config from .scalafmt.conf in given directory or fallback directory */
-  def loadConfig( directory: Path, fallback: Option[Path] = userHome ): Option[ScalafmtConfig] = {
+  /** Tries to load config from .scalafmt.conf in given directory */
+  def loadConfig( directory: Path): Option[ScalafmtConfig] = {
     def findIn( base: Path ): Option[Path] = {
       Some( base.resolve(".scalafmt.conf").toAbsolutePath ).filter(isRegularFile(_))
     }
 
-    findIn( directory ).orElse( fallback flatMap findIn )
+    findIn( directory )
       .flatMap ( file => StyleCache.getStyleForFile(file.toString) )
   }
 
