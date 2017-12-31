@@ -182,29 +182,29 @@ IF %use_nailgun% EQU 0 (
 
 REM - need inotifywait for loop command
 IF %loop% EQU 0 (
-	WHERE inotifywait > NUL 2>&1
+  WHERE inotifywait > NUL 2>&1
   IF %ERRORLEVEL% NEQ 0 (
-		ECHO "Please install inotifywait to use cbt loop"
-		GOTO :EOF
-	)
+    ECHO "Please install inotifywait to use cbt loop"
+    GOTO :EOF
+  )
 )
 
 :main_loop_while
 
-	IF %clear_screen% EQU 0 ( CLS )
-	IF EXIST %CBT_LOOP_FILE% ( DEL %CBT_LOOP_FILE% )
-	IF EXIST %CBT_KILL_FILE% ( DEL %CBT_KILL_FILE% )
+  IF %clear_screen% EQU 0 ( CLS )
+  IF EXIST %CBT_LOOP_FILE% ( DEL %CBT_LOOP_FILE% )
+  IF EXIST %CBT_KILL_FILE% ( DEL %CBT_KILL_FILE% )
 
-	CALL :stage1 %*
+  CALL :stage1 %*
 
-	IF NOT %loop% EQU 0 (
+  IF NOT %loop% EQU 0 (
     CALL :log "not looping, exiting" %*
     GOTO :END
   )
 
   REM - exit_code is set in stage1
   IF %exit_code% EQU %USER_PRESSED_CTRL_C% (
-		CALL :log "not looping, exiting" %*
+    CALL :log "not looping, exiting" %*
     GOTO :END
   )
 
@@ -247,10 +247,10 @@ REM < FUNCTIONS >
 
 REM first stage of CBT
 :stage1
-	CALL :log "Checking for changes in cbt\nailgun_launcher" %*
+  CALL :log "Checking for changes in cbt\nailgun_launcher" %*
 
-	SET changed=1
-	SET nailgun_sources=%NAILGUN%\src\cbt\*.java %CBT_HOME%\libraries\common-0\src\cbt\reflect\*.java
+  SET changed=1
+  SET nailgun_sources=%NAILGUN%\src\cbt\*.java %CBT_HOME%\libraries\common-0\src\cbt\reflect\*.java
 
   FOR %%f IN (%NAILGUN_INDICATOR%) DO (
     CALL :date_to_yyyy_mm_dd "%%~tf"
@@ -264,33 +264,33 @@ REM first stage of CBT
     IF "!ng_source_last_mod!" GTR "!ng_ind_last_mod!" ( SET changed=0 )
   )
 
-	SET exit_code=0
-	IF %changed% EQU 0 (
-		ECHO Stopping background process (nailgun^) if running
+  SET exit_code=0
+  IF %changed% EQU 0 (
+    ECHO Stopping background process (nailgun^) if running
     REM TODO >> %nailgun_out% 2>> %nailgun_err%
-		%NG% ng-stop
+    %NG% ng-stop
 
-		REM DEL %NAILGUN_TARGET%cbt\*.class 2>NUL
+    REM DEL %NAILGUN_TARGET%cbt\*.class 2>NUL
     REM defensive delete of potentially broken class files
-		ECHO Compiling cbt\nailgun_launcher
-		javac -Xlint:deprecation -Xlint:unchecked -d %NAILGUN_TARGET% %nailgun_sources%
-		SET exit_code=%ERRORLEVEL%
-		IF %exit_code% EQU 0 (
-			REM touch, set modified
+    ECHO Compiling cbt\nailgun_launcher
+    javac -Xlint:deprecation -Xlint:unchecked -d %NAILGUN_TARGET% %nailgun_sources%
+    SET exit_code=%ERRORLEVEL%
+    IF %exit_code% EQU 0 (
+      REM touch, set modified
       IF NOT EXIST %NAILGUN_INDICATOR% ( type nul > %NAILGUN_INDICATOR% ) ELSE (
         COPY /B %NAILGUN_INDICATOR% +,, %NAILGUN_INDICATOR%
       )
-			IF %use_nailgun% EQU 0 (
-				ECHO Starting background process (nailgun^)
-				START "" java %options% %JAVA_OPTS_CBT% -jar %NG_SERVER_JAR% 127.0.0.1:%NAILGUN_PORT% >> %nailgun_out% 2>> %nailgun_err%
-				CALL :sleep 1000
-			)
-		)
-	)
+      IF %use_nailgun% EQU 0 (
+        ECHO Starting background process (nailgun^)
+        START "" java %options% %JAVA_OPTS_CBT% -jar %NG_SERVER_JAR% 127.0.0.1:%NAILGUN_PORT% >> %nailgun_out% 2>> %nailgun_err%
+        CALL :sleep 1000
+      )
+    )
+  )
 
-	CALL :log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." %*
+  CALL :log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." %*
 
-	IF NOT %exit_code% EQU 0 ( GOTO :EOF )
+  IF NOT %exit_code% EQU 0 ( GOTO :EOF )
 
   IF NOT %use_nailgun% EQU 0 (
     CALL :log "Running JVM directly" %*
@@ -359,28 +359,28 @@ GOTO :EOF
 
 REM utility function to log message to stderr with stating the time
 :log
-	SET msg=%1
+  SET msg=%1
   REM strip surrounding "
   SET msg=%msg:"=%
 
-	SET enabled=1
+  SET enabled=1
   :log_while
     REM id first parameter is not null
     IF NOT "%~1"=="" (
       SET param=%~1
-      IF "!param!"=="-Dlog"  (	SET enabled=0	)
+      IF "!param!"=="-Dlog"  (  SET enabled=0  )
       REM These don't work because of EQUALS sign!
-      REM IF "%param%"=="-Dlog=time"  (	SET enabled=0	)
-      REM IF "%param%"=="-Dlog=bash"  (	SET enabled=0	)
-      REM IF "%param%"=="-Dlog=all"   (	SET enabled=0	)
+      REM IF "%param%"=="-Dlog=time"  (  SET enabled=0  )
+      REM IF "%param%"=="-Dlog=bash"  (  SET enabled=0  )
+      REM IF "%param%"=="-Dlog=all"   (  SET enabled=0  )
       SHIFT
       GOTO :log_while
     )
-	IF %enabled% EQU 0 (
-		SET delta=1
+  IF %enabled% EQU 0 (
+    SET delta=1
     REM delta=$(time_taken)
-		ECHO [%delta%] %msg%
-	)
+    ECHO [%delta%] %msg%
+  )
 GOTO :EOF
 
 REM 02.12.2017. 22:25  -> 2017.12.02. 22:25
