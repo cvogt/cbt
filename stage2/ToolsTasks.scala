@@ -2,7 +2,8 @@ package cbt
 import java.net._
 import java.io.{Console=>_,_}
 import java.nio.file._
-class ToolsTasks(
+class
+ToolsTasks(
   lib: Lib,
   args: Seq[String],
   cwd: File,
@@ -139,6 +140,7 @@ import java.nio.file.*;
 import java.net.*;
 import java.security.*;
 import java.util.*;
+import java.util.regex.Matcher;
 import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
 
@@ -163,7 +165,7 @@ public class EarlyDependencies{
   public EarlyDependencies(
     String mavenCache, String mavenUrl, ClassLoaderCache classLoaderCache, ClassLoader rootClassLoader
   ) throws Throwable {
-${files.map(d => s"""    String ${valName(d)}File = mavenCache + "${d.basePath(true)}.jar";""").mkString("\n")}
+${files.map(d => s"""    String ${valName(d)}File = mavenCache + pip("${d.basePath(true)}.jar");""").mkString("\n")}
 
 ${scalaDeps.map(d => s"""    download(new URL(mavenUrl + "${d.basePath(true)}.jar"), Paths.get(${valName(d)}File), "${d.jarSha1}");""").mkString("\n")}
 ${assignments.mkString("\n")}
@@ -178,6 +180,13 @@ ${assignments.mkString("\n")}
     scalaReflect_File = scalaReflect_${_scalaVersion}_File;
     sbtInterface_File = sbtInterface_${_sbtVersion}_File;
     compilerInterface_File = compilerInterface_${_sbtVersion}_File;
+  }
+
+  // Replaces slashes with backslashes, e.g. a/b/c becomes a\\b\\c on Windows
+  private String pip(String unixPath) {
+    // when replacing the path with \\ Java treats it like escape character,
+    // that's why we need Matcher.quoteReplacement
+    return unixPath.replaceAll("/", Matcher.quoteReplacement(File.separator));
   }
 }
 """

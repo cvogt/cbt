@@ -6,8 +6,6 @@ import java.net.*;
 import java.security.*;
 import java.util.*;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
 
@@ -157,13 +155,11 @@ public class EarlyDependencies{
     sbtInterface_File = sbtInterface_0_13_13_File;
     compilerInterface_File = compilerInterface_0_13_13_File;
   }
-  
-  /** Platform independent path.<br>
-   * Replaces slashes with backslashes, e.g. something/bla becomes something\bla on Windows
-   */
-  private String pip(String pathWithSlashes) {
-	  // when replacing the path with \ Java treats it like escape character,
-	  // that's why we need Matcher.quoteReplacement
-	  return pathWithSlashes.replaceAll("/", Matcher.quoteReplacement(File.separator));
+
+  // Replaces slashes with backslashes, e.g. a/b/c becomes a\b\c on Windows
+  private String pip(String unixPath) {
+    // when replacing the path with \ Java treats it like escape character,
+    // that's why we need Matcher.quoteReplacement
+    return unixPath.replaceAll("/", Matcher.quoteReplacement(File.separator));
   }
 }
