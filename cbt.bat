@@ -43,8 +43,6 @@ SET nailgun_out=%NAILGUN_TARGET%nailgun.stdout.log
 SET nailgun_err=%NAILGUN_TARGET%nailgun.stderr.log
 
 IF NOT EXIST %NAILGUN_TARGET% ( MD %NAILGUN_TARGET% )
-IF NOT EXIST %NAILGUN_INDICATOR% ( type nul > %NAILGUN_INDICATOR% )
-
 
 REM - ng-server.jar absolute path
 FOR /F "tokens=*" %%x in ('where ng-server.jar') DO SET NG_SERVER_JAR=%%x
@@ -263,6 +261,7 @@ REM first stage of CBT
 
     IF "!ng_source_last_mod!" GTR "!ng_ind_last_mod!" ( SET changed=0 )
   )
+  IF NOT EXIST %NAILGUN_INDICATOR% ( SET changed=0 )
 
   SET exit_code=0
   IF %changed% EQU 0 (
