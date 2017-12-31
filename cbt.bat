@@ -201,7 +201,7 @@ IF %loop% EQU 0 (
     CALL :log "not looping, exiting" %*
     GOTO :END
   )
-  
+
   REM - exit_code is set in stage1
   IF %exit_code% EQU %USER_PRESSED_CTRL_C% (
 		CALL :log "not looping, exiting" %*
@@ -252,7 +252,7 @@ REM first stage of CBT
 	SET changed=1
 	SET nailgun_sources=%NAILGUN%\src\cbt\*.java %CBT_HOME%\libraries\common-0\src\cbt\reflect\*.java
 
-  FOR %%f IN (%NAILGUN_INDICATOR%) DO (  
+  FOR %%f IN (%NAILGUN_INDICATOR%) DO (
     CALL :date_to_yyyy_mm_dd "%%~tf"
     SET ng_ind_last_mod=!date_formatted!
   )
@@ -260,7 +260,7 @@ REM first stage of CBT
   FOR %%f IN (%nailgun_sources%) DO (
     CALL :date_to_yyyy_mm_dd "%%~tf"
     SET ng_source_last_mod=!date_formatted!
-    
+
     IF "!ng_source_last_mod!" GTR "!ng_ind_last_mod!" ( SET changed=0 )
   )
 
@@ -268,8 +268,8 @@ REM first stage of CBT
 	IF %changed% EQU 0 (
 		ECHO Stopping background process (nailgun^) if running
     REM TODO >> %nailgun_out% 2>> %nailgun_err%
-		%NG% ng-stop 
-    
+		%NG% ng-stop
+
 		REM DEL %NAILGUN_TARGET%cbt\*.class 2>NUL
     REM defensive delete of potentially broken class files
 		ECHO Compiling cbt\nailgun_launcher
@@ -277,7 +277,9 @@ REM first stage of CBT
 		SET exit_code=%ERRORLEVEL%
 		IF %exit_code% EQU 0 (
 			REM touch, set modified
-      COPY /B %NAILGUN_INDICATOR% +,, %NAILGUN_INDICATOR%
+      IF NOT EXIST %NAILGUN_INDICATOR% ( type nul > %NAILGUN_INDICATOR% ) ELSE (
+        COPY /B %NAILGUN_INDICATOR% +,, %NAILGUN_INDICATOR%
+      )
 			IF %use_nailgun% EQU 0 (
 				ECHO Starting background process (nailgun^)
 				START "" java %options% %JAVA_OPTS_CBT% -jar %NG_SERVER_JAR% 127.0.0.1:%NAILGUN_PORT% >> %nailgun_out% 2>> %nailgun_err%
@@ -302,7 +304,7 @@ REM first stage of CBT
     FOR /L %%i IN (0,1,9) DO (
       CALL :log "Adding classpath." %*
       REM TODO >> %nailgun_out% 2>> %nailgun_err%
-      %NG% ng-cp %NAILGUN_TARGET% 
+      %NG% ng-cp %NAILGUN_TARGET%
 
       CALL :log "Checking if nailgun is up yet." %*
       REM TODO >> %nailgun_out% 2>> %nailgun_err%
@@ -365,6 +367,7 @@ REM utility function to log message to stderr with stating the time
   :log_while
     REM id first parameter is not null
     IF NOT "%~1"=="" (
+      SET param=%~1
       IF "!param!"=="-Dlog"  (	SET enabled=0	)
       REM These don't work because of EQUALS sign!
       REM IF "%param%"=="-Dlog=time"  (	SET enabled=0	)
