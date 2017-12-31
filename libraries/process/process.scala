@@ -86,7 +86,7 @@ trait Module {
   private trait CLibrary extends Library {
     def getpid: Int
   }
-  val nativeLib = if(Platform.isWindows()) "msvcrt" else "c"
+  val nativeLib = if ( Platform.isWindows() ) "msvcrt" else "c"
   private val CLibraryInstance: CLibrary = Native.loadLibrary( nativeLib, classOf[CLibrary] ).asInstanceOf[CLibrary]
 
   def currentProcessId: Int = {
