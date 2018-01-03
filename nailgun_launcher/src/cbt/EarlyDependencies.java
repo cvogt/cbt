@@ -5,6 +5,7 @@ import java.nio.file.*;
 import java.net.*;
 import java.security.*;
 import java.util.*;
+import java.util.regex.Matcher;
 import static cbt.Stage0Lib.*;
 import static cbt.NailgunLauncher.*;
 
@@ -29,17 +30,17 @@ public class EarlyDependencies{
   public EarlyDependencies(
     String mavenCache, String mavenUrl, ClassLoaderCache classLoaderCache, ClassLoader rootClassLoader
   ) throws Throwable {
-    String scalaReflect_2_11_8_File = mavenCache + "/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar";
-    String scalaCompiler_2_11_8_File = mavenCache + "/org/scala-lang/scala-compiler/2.11.8/scala-compiler-2.11.8.jar";
-    String scalaXml_1_0_6_File = mavenCache + "/org/scala-lang/modules/scala-xml_2.11/1.0.6/scala-xml_2.11-1.0.6.jar";
-    String scalaLibrary_2_11_8_File = mavenCache + "/org/scala-lang/scala-library/2.11.8/scala-library-2.11.8.jar";
-    String zinc_0_3_13_File = mavenCache + "/com/typesafe/zinc/zinc/0.3.13/zinc-0.3.13.jar";
-    String incrementalCompiler_0_13_13_File = mavenCache + "/com/typesafe/sbt/incremental-compiler/0.13.13/incremental-compiler-0.13.13.jar";
-    String compilerInterface_0_13_13_File = mavenCache + "/com/typesafe/sbt/compiler-interface/0.13.13/compiler-interface-0.13.13-sources.jar";
-    String scalaCompiler_2_10_6_File = mavenCache + "/org/scala-lang/scala-compiler/2.10.6/scala-compiler-2.10.6.jar";
-    String sbtInterface_0_13_13_File = mavenCache + "/com/typesafe/sbt/sbt-interface/0.13.13/sbt-interface-0.13.13.jar";
-    String scalaReflect_2_10_6_File = mavenCache + "/org/scala-lang/scala-reflect/2.10.6/scala-reflect-2.10.6.jar";
-    String scalaLibrary_2_10_6_File = mavenCache + "/org/scala-lang/scala-library/2.10.6/scala-library-2.10.6.jar";
+    String scalaReflect_2_11_8_File = mavenCache + pip("/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar");
+    String scalaCompiler_2_11_8_File = mavenCache + pip("/org/scala-lang/scala-compiler/2.11.8/scala-compiler-2.11.8.jar");
+    String scalaXml_1_0_6_File = mavenCache + pip("/org/scala-lang/modules/scala-xml_2.11/1.0.6/scala-xml_2.11-1.0.6.jar");
+    String scalaLibrary_2_11_8_File = mavenCache + pip("/org/scala-lang/scala-library/2.11.8/scala-library-2.11.8.jar");
+    String zinc_0_3_13_File = mavenCache + pip("/com/typesafe/zinc/zinc/0.3.13/zinc-0.3.13.jar");
+    String incrementalCompiler_0_13_13_File = mavenCache + pip("/com/typesafe/sbt/incremental-compiler/0.13.13/incremental-compiler-0.13.13.jar");
+    String compilerInterface_0_13_13_File = mavenCache + pip("/com/typesafe/sbt/compiler-interface/0.13.13/compiler-interface-0.13.13-sources.jar");
+    String scalaCompiler_2_10_6_File = mavenCache + pip("/org/scala-lang/scala-compiler/2.10.6/scala-compiler-2.10.6.jar");
+    String sbtInterface_0_13_13_File = mavenCache + pip("/com/typesafe/sbt/sbt-interface/0.13.13/sbt-interface-0.13.13.jar");
+    String scalaReflect_2_10_6_File = mavenCache + pip("/org/scala-lang/scala-reflect/2.10.6/scala-reflect-2.10.6.jar");
+    String scalaLibrary_2_10_6_File = mavenCache + pip("/org/scala-lang/scala-library/2.10.6/scala-library-2.10.6.jar");
 
     download(new URL(mavenUrl + "/org/scala-lang/scala-reflect/2.11.8/scala-reflect-2.11.8.jar"), Paths.get(scalaReflect_2_11_8_File), "b74530deeba742ab4f3134de0c2da0edc49ca361");
     download(new URL(mavenUrl + "/org/scala-lang/scala-compiler/2.11.8/scala-compiler-2.11.8.jar"), Paths.get(scalaCompiler_2_11_8_File), "fe1285c9f7b58954c5ef6d80b59063569c065e9a");
@@ -153,5 +154,12 @@ public class EarlyDependencies{
     scalaReflect_File = scalaReflect_2_11_8_File;
     sbtInterface_File = sbtInterface_0_13_13_File;
     compilerInterface_File = compilerInterface_0_13_13_File;
+  }
+
+  // Replaces slashes with backslashes, e.g. a/b/c becomes a\b\c on Windows
+  private String pip(String unixPath) {
+    // when replacing the path with \ Java treats it like escape character,
+    // that's why we need Matcher.quoteReplacement
+    return unixPath.replaceAll("/", Matcher.quoteReplacement(File.separator));
   }
 }

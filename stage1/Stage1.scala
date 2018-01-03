@@ -129,6 +129,7 @@ object Stage1{
       buildStage1.compatibilityClasspath === cbtDependencies.compatibilityDependency.classpath.string,
       "compatibility classpath different from NailgunLauncher"
     )
+
     assert(
       buildStage1.stage1Classpath === cbtDependencies.stage1Dependency.classpath.string,
       "stage1 classpath different from NailgunLauncher"

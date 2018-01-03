@@ -16,6 +16,9 @@ import static java.nio.file.Files.write;
  * dependencies outside the JDK.
  */
 public class NailgunLauncher{
+
+	public static String fSep = File.separator;
+	
   /** Persistent cache for caching classloaders for the JVM life time. */
   private static Map<Object,Object> classLoaderCacheHashMap = new HashMap<Object,Object>();
 
@@ -23,17 +26,17 @@ public class NailgunLauncher{
     = System.getSecurityManager();
 
   public static String TARGET = System.getenv("TARGET");
-  private static String NAILGUN = "nailgun_launcher/";
-  private static String STAGE1 = "stage1/";
+  private static String NAILGUN = "nailgun_launcher" + fSep;
+  private static String STAGE1 = "stage1" + fSep;
 
   @SuppressWarnings("unchecked")
   public static Object getBuild( Object context ) throws Throwable{
     BuildStage1Result res = buildStage1(
       (long) get(context, "cbtLastModified"),
       (long) get(context, "start"),
-      ((File) get(context, "cache")).toString() + "/",
+      ((File) get(context, "cache")).toString() + fSep,
       ((File) get(context, "cbtHome")).toString(),
-      ((File) get(context, "compatibilityTarget")).toString() + "/",
+      ((File) get(context, "compatibilityTarget")).toString() + fSep,
       new ClassLoaderCache(
         (HashMap) get(context, "persistentCache")
       ),
@@ -92,8 +95,8 @@ public class NailgunLauncher{
     // ---------------------
 
     String CBT_HOME = System.getenv("CBT_HOME");
-    String cache = CBT_HOME + "/cache/";
-    String compatibilityTarget = CBT_HOME + "/compatibility/" + TARGET;
+    String cache = CBT_HOME + fSep + "cache" + fSep;
+    String compatibilityTarget = CBT_HOME + fSep + "compatibility" + fSep+ TARGET;
     // copy cache, so that this thread has a consistent view despite other threads
     // changing their copies
     // replace again before returning, see below
@@ -101,8 +104,8 @@ public class NailgunLauncher{
       new HashMap<Object,Object>(classLoaderCacheHashMap)
     );
 
-    String nailgunTarget = CBT_HOME + "/" + NAILGUN + TARGET;
-    long nailgunLauncherLastModified = new File( nailgunTarget + "../classes.last-success" ).lastModified();
+    String nailgunTarget = CBT_HOME + fSep + NAILGUN + TARGET;
+    long nailgunLauncherLastModified = new File( nailgunTarget +  ".." + fSep + "classes.last-success" ).lastModified();
 
     File cwd = new File(args[1]);
     boolean loop = args[2].equals("0");
@@ -145,14 +148,14 @@ public class NailgunLauncher{
     final String compatibilityTarget, final ClassLoaderCache classLoaderCache, File cwd, boolean loop
   ) throws Throwable {
     _assert(TARGET != null, "environment variable TARGET not defined");
-    String nailgunSources = cbtHome + "/" + NAILGUN + "src/cbt";
-    String nailgunTarget = cbtHome + "/" + NAILGUN + TARGET;
-    String stage1Sources = cbtHome + "/" + STAGE1;
+    String nailgunSources = cbtHome + fSep + NAILGUN + "src" + fSep + "cbt";
+    String nailgunTarget = cbtHome + fSep + NAILGUN + TARGET;
+    String stage1Sources = cbtHome + fSep + STAGE1;
     String stage1Target = stage1Sources + TARGET;
-    String compatibilitySources = cbtHome + "/compatibility/src/cbt";
+    String compatibilitySources = cbtHome + fSep + "compatibility" + fSep + "src" + fSep + "cbt";
     String mavenCache = cache + "maven";
     String mavenUrl = "https://repo1.maven.org/maven2";
-    File loopFile = new File(cwd + "/target/.cbt-loop.tmp");
+    File loopFile = new File(cwd + fSep + "target" + fSep + ".cbt-loop.tmp");
     if(loop){
       loopFile.getParentFile().mkdirs();
     }
@@ -167,16 +170,16 @@ public class NailgunLauncher{
       }
     }
 
-    long nailgunLauncherLastModified = new File( nailgunTarget + "../classes.last-success" ).lastModified();
+    long nailgunLauncherLastModified = new File( nailgunTarget +  ".." + fSep + "classes.last-success" ).lastModified();
 
     long compatibilityLastModified;
     if(!compatibilityTarget.startsWith(cbtHome)){
-      compatibilityLastModified = new File( compatibilityTarget + "../classes.last-success" ).lastModified();
+      compatibilityLastModified = new File( compatibilityTarget + ".." + fSep + "classes.last-success" ).lastModified();
     } else {
       compatibilitySourceFiles = new ArrayList<File>();
       for( String d: new String[]{
         compatibilitySources,
-        cbtHome + "/libraries/interfaces/src/cbt/interfaces"
+        cbtHome + fSep + "libraries" + fSep + "interfaces" + fSep +"src" + fSep + "cbt" + fSep +"interfaces"
       } ){
         for( File f: new File(d).listFiles() ){
           if( f.isFile() && f.toString().endsWith(".java") ){
@@ -216,10 +219,10 @@ public class NailgunLauncher{
     stage1SourceFiles = new ArrayList<File>();
     for( String d: new String[]{
       stage1Sources,
-      cbtHome + "/libraries/reflect",
-      cbtHome + "/libraries/common-1",
-      cbtHome + "/libraries/common-1/src/cbt",
-      cbtHome + "/libraries/file"
+      cbtHome + fSep + "libraries" + fSep + "reflect",
+      cbtHome + fSep + "libraries" + fSep + "common-1",
+      cbtHome + fSep + "libraries" + fSep + "common-1" + fSep + "src" + fSep + "cbt",
+      cbtHome + fSep + "libraries" + fSep + "file"
     } ){
       for( File f: new File(d).listFiles() ){
         if( f.isFile() && (f.toString().endsWith(".scala") || f.toString().endsWith(".java")) ){
