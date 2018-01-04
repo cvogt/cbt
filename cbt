@@ -18,7 +18,7 @@ nanos() {
 	if [ "$n" = "N" ]; then
 		n=$(gdate +"%N" 2>/dev/null)
 	fi
-	if [ "$n" = "" ]; then
+	if [ -z "$n" ]; then
 		n="0"
 	fi
 	echo 1$n
@@ -49,7 +49,7 @@ log () {
 		fi
 		shift
 	done
-	if [ $enabled -eq 0 ]; then
+	if [ "$enabled" -eq 0 ]; then
 		delta=$(time_taken)
 		echo "[$delta] $msg" 1>&2
 	fi
@@ -59,7 +59,7 @@ log "Checking for dependencies" "$@"
 
 which javac >/dev/null 2>/dev/null
 javac_installed=$?
-if [ ! $javac_installed -eq 0 ]; then
+if [ "$javac_installed" -ne 0 ]; then
 	echo "You need to install javac 1.7 or later! CBT needs it to bootstrap from Java sources into Scala." 1>&2
 	exit 1
 fi
@@ -70,7 +70,7 @@ fi
 # javac_version_minor_pointed=${javac_version_update%_*} # e.g. "8.0"
 # javac_version_minor=${javac_version_minor_pointed%.*} # e.g. "8"
 # log "cutting javac version done" "$@"
-# if [ ! "$javac_version_minor" -ge "7" ]; then
+# if [ "$javac_version_minor" -lt 7 ]; then
 # 	echo "You need to install javac version 1.7 or greater!" 2>&1
 # 	echo "Current javac version is $javac_version" 2>&1
 # 	exit 1
@@ -80,24 +80,24 @@ which realpath >/dev/null 2>/dev/null
 realpath_installed=$?
 which gcc >/dev/null 2>/dev/null
 gcc_installed=$?
-if [ ! $realpath_installed -eq 0 ] && [ ! $gcc_installed -eq 0 ]; then
+if [ "$realpath_installed" -ne 0 ] && [ "$gcc_installed" -ne 0 ]; then
 	echo "You need realpath or gcc installed! CBT needs it to locate itself reliably." 1>&2
 	exit 252
 fi
 
 which gpg >/dev/null 2>/dev/null
 gpg_installed=$?
-if [ ! $gpg_installed -eq 0 ]; then
+if [ "$gpg_installed" -ne 0 ]; then
 	echo "(Note: gpg not found. In order to use publishSigned you'll need it.)" 1>&2
 fi
 
 CWD=$(pwd)
 
 CBT_SCRIPT="$(readlink "$0")"
-if [ "$CBT_SCRIPT" = "" ]; then
+if [ -z "$CBT_SCRIPT" ]; then
 	CBT_SCRIPT="$0"
 fi
-if [ "$CBT_SCRIPT" = "" ]; then
+if [ -z "$CBT_SCRIPT" ]; then
 	echo "cannot locate cbt launcher" 1>&2
 	exit 252
 fi
@@ -137,7 +137,7 @@ foo(){
 
 foo "$@"
 
-if [ ! "$DEBUG" == "" ]; then
+if [ -n "$DEBUG" ]; then
 	shift
 fi
 
@@ -159,7 +159,7 @@ NG_SERVER_JAR=$( \
 )
 
 nailgun_installed=0
-if ([ "$NG_EXECUTABLE" == "" ] || [ "$NG_SERVER_JAR" == "" ]) && [ "$1" != "direct" ]; then
+if ([ -z "$NG_EXECUTABLE" ] || [ -z "$NG_SERVER_JAR" ]) && [ ! "$1" = "direct" ]; then
 	nailgun_installed=1
 	echo "(Note: nailgun not found. It makes CBT faster! Try 'brew install nailgun' or 'apt-get install nailgun'.)" 1>&2
 fi
@@ -179,7 +179,7 @@ nc_installed=$?
 log "Check for running nailgun with nc." "$@"
 
 server_up=1
-if [ $nc_installed -eq 0 ]; then
+if [ "$nc_installed" -eq 0 ]; then
 	nc -z -n -w 1 127.0.0.1 $NAILGUN_PORT > /dev/null 2>&1
 	server_up=$?
 else
@@ -187,35 +187,35 @@ else
 fi
 
 use_nailgun=0
-if [  "$1" = "direct" ]; then
+if [ "$1" = "direct" ]; then
 	use_nailgun=1
 	shift
 fi
 loop=1
-if [ "$1" == "loop" ]; then
+if [ "$1" = "loop" ]; then
 	loop=0
 	shift
 fi
 clearScreen=1
-if [ "$1" == "clear" ]; then
+if [ "$1" = "clear" ]; then
 	clearScreen=0
 	shift
 fi
 
-if [ $nailgun_installed -eq 1 ] || [ "$1" = "publishSigned" ]; then
+if [ "$nailgun_installed" -eq 1 ] || [ "$1" = "publishSigned" ]; then
 	use_nailgun=1
 fi
 
-if [ $use_nailgun -eq 0 ] && [ $server_up -eq 0 ] && [ ! "$DEBUG" == "" ]; then
+if [ "$use_nailgun" -eq 0 ] && [ "$server_up" -eq 0 ] && [ -n "$DEBUG" ]; then
 	echo "Can't use \`-debug\` (without \`direct\`) when nailgun is already running. If you started it up with \`-debug\` you can still connect to it. Otherwise use \`cbt kill\` to kill it."
 	exit 1
 fi
 
-if [ $use_nailgun -eq 0 ] && [ ! $server_up -eq 0 ]; then
+if [ "$use_nailgun" -eq 0 ] && [ "$server_up" -ne 0 ]; then
 	log "Starting background process (nailgun)" "$@"
 	# try to start nailgun-server, just in case it's not up
 	java "${options[@]}" "${JAVA_OPTS_CBT[@]}" -jar "$NG_SERVER_JAR" 127.0.0.1:$NAILGUN_PORT >> "$nailgun_out" 2>> "$nailgun_err" &
-	if [ ! "$DEBUG" == "" ]; then
+	if [ -n "$DEBUG" ]; then
 		echo "Started nailgun server in debug mode"
 		exit 1
 	fi
@@ -230,7 +230,7 @@ stage1 () {
 		if [ "$file" -nt "$NAILGUN_INDICATOR" ]; then changed=0; fi
 	done
 	exitCode=0
-	if [ $changed -eq 0 ]; then
+	if [ "$changed" -eq 0 ]; then
 		echo "Stopping background process (nailgun) if running" 1>&2
 		$NG ng-stop >> "$nailgun_out" 2>> "$nailgun_err" &
 		#rm $NAILGUN$TARGET/cbt/*.class 2>/dev/null # defensive delete of potentially broken class files
@@ -239,9 +239,9 @@ stage1 () {
 		#echo javac -Xlint:deprecation -Xlint:unchecked -d "$NAILGUN$TARGET" "${NAILGUN_SOURCES[@]}"
 		javac -Xlint:deprecation -Xlint:unchecked -d "$NAILGUN$TARGET" "${NAILGUN_SOURCES[@]}"
 		exitCode=$?
-		if [ $exitCode -eq 0 ]; then
+		if [ "$exitCode" -eq 0 ]; then
 			touch -t "$COMPILE_TIME" "$NAILGUN_INDICATOR"
-			if [ $use_nailgun -eq 0 ]; then
+			if [ "$use_nailgun" -eq 0 ]; then
 				echo "Starting background process (nailgun)" 1>&2
 				java "${options[@]}" "${JAVA_OPTS_CBT[@]}" -jar "$NG_SERVER_JAR" 127.0.0.1:$NAILGUN_PORT >> "$nailgun_out" 2>> "$nailgun_err" &
 				sleep 1
@@ -251,8 +251,8 @@ stage1 () {
 
 	log "run CBT and loop if desired. This allows recompiling CBT itself as part of compile looping." "$@"
 
-	if [ $exitCode -eq 0 ]; then
-		if [ ! $use_nailgun -eq 0 ]
+	if [ "$exitCode" -eq 0 ]; then
+		if [ "$use_nailgun" -ne 0 ]
 		then
 			log "Running JVM directly" "$@"
 			options=($JAVA_OPTS)
@@ -267,7 +267,7 @@ stage1 () {
 				log "Checking if nailgun is up yet." "$@"
 				$NG cbt.NailgunLauncher check-alive >> "$nailgun_out" 2>> "$nailgun_err"
 				alive=$?
-				if [ $alive -eq 33 ]; then
+				if [ "$alive" -eq 33 ]; then
 					# 33 is sent by NailgunLauncher on success
 					# if Nailgun can't launch the class, it's returning
 					# 133 which triggers the else branch
@@ -280,7 +280,7 @@ stage1 () {
 				fi
 				sleep 0.2
 			done
-			if [ $i -eq 9 ]; then
+			if [ "$i" -eq 9 ]; then
 				echo "Nailgun call failed. Try 'cbt kill' and check the error log cbt/nailgun_launcher/target/nailgun.stderr.log" 1>&2
 				exit $alive
 			fi
@@ -297,16 +297,16 @@ USER_PRESSED_CTRL_C=130
 
 CBT_LOOP_FILE="$CWD/target/.cbt-loop.tmp"
 CBT_KILL_FILE="$CWD/target/.cbt-kill.tmp"
-if [ $loop -eq 0 ]; then
+if [ "$loop" -eq 0 ]; then
 	which fswatch >/dev/null 2>/dev/null
 	export fswatch_installed=$?
-	if [ ! $fswatch_installed -eq 0 ]; then
+	if [ "$fswatch_installed" -ne 0 ]; then
 		echo "please install fswatch to use cbt loop, e.g. via brew install fswatch"
 		exit 1
 	fi
 fi
 while true; do
-	if [ $clearScreen -eq 0 ]; then
+	if [ "$clearScreen" -eq 0 ]; then
 		clear
 	fi
 	if [ -f "$CBT_LOOP_FILE" ]; then
@@ -316,7 +316,7 @@ while true; do
 		rm "$CBT_KILL_FILE"
 	fi
 	stage1 "$@"
-	if [ ! $loop -eq 0 ] || [ $exitCode -eq $USER_PRESSED_CTRL_C ]; then
+	if [ "$loop" -ne 0 ] || [ $exitCode -eq $USER_PRESSED_CTRL_C ]; then
 		log "not looping, exiting" "$@"
 		break
 	else
@@ -324,24 +324,24 @@ while true; do
 			echo "$file" >> "$CBT_LOOP_FILE"
 		done
 		files=
-		if [ -f "$CBT_LOOP_FILE" ]; then
+		if [ -s "$CBT_LOOP_FILE" ]; then
 			files=($(sort "$CBT_LOOP_FILE"))
 		fi
 		pids=
-		if [ -f "$CBT_KILL_FILE" ]; then
+		if [ -s "$CBT_KILL_FILE" ]; then
 			pids=($(cat "$CBT_KILL_FILE")) # FIXME: should we uniq here?
 			#rm "$CBT_LOOP_FILE"
 		fi
 		echo ""
 		echo "Watching for file changes... (ctrl+c short press for loop, long press for abort)"
 		for file in "${files[@]}"; do
-			if [ $file == "" ]; then
+			if [ -z "$file" ]; then
 				echo "warning: empty file found in loop file list" 1>&2
 			fi
 		done
 		fswatch --one-event "${files[@]}"
 		for pid in "${pids[@]}"; do
-			if [ $pid == "" ]; then
+			if [ -z "$pid" ]; then
 				echo "warning: empty pid found in pid kill list" 1>&2
 			else
 				log "killing process $pid"
