@@ -88,7 +88,7 @@ Tutorial
 --------
 
 This section explains how to get started with cbt step-by-step.
-There are also example projects with build files in examples/ and test/.
+There are also example projects with build files in `examples/` and `test/`.
 
 ### Installation
 
@@ -175,7 +175,7 @@ As you can see CBT makes choice of the maven repository explicit. It does so for
 ### Calling other tasks
 
 Tasks are just defs. You can call any public zero-arguments method of your
-`Build class or its parents straight from the command line. To see how it works
+`Build` class or its parents straight from the command line. To see how it works
 let's call the compile task.
 
 ```
@@ -215,7 +215,7 @@ Let's try it. Let's loop the run task. Call this from the shell:
 $ cbt loop run
 ```
 
-Now change `Main.scala and see how cbt picks it up and re-runs it.
+Now change `Main.scala` and see how cbt picks it up and re-runs it.
 CBT is fast. It may already be done re-compiling and re-running before
 you managed to change windows back from your editor to the shell.
 
@@ -255,13 +255,13 @@ $ cbt tools createMain
 $ cbt tools createBuild
 ```
 
-We also deleted the main projects Main.scala, because now that we created a new one
+We also deleted the main projects `Main.scala`, because now that we created a new one
 we would have two classes with the same name on the classpath which can be very confusing.
 
 Now that we have a Main file in our test project, we can add some assertions to it.
 In order for them to see the main projects code, we still need to do one more thing - 
 add a `DirectoryDependency` to your test project's build file. There is a similar example
-in the generated build.scala. What you need is this:
+in the generated `build.scala`. What you need is this:
 
 ```
 override def dependencies = super.dependencies ++ Seq(
@@ -314,7 +314,7 @@ $ cbt with 'def version = super.version ++ "-SNAPSHOT"' package
 ### Multi-projects Builds
 
 A single build only handles a single project in CBT. So there isn't exactly
-such a things as a Multi-project Build. Instead you can simply write multiple
+such a thing as a Multi-project Build. Instead you can simply write multiple
 projects that depend on each other. We have already done that with tests above,
 but you can do the exact same thing to modularize your project into multiple ones.
 
