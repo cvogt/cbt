@@ -93,7 +93,7 @@ fi
 
 CWD=$(pwd)
 
-CBT_SCRIPT="$(readlink "$0")"
+CBT_SCRIPT="$(readlink -m "$0")"
 if [ "$CBT_SCRIPT" = "" ]; then
 	CBT_SCRIPT="$0"
 fi
