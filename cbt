@@ -93,14 +93,21 @@ fi
 
 CWD=$(pwd)
 
-CBT_SCRIPT="$(readlink "$0")"
+CBT_SCRIPT="$(readlink -m "$0" 2>/dev/null)"
 if [ "$CBT_SCRIPT" = "" ]; then
+	# -m not supported on OSX
+	log "readlink -m returned nothing, falling back to readlink." "$@"
+	CBT_SCRIPT="$(readlink "$0" 2>/dev/null)"
+fi
+if [ "$CBT_SCRIPT" = "" ]; then
+	log "readlink returned nothing, falling back up \$0." "$@"
 	CBT_SCRIPT="$0"
 fi
 if [ "$CBT_SCRIPT" = "" ]; then
 	echo "cannot locate cbt launcher" 1>&2
 	exit 252
 fi
+log "CBT_SCRIPT=$CBT_SCRIPT" "$@"
 _DIR=$(dirname "$CBT_SCRIPT" 2>/dev/null || dirname "$0" 2>/dev/null )
 
 log "Find out real path. Build realpath if needed." "$@"
