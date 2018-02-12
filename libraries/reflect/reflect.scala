@@ -130,7 +130,7 @@ trait Module {
   ): StaticMethod[Arg, Result] = {
     val m = cls.method( name, Arg.runtimeClass )
     assert( Result.runtimeClass.isAssignableFrom( m.returnType ) )
-    typeStaticMethod( m )
+    typeStaticMethod( m ).get // This will fail if None is returned.
   }
 
   def findStaticExitMethod[Arg: ClassTag](
@@ -158,18 +158,18 @@ trait Module {
             && m.name == name
             && m.parameterTypes.toList == List( Arg.runtimeClass )
             && Result.runtimeClass.isAssignableFrom( m.returnType ) ) )
-      .map( typeStaticMethod )
+      .flatMap( typeStaticMethod )
   }
 
-  def typeStaticMethod[Arg, Result]( method: Method ): StaticMethod[Arg, Result] = {
+  def typeStaticMethod[Arg, Result]( method: Method ): Option[StaticMethod[Arg, Result]] = {
     val m = method
-    val instance =
-      if ( m.isStatic ) null
-      else m.declaringClass.newInstance // Dottydoc needs this. It's main method is not static.
-    StaticMethod(
+    val instanceOption =
+      if ( m.isStatic ) Some( null )
+      else m.declaringClass.getConstructors.find( _.getParameterCount == 0 ).map( _.newInstance() ) // Dottydoc needs this. It's main method is not static.
+    instanceOption.map( instance => StaticMethod(
       arg => m.invoke( instance, arg.asInstanceOf[AnyRef] ).asInstanceOf[Result],
       m
-    )
+    ) )
   }
 
   def trapExitCodeOrValue[T]( result: => T, i: Int = 5 ): Either[ExitCode, T] = {
