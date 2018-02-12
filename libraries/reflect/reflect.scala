@@ -164,12 +164,12 @@ trait Module {
   def typeStaticMethod[Arg, Result]( method: Method ): Option[StaticMethod[Arg, Result]] = {
     val m = method
     val instanceOption =
-      if ( m.isStatic ) Some(null)
+      if ( m.isStatic ) Some( null )
       else m.declaringClass.getConstructors.find( _.getParameterCount == 0 ).map( _.newInstance() ) // Dottydoc needs this. It's main method is not static.
     instanceOption.map( instance => StaticMethod(
       arg => m.invoke( instance, arg.asInstanceOf[AnyRef] ).asInstanceOf[Result],
       m
-    ))
+    ) )
   }
 
   def trapExitCodeOrValue[T]( result: => T, i: Int = 5 ): Either[ExitCode, T] = {
