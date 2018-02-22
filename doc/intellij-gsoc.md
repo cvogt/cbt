@@ -57,5 +57,4 @@ If you want to work on some module which is not you can right-click on the direc
 ------
 
 ## Current version of plugin
-Currently [IntelliJ EAP](https://www.jetbrains.com/idea/nextversion/) is suggested to be used along with the nightly build for the Scala Plugin (this can be selected after installing the plugin from the Scala Pugin's settings within IntelliJ).
-
+For the time being, the latest version of the scala plugin supporting CBT integration is `2017.3.603 nightly`.
