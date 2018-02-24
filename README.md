@@ -489,7 +489,7 @@ Scala.js support
 CBT supports cross-project Scala.js builds.
 It preserves same structure as in sbt (https://www.scala-js.org/doc/project/cross-build.html)
 
- 1. Example for user scalajs project is in: `$CBT_HOME/cbt/examples/build-scalajs`
+ 1. Example for user scalajs project is in: `$CBT_HOME/cbt/examples/scalajs-*`
  2. `$CBT_HOME/cbt compile`
     Will compile JVM and JS sources
     `$CBT_HOME/cbt jsCompile`
