@@ -404,8 +404,9 @@ IDE Support
 
 ### IntelliJ
 
-CBT support has recently been added to the Scala Plugin for IntelliJ. See details [in the docs](doc/intellij-gsoc.md), 
-and [view/submit](https://youtrack.jetbrains.com/issues?q=CBT) issues on the JetBrains issue tracker.
+IntelliJ IDEA has CBT support. Plugin for CBT support can be installed as any other IntelliJ plugin via JetBrains plugin repository. More information about IntellJ support and documentation can be found [here](https://github.com/darthorimar/intellij-cbt)
+
+Plugin page on JetBrains plugin repository: http://plugins.jetbrains.com/plugin/10482-cbt
 
 Shell completions
 -------------------

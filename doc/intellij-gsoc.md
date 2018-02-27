@@ -1,11 +1,15 @@
 
 # CBT support in Intellij Scala Plugin
+
+## Moved to separate repo, actual information about IntelliJ support is [here](https://github.com/darthorimar/intellij-cbt)
+
 ### A Google Summer of Code Project
 * Organiztion **Scala**
 * Mentor is [Christopher Vogt](https://github.com/cvogt)
 * [Project proposal](https://docs.google.com/document/d/14BQSOKGYL9-JqrO3ZTqcCJVy2LD1JAL6nXzScxYSU-c/edit?usp=sharing)
 * [Pull Request to the Intellij IDEA Scala Plugin](https://github.com/JetBrains/intellij-scala/pull/383)
 * [Pull Requests to the CBT](https://github.com/cvogt/cbt/pulls?utf8=%E2%9C%93&q=%20is%3Apr%20author%3Adarthorimar%20created%3A%3E2017-06-09%20)
+
 
 ## Project Description
 
