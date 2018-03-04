@@ -6,16 +6,17 @@ object `package` extends Module
 
 trait Module {
   def runMainForked(
-    className: String,
-    args:      Seq[String],
-    classpath: String,
-    directory: Option[File],
-    outErrIn:  Option[( OutputStream, OutputStream, InputStream )]
+    className:   String,
+    args:        Seq[String],
+    classpath:   String,
+    javaOptions: Seq[String],
+    directory:   Option[File],
+    outErrIn:    Option[( OutputStream, OutputStream, InputStream )]
   ): ( Int, () => ExitCode, () => ExitCode ) = {
     // FIXME: Windows support
     val java_exe = new File( System.getProperty( "java.home" ) + "/bin/java" )
     runWithIO(
-      java_exe.toString +: "-cp" +: classpath +: className +: args,
+      ( java_exe.toString +: javaOptions ) ++ ( "-cp" +: classpath +: className +: args ),
       directory,
       outErrIn
     )
