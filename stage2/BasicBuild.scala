@@ -332,6 +332,8 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
 
   def fork = false
 
+  def javaOptions: Seq[String] = Seq.empty
+
   def runForked: ExitCode = {
     val ( pid, waitFor, destroy ) = runForkedHandles
     waitFor()
@@ -357,6 +359,7 @@ trait BaseBuild extends BuildInterface with DependencyImplementation with SbtDep
       className,
       args,
       classpath.string,
+      javaOptions,
       Some( context.workingDirectory ),
       NailgunLauncher.runningViaNailgun.option(
         lib.getOutErrIn match { case (l,r, in) => (l.get,r.get, in) }
